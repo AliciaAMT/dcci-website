@@ -1,27 +1,479 @@
-#container {
+.under-construction-page {
+  --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.construction-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Header Section */
+.header-section {
   text-align: center;
-
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-bottom: 3rem;
+  animation: fadeInDown 1s ease-out;
 }
 
-#container strong {
-  font-size: 20px;
-  line-height: 26px;
+.logo-area {
+  margin-bottom: 1.5rem;
 }
 
-#container p {
-  font-size: 16px;
-  line-height: 22px;
+.logo-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
 
-  color: #8c8c8c;
+.ministry-name {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1px;
+}
 
+.construction-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50px;
+  padding: 0.75rem 1.5rem;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.construct-icon {
+  margin-right: 0.5rem;
+  font-size: 1.2rem;
+}
+
+/* Main Message Section */
+.main-message {
+  margin-bottom: 3rem;
+  animation: fadeInUp 1s ease-out 0.3s both;
+}
+
+.message-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 2.5rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.message-icon {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.message-card h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+  line-height: 1.3;
+}
+
+.primary-message {
+  font-size: 1.1rem;
+  color: #4a5568;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.upgrade-features {
+  text-align: left;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.upgrade-features h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.upgrade-features ul {
+  list-style: none;
+  padding: 0;
   margin: 0;
 }
 
-#container a {
+.upgrade-features li {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0;
+  color: #4a5568;
+  font-size: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.upgrade-features li:last-child {
+  border-bottom: none;
+}
+
+.feature-icon {
+  margin-right: 0.75rem;
+  font-size: 1.2rem;
+  min-width: 20px;
+}
+
+/* Wayback Machine Section */
+.wayback-section {
+  margin-bottom: 3rem;
+  animation: fadeInUp 1s ease-out 0.6s both;
+}
+
+.wayback-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 2.5rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.wayback-icon {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.wayback-card h3 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+}
+
+.wayback-card p {
+  font-size: 1.1rem;
+  color: #4a5568;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.wayback-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.wayback-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-radius: 50px;
   text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.wayback-button.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+.wayback-button.secondary {
+  background: rgba(255, 255, 255, 0.9);
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.wayback-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.button-icon {
+  margin-right: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.wayback-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #718096;
+  font-style: italic;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.info-icon {
+  font-size: 1.1rem;
+}
+
+/* Contact Section */
+.contact-section {
+  margin-bottom: 3rem;
+  animation: fadeInUp 1s ease-out 0.9s both;
+}
+
+.contact-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 2.5rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.contact-icon {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.contact-card h3 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+}
+
+.contact-card p {
+  font-size: 1.1rem;
+  color: #4a5568;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.social-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.social-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.social-icon {
+  font-size: 1.5rem;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+  animation: fadeInUp 1s ease-out 1.2s both;
+}
+
+.footer p {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.construction-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.time-icon {
+  font-size: 1rem;
+}
+
+/* Animations */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .construction-container {
+    padding: 15px;
+  }
+
+  .ministry-name {
+    font-size: 2rem;
+  }
+
+  .logo-icon {
+    font-size: 3rem;
+  }
+
+  .message-card,
+  .wayback-card,
+  .contact-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .message-card h2 {
+    font-size: 1.6rem;
+  }
+
+  .wayback-card h3,
+  .contact-card h3 {
+    font-size: 1.5rem;
+  }
+
+  .wayback-links {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .wayback-button {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+  }
+
+  .upgrade-features li {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .construction-container {
+    padding: 10px;
+  }
+
+  .ministry-name {
+    font-size: 1.8rem;
+  }
+
+  .logo-icon {
+    font-size: 2.5rem;
+  }
+
+  .message-card,
+  .wayback-card,
+  .contact-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .primary-message,
+  .wayback-card p,
+  .contact-card p {
+    font-size: 1rem;
+  }
+
+  .upgrade-features h3 {
+    font-size: 1.2rem;
+  }
+
+  .upgrade-features li {
+    font-size: 0.85rem;
+  }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  .header-section,
+  .main-message,
+  .wayback-section,
+  .contact-section,
+  .footer {
+    animation: none;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .message-card,
+  .wayback-card,
+  .contact-card {
+    background: #ffffff;
+    border: 2px solid #000000;
+  }
+
+  .wayback-button.primary {
+    background: #000000;
+    color: #ffffff;
+  }
+
+  .wayback-button.secondary {
+    background: #ffffff;
+    color: #000000;
+    border: 2px solid #000000;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .under-construction-page {
+    --background: #ffffff;
+  }
+
+  .construction-container {
+    color: #000000;
+  }
+
+  .message-card,
+  .wayback-card,
+  .contact-card {
+    background: #ffffff;
+    border: 1px solid #000000;
+    box-shadow: none;
+  }
 }
