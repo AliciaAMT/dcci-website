@@ -1,52 +1,55 @@
-# DCCI Ministries - Project Documentation
+# DCCI Ministries Website Documentation
 
-Welcome to the comprehensive documentation for the DCCI Ministries website project. This documentation is designed to help developers understand the project architecture, setup, and maintenance procedures.
+This directory contains comprehensive documentation for the DCCI Ministries website project, covering technical architecture, development setup, content management, and operational procedures.
 
 ## 📚 Documentation Structure
 
-### **For Developers**
-- [Project Overview](./project-overview.md) - High-level project description and goals
-- [Technical Architecture](./technical-architecture.md) - System design and technical decisions
-- [Development Setup](./development-setup.md) - How to get the development environment running
-- [Code Standards](./code-standards.md) - Coding conventions and best practices
-- [API Documentation](./api-documentation.md) - Firebase services and data models
-- [Component Library](./component-library.md) - Reusable UI components
-- [Testing Strategy](./testing-strategy.md) - Testing approach and procedures
-- [Deployment Guide](./deployment-guide.md) - How to deploy to production
+### 🚀 **For Developers**
+- **[Project Overview](./project-overview.md)** - Project mission, scope, and development phases
+- **[Technical Architecture](./technical-architecture.md)** - System design, technology stack, and architecture patterns
+- **[Development Setup](./development-setup.md)** - Step-by-step development environment setup
+- **[Breaking Changes & Gotchas](./breaking-changes-gotchas.md)** - Critical breaking changes and common issues to watch for
+- **[Future-Proofing for Node 22+](./future-proofing-node22.md)** - Long-term maintenance and Node 22+ compatibility
+- **[Project Handoff](./project-handoff.md)** - Essential information for new developers taking over the project
 
-### **For Content Owners**
-- [Owner's Guide](./owners-guide.md) - Non-technical guide for website owners
-- [Content Management](./content-management.md) - How to manage content and articles
-- [Video Integration](./video-integration.md) - YouTube video automation
-- [Troubleshooting](./troubleshooting.md) - Common issues and solutions
+### 👥 **For Content Owners & Non-Technical Users**
+- **[Owner's Guide](./owners-guide.md)** - Non-technical guide for ministry owners and content managers
+- **[Content Management](./content-management.md)** - How to create, edit, and manage website content
+- **[Emergency Procedures](./emergency-procedures.md)** - Step-by-step procedures for critical situations
 
-### **For Future Developers**
-- [Project Handoff](./project-handoff.md) - What to know when taking over this project
-- [Maintenance Procedures](./maintenance-procedures.md) - Regular maintenance tasks
-- [Emergency Procedures](./emergency-procedures.md) - What to do in critical situations
+### 🛠️ **For Operations & Maintenance**
+- **[Troubleshooting](./troubleshooting.md)** - Common issues and their solutions
+- **[Emergency Procedures](./emergency-procedures.md)** - Critical incident response procedures
 
-## 🚀 Quick Start
+## 🎯 **Quick Start for Developers**
 
-1. **New Developer?** Start with [Development Setup](./development-setup.md)
-2. **Taking over the project?** Read [Project Handoff](./project-handoff.md)
-3. **Need to deploy?** Check [Deployment Guide](./deployment-guide.md)
-4. **Content owner questions?** See [Owner's Guide](./owners-guide.md)
+1. **Read [Project Overview](./project-overview.md)** to understand the project scope
+2. **Follow [Development Setup](./development-setup.md)** to get your environment ready
+3. **Review [Breaking Changes & Gotchas](./breaking-changes-gotchas.md)** to avoid common pitfalls
+4. **Check [Future-Proofing Guide](./future-proofing-node22.md)** for long-term maintenance
+5. **Check [Technical Architecture](./technical-architecture.md)** for system design details
 
-## 🔄 Documentation Updates
+## 🚨 **Critical Information**
 
-This documentation is maintained alongside the codebase. When making changes:
-- Update relevant documentation files
-- Keep examples current with actual code
-- Add new procedures as they're developed
+- **Node Version**: Use Node 20.x (see `.nvmrc` file)
+- **Icon Loading**: Requires `setAssetPath(document.baseURI)` and SVG asset copying
+- **Firebase**: Use ESM imports, not require() syntax
+- **Cursor AI**: Be specific about what you want and what not to do
 
-## 📞 Support
+## 📖 **Documentation Standards**
 
-- **Technical Issues**: Check [Troubleshooting](./troubleshooting.md) first
-- **Project Questions**: Review [Project Overview](./project-overview.md)
-- **Emergency**: See [Emergency Procedures](./emergency-procedures.md)
+- All technical procedures include step-by-step instructions
+- Code examples are provided where relevant
+- Troubleshooting sections include diagnostic steps
+- Emergency procedures are clearly marked and prioritized
+
+## 🔄 **Keeping Documentation Updated**
+
+- Update relevant docs when making architectural changes
+- Add new gotchas to the breaking changes document
+- Keep emergency procedures current with actual system configuration
+- Document any workarounds or temporary fixes implemented
 
 ---
 
-**Last Updated**: [Current Date]  
-**Maintained By**: Development Team  
-**Project Status**: Under Construction 
+*For questions about this documentation or the project, refer to the [Project Handoff](./project-handoff.md) document for contact information.* 
