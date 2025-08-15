@@ -10,7 +10,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
-    "vd": "git add . && git commit -m \"Deploy: $(date)\" || true && npm version patch && ionic build --prod && firebase deploy"
+    "vd": "git add . && git commit -m \"Deploy: $(date)\" && npm version patch && ionic build --prod && firebase deploy"
   },
   "private": true,
   "dependencies": {
