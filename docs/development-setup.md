@@ -109,6 +109,42 @@ npx cap open ios       # Open iOS project in Xcode
 npx cap open android   # Open Android project in Android Studio
 ```
 
+## 🌓 Dark/Light Mode
+
+The application automatically follows the user's device/system preference for dark or light mode. This is handled through:
+
+- **CSS Media Queries**: Uses `@media (prefers-color-scheme: dark)` and `@media (prefers-color-scheme: light)`
+- **Ionic Theme Variables**: All colors use Ionic's built-in theme variables that automatically adapt
+- **System Integration**: Respects the user's OS-level dark/light mode setting
+
+### **Implementation Details**
+
+- **Header**: Automatically adapts between light and dark backgrounds
+- **Text Colors**: Automatically adjust for optimal contrast in both modes
+- **Accent Colors**: Primary colors maintain accessibility in both themes
+- **No Manual Toggle**: Users control this through their device settings
+
+### **Testing Dark/Light Mode**
+
+1. **Chrome DevTools**: 
+   - Open DevTools → More tools → Rendering
+   - Set "Emulate CSS media feature prefers-color-scheme" to "dark" or "light"
+
+2. **System Settings**:
+   - Change your OS dark/light mode setting
+   - Refresh the application
+
+3. **CSS Variables**:
+   - All colors use `var(--ion-color-*)` variables
+   - These automatically adapt to the current theme
+
+### **Color System**
+
+The application uses Ionic's built-in color system:
+- **Primary Colors**: `var(--ion-color-primary)`, `var(--ion-color-primary-shade)`, `var(--ion-color-primary-tint)`
+- **Text Colors**: `var(--ion-color-dark)`, `var(--ion-color-light)`, `var(--ion-color-medium)`
+- **Background Colors**: Automatically adapt based on system preference
+
 ### **Development Server Features**
 - **Hot Reload**: Changes automatically refresh the browser
 - **Source Maps**: Full debugging support
