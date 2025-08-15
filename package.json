@@ -7,9 +7,13 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "update-version": "node scripts/update-version.js",
+    "deploy": "npm run update-version && npm run build:prod && firebase deploy",
+    "deploy:hosting": "npm run update-version && npm run build:prod && firebase deploy --only hosting"
   },
   "private": true,
   "dependencies": {

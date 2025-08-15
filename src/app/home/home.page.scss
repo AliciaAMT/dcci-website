@@ -412,6 +412,17 @@
   color: var(--ion-color-light);
 }
 
+.version-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ion-color-light);
+  opacity: 0.8;
+  margin-top: 0.5rem;
+}
+
 .time-icon {
   color: var(--ion-color-light);
   font-size: 1rem;
