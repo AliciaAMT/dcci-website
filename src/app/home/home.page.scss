@@ -1,5 +1,5 @@
 .under-construction-page {
-  --background: linear-gradient(135deg, #3880ff 0%, #3171e0 50%, #1e3a8a 100%);
+  --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
   min-height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -19,7 +19,7 @@
   text-align: center;
   margin-bottom: 0;
   animation: fadeInDown 1s ease-out;
-  background: #ffffff;
+  background: var(--ion-color-light);
   padding: 1rem;
   border-radius: 0;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -27,46 +27,64 @@
 }
 
 .logo-area {
-  // margin-bottom: 1.5rem;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .brand-logo {
-  width: 300px;
-  height: auto;
-  // margin-bottom: 1rem;
+  width: 80px;
+  height: 80px;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  flex-shrink: 0;
+}
+
+.ministry-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .ministry-name {
-  font-size: 2.5rem;
+  font-size: 1.5rem !important;
   font-weight: 700;
-  color: #2d3748;
+  color: var(--ion-color-dark) !important;
   margin: 0;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   letter-spacing: 1px;
+  line-height: 1.1;
+}
+
+.ministry-tagline {
+  font-size: .9rem !important;
+  font-weight: 400;
+  color: var(--ion-color-primary-tint) !important;
+  margin: 0.25rem 0 0 0;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
 }
 
 .construction-badge {
   display: inline-flex;
   align-items: center;
-  background: linear-gradient(135deg, #3880ff 0%, #3171e0 100%);
+  background: linear-gradient(135deg, var(--ion-color-primary-tint) 0%, var(--ion-color-primary) 100%);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(56, 128, 255, 0.3);
+  border: 1px solid rgba(var(--ion-color-primary-tint-rgb), 0.3);
   border-radius: 50px;
   padding: 0.75rem 1.5rem;
-  color: #ffffff;
+  color: var(--ion-color-light);
   font-weight: 600;
   font-size: 1rem;
-  box-shadow: 0 4px 15px rgba(56, 128, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(var(--ion-color-primary-tint-rgb), 0.2);
 }
 
 .construct-icon {
   margin-right: 0.5rem;
   font-size: 1.2rem;
-  color: #ffffff;
+  color: var(--ion-color-light);
 }
 
 /* Main Message Section */
@@ -76,37 +94,38 @@
 }
 
 .message-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--ion-color-light);
   backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 2.5rem;
   text-align: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
 }
 
 .message-icon {
   font-size: 3rem;
-  color: #3880ff;
+  color: var(--ion-color-primary-tint);
   margin-bottom: 1.5rem;
 }
 
 .message-card h2 {
   font-size: 2rem;
   font-weight: 700;
-  color: #2d3748;
+  color: var(--ion-color-dark);
   margin: 0 0 1rem 0;
   line-height: 1.3;
 }
 
 .primary-message {
   font-size: 1.1rem;
-  color: #4a5568;
+  color: var(--ion-color-dark-shade);
   line-height: 1.6;
   margin-bottom: 2rem;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
+  font-weight: 500;
 }
 
 .upgrade-features {
@@ -118,7 +137,7 @@
 .upgrade-features h3 {
   font-size: 1.3rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--ion-color-dark);
   margin-bottom: 1rem;
   text-align: center;
 }
@@ -133,9 +152,9 @@
   display: flex;
   align-items: center;
   padding: 0.75rem 0;
-  color: #4a5568;
+  color: var(--ion-color-dark);
   font-size: 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
 }
 
 .upgrade-features li:last-child {
@@ -145,7 +164,7 @@
 .upgrade-features li ion-icon {
   margin-right: 1.5rem;
   font-size: 1.2rem;
-  color: #3880ff;
+  color: var(--ion-color-primary-tint);
   min-width: 24px;
   display: inline-block;
   vertical-align: middle;
@@ -204,31 +223,32 @@
 }
 
 .wayback-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--ion-color-light);
   backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 2.5rem;
   text-align: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
 }
 
 .wayback-icon {
   font-size: 3rem;
-  color: #3171e0;
+  min-width: 24px;
+  color: var(--ion-color-primary-tint);
   margin-bottom: 1.5rem;
 }
 
 .wayback-card h3 {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #2d3748;
+  color: var(--ion-color-dark);
   margin: 0 0 1rem 0;
 }
 
 .wayback-card p {
   font-size: 1.1rem;
-  color: #4a5568;
+  color: var(--ion-color-dark-shade);
   line-height: 1.6;
   margin-bottom: 2rem;
   max-width: 600px;
@@ -257,14 +277,14 @@
 }
 
 .wayback-button.primary {
-  background: linear-gradient(135deg, #3880ff 0%, #3171e0 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--ion-color-primary-tint) 0%, var(--ion-color-primary) 100%);
+  color: var(--ion-color-light);
 }
 
 .wayback-button.secondary {
-  background: rgba(255, 255, 255, 0.9);
-  color: #3880ff;
-  border: 2px solid #3880ff;
+  background: rgba(var(--ion-color-light-rgb), 0.9);
+  color: var(--ion-color-primary-tint);
+  border: 2px solid var(--ion-color-primary-tint);
 }
 
 .wayback-button:hover {
@@ -280,18 +300,18 @@
 .wayback-note {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: #718096;
+  color: var(--ion-color-medium-shade);
   font-style: italic;
   max-width: 500px;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .info-icon {
-  color: #3880ff;
-  font-size: 1.1rem;
+  color: var(--ion-color-primary-tint);
+  font-size: 1.5rem;
 }
 
 /* Contact Section */
@@ -301,31 +321,31 @@
 }
 
 .contact-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--ion-color-light);
   backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 2.5rem;
   text-align: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
 }
 
 .contact-icon {
   font-size: 3rem;
-  color: #3880ff;
+  color: var(--ion-color-primary-tint);
   margin-bottom: 1.5rem;
 }
 
 .contact-card h3 {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #2d3748;
+  color: var(--ion-color-dark);
   margin: 0 0 1rem 0;
 }
 
 .contact-card p {
   font-size: 1.1rem;
-  color: #4a5568;
+  color: var(--ion-color-dark-shade);
   line-height: 1.6;
   margin-bottom: 2rem;
   max-width: 500px;
@@ -333,46 +353,54 @@
   margin-right: auto;
 }
 
-.social-links {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
+  .social-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
 
 .social-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3880ff 0%, #3171e0 100%);
-  color: #ffffff;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 25px;
+  background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 100%);
+  color: var(--ion-color-light);
   text-decoration: none;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 
 .social-link:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, var(--ion-color-primary-shade) 0%, var(--ion-color-primary-tint) 100%);
 }
 
-.social-icon {
-  font-size: 1.5rem;
+.social-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Footer */
 .footer {
   text-align: center;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--ion-color-light);
   animation: fadeInUp 1s ease-out 1.2s both;
 }
 
 .footer p {
   margin: 0.5rem 0;
   font-size: 0.9rem;
+  text-align: center;
+  justify-content: center;
 }
 
 .construction-note {
@@ -381,11 +409,11 @@
   justify-content: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ion-color-light);
 }
 
 .time-icon {
-  color: #ffffff;
+  color: var(--ion-color-light);
   font-size: 1rem;
 }
 
@@ -423,12 +451,22 @@
     padding: 1rem;
   }
 
+  .logo-area {
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+  }
+
   .ministry-name {
-    font-size: 2rem;
+    font-size: 0.7rem;
   }
 
   .brand-logo {
-    width: 100px;
+    width: 60px;
+    height: 60px;
+  }
+
+  .ministry-tagline {
+    font-size: 0.6rem;
   }
 
   .hero-section {
@@ -484,12 +522,22 @@
     padding: 0.75rem;
   }
 
+  .logo-area {
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+  }
+
   .ministry-name {
-    font-size: 1.8rem;
+    font-size: 0.5rem;
   }
 
   .brand-logo {
-    width: 80px;
+    width: 45px;
+    height: 45px;
+  }
+
+  .ministry-tagline {
+    font-size: 0.45rem;
   }
 
   .hero-section {
@@ -579,11 +627,60 @@
     box-shadow: none;
   }
 }
-h1 {
-  font-size: 1px !important;
-  line-height: 1px !important;
-  // font-weight: 700;
-}
+/* Proper screen reader only class */
 .sr-only {
-  visibility: hidden;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Focus indicators for accessibility */
+.social-link:focus,
+.wayback-button:focus,
+.social-link:focus-visible,
+.wayback-button:focus-visible,
+.skip-link:focus {
+  outline: 3px solid var(--ion-color-light);
+  outline-offset: 2px;
+  border-radius: 25px;
+}
+
+/* Ensure sufficient color contrast */
+.primary-message,
+.wayback-card p,
+.contact-card p {
+  color: var(--ion-color-dark);
+  line-height: 1.6;
+}
+
+.upgrade-features li {
+  color: var(--ion-color-dark);
+}
+
+/* High contrast focus states */
+.social-link:focus,
+.wayback-button:focus {
+  outline: 3px solid var(--ion-color-light);
+  outline-offset: 2px;
+}
+
+/* Ensure proper heading hierarchy */
+.ministry-name {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: 1px;
+  text-align: center;
+}
+p {
+  text-align: left;
+  justify-content: left;
 }

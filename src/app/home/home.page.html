@@ -1,10 +1,14 @@
 <ion-content [fullscreen]="true" class="under-construction-page">
   <div class="construction-container">
+    <main id="main-content" role="main">
     <!-- Header Section -->
     <div class="header-section">
       <div class="logo-area">
-        <img src="assets/icon/cropped-DCCI-full-name-in-gray-background.png" alt="DCCI Ministries: Defend Christ, Critique Islam" class="brand-logo">
-        <h1 class="ministry-name sr-only">DCCI Ministries</h1>
+        <img src="assets/icon/icon-no-text.webp" alt="" class="brand-logo" aria-hidden="true">
+        <div class="ministry-text">
+          <h1 class="ministry-name">DCCI MINISTRIES</h1>
+          <p class="ministry-tagline">Defend Christ Critique Islam</p>
+        </div>
       </div>
 
     </div>
@@ -12,7 +16,7 @@
     <!-- Hero Image Section -->
     <div class="hero-section">
       <div class="hero-image-container">
-        <img src="assets/icon/cropped-Screenshot-2020-02-12-10.48.21-1.png" alt="DCCI Ministries Hero Image" class="hero-image">
+        <img src="assets/icon/hero.webp" alt="DCCI Ministries hero image showing interfaith dialogue and religious symbols representing our mission to defend Christ and critique Islam through understanding" class="hero-image">
         <!-- <div class="hero-overlay">
           <h2 class="hero-title">Defend Christ, Critique Islam</h2>
           <p class="hero-subtitle">Building bridges through understanding and dialogue</p>
@@ -36,12 +40,12 @@
 
         <div class="upgrade-features">
           <h3>What's Coming:</h3>
-          <ul>
-            <li><ion-icon name="videocam-outline"></ion-icon>  Automatic YouTube video integration</li>
-            <li><ion-icon name="phone-portrait-outline"></ion-icon> Mobile-first responsive design</li>
-            <li><ion-icon name="search-outline"></ion-icon> Enhanced search and navigation</li>
-            <li><ion-icon name="eye-outline"></ion-icon> Full accessibility compliance</li>
-            <li><ion-icon name="shield-checkmark-outline"></ion-icon> Improved security and reliability</li>
+          <ul role="list" aria-label="Website upgrade features">
+            <li role="listitem"><ion-icon name="videocam-outline" aria-hidden="true"></ion-icon><span>Automatic YouTube video integration</span></li>
+            <li role="listitem"><ion-icon name="phone-portrait-outline" aria-hidden="true"></ion-icon><span>Mobile-first responsive design</span></li>
+            <li role="listitem"><ion-icon name="search-outline" aria-hidden="true"></ion-icon><span>Enhanced search and navigation</span></li>
+            <li role="listitem"><ion-icon name="eye-outline" aria-hidden="true"></ion-icon><span>Full accessibility compliance</span></li>
+            <li role="listitem"><ion-icon name="shield-checkmark-outline" aria-hidden="true"></ion-icon><span>Improved security and reliability</span></li>
           </ul>
         </div>
       </div>
@@ -50,7 +54,7 @@
     <!-- Wayback Machine Section -->
     <div class="wayback-section">
       <div class="wayback-card">
-        <ion-icon name="archive-outline" class="wayback-icon"></ion-icon>
+        <ion-icon name="archive-outline" class="wayback-icon"></ion-icon><br />
         <h3>Access Our Previous Content</h3>
         <p>
           While we're upgrading, you can still access our previous website content through the
@@ -77,7 +81,7 @@
         </div>
 
         <p class="wayback-note">
-          <ion-icon name="information-circle-outline"></ion-icon>
+          <ion-icon name="information-circle-outline" class="wayback-icon"></ion-icon>
           The Wayback Machine preserves historical snapshots of websites, allowing you to browse
           our previous content while we complete the upgrade.
         </p>
@@ -95,14 +99,25 @@
         </p>
 
         <div class="social-links">
-          <a href="#" class="social-link" aria-label="YouTube">
+          <a href="https://www.youtube.com/@DCCIMinistries" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="YouTube">
             <ion-icon name="logo-youtube"></ion-icon>
+            <span class="social-label">YouTube</span>
           </a>
-          <a href="#" class="social-link" aria-label="Facebook">
-            <ion-icon name="logo-facebook"></ion-icon>
+          <a href="https://paypal.me/dcciministries2019?locale.x=en_GB" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="PayPal">
+            <ion-icon name="card-outline"></ion-icon>
+            <span class="social-label">PayPal</span>
           </a>
-          <a href="#" class="social-link" aria-label="Instagram">
-            <ion-icon name="logo-instagram"></ion-icon>
+          <a href="https://patreon.com/HatunTash" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Patreon">
+            <ion-icon name="heart-outline"></ion-icon>
+            <span class="social-label">Patreon</span>
+          </a>
+          <a href="https://twitter.com/dcciministries" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="X (formerly Twitter)">
+            <ion-icon name="close-outline"></ion-icon>
+            <span class="social-label">X</span>
+          </a>
+          <a href="https://cash.app/$HatunTashDCCI" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="CashApp">
+            <ion-icon name="wallet-outline"></ion-icon>
+            <span class="social-label">CashApp</span>
           </a>
         </div>
       </div>
@@ -116,5 +131,6 @@
         Expected completion: 2026
       </p>
     </div>
+    </main>
   </div>
 </ion-content>
