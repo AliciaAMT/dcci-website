@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  version: '0.0.1',
+  version: '0.0.3',
   firebase: {
     apiKey: "AIzaSyDOTg6-WFneENdGptVF2G_8nWAnABaHSMg",
     authDomain: "dcci-ministries.firebaseapp.com",

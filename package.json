@@ -1,8 +1,8 @@
 {
-  "name": "dcci-website",
-  "version": "0.0.1",
-  "author": "Ionic Framework",
-  "homepage": "https://ionicframework.com/",
+  "name": "DCCI Ministries",
+  "version": "0.0.3",
+  "author": "Accessible Web Media",
+  "homepage": "https://accessiblewebmedia.com/",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -12,6 +12,8 @@
     "test": "ng test",
     "lint": "ng lint",
     "update-version": "node scripts/update-version.js",
+    "bump-version": "node scripts/bump-version.js",
+    "vd": "node scripts/version-deploy.js",
     "deploy": "npm run update-version && npm run build:prod && firebase deploy",
     "deploy:hosting": "npm run update-version && npm run build:prod && firebase deploy --only hosting"
   },
