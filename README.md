@@ -157,7 +157,7 @@ This project is private and proprietary to DCCI Ministries.
 
 ## 🆘 Support
 
-For technical support or questions, please contact the development team.
+For technical support or questions, please contact the development team. admin@accessiblewebmedia.com
 
 ---
 

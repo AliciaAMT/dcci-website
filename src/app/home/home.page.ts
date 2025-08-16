@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import {
-  IonContent,
-  IonIcon
+  IonContent
 } from '@ionic/angular/standalone';
 import { VersionService } from '../services/version.service';
 
@@ -9,7 +8,7 @@ import { VersionService } from '../services/version.service';
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
-  imports: [IonContent, IonIcon],
+  imports: [IonContent],
   standalone: true
 })
 export class HomePage {
