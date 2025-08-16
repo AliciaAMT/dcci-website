@@ -8,9 +8,9 @@ try {
   console.log('📦 Step 1: Bumping patch version...');
   execSync('node scripts/bump-version.js', { stdio: 'inherit' });
 
-  // Step 2: Build with Ionic
-  console.log('\n🔨 Step 2: Building with Ionic...');
-  execSync('ionic build --prod', { stdio: 'inherit' });
+      // Step 2: Build with Angular
+  console.log('\n🔨 Step 2: Building with Angular...');
+  execSync('npm run build:prod', { stdio: 'inherit' });
 
   // Step 3: Deploy to Firebase
   console.log('\n🔥 Step 3: Deploying to Firebase...');

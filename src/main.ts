@@ -12,6 +12,10 @@ import { setAssetPath } from '@stencil/core';
 import { routes } from './app/app.routes';
 import { AppComponent } from './app/app.component';
 
+// Register Ionicons before bootstrapping
+import { registerIonicons } from './app/icons';
+registerIonicons();
+
 // Fix Ionicons asset loading - must come before bootstrapApplication
 setAssetPath(document.baseURI);
 

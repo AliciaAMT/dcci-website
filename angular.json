@@ -35,9 +35,9 @@
                 "output": "assets"
               },
               {
-                "glob": "**/*.svg",
-                "input": "./node_modules/ionicons/dist/svg",
-                "output": "svg"
+                "glob": "**/*",
+                "input": "node_modules/ionicons/dist/ionicons/svg",
+                "output": "/svg"
               }
             ],
             "styles": [
@@ -115,6 +115,11 @@
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/ionicons/dist/ionicons/svg",
+                "output": "/svg"
               }
             ],
             "styles": ["src/global.scss", "src/theme/variables.scss"],
