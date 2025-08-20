@@ -75,3 +75,7 @@ testem.log
 Thumbs.db
 src/environments/environment.ts
 src/environments/environment.prod.ts
+
+# Allow example templates
+!src/environments/environment.example.ts
+!src/environments/environment.prod.example.ts
