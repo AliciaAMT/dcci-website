@@ -1,11 +1,13 @@
 .under-construction-page {
   --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
+  --content-max-width: 72rem; /* ~1152px - reasonable content width */
   min-height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Content container with reasonable max-width for text content */
 .construction-container {
-  max-width: 1200px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
   padding: 20px;
   min-height: 4vh;
@@ -14,7 +16,7 @@
   justify-content: center;
 }
 
-/* Header Section */
+/* Header Section - keep within container for proper alignment */
 .header-section {
   text-align: center;
   margin-bottom: 0;
@@ -170,24 +172,36 @@
   vertical-align: middle;
 }
 
-/* Hero Section */
+/* Hero Section - FULL BLEED, breaks out of container */
 .hero-section {
-  margin-bottom: 3rem;
+  margin: 0 -20px 3rem -20px; /* Negative margins to break out */
   animation: fadeInUp 1s ease-out 0.2s both;
-  margin: 0 -20px 3rem -20px;
+  position: relative;
+  min-height: clamp(320px, 50vh, 720px);
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  /* Fallback for older browsers */
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
 }
 
 .hero-image-container {
   position: relative;
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
 }
 
 .hero-image {
-  width: 100vw;
-  height: auto;
+  width: 100%;
+  height: 100%;
   display: block;
-  // filter: brightness(0.9);
+  object-fit: cover;
   max-width: none;
 }
 
@@ -471,6 +485,8 @@
 
   .hero-section {
     margin: 0 -15px 3rem -15px;
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
   }
 
   .hero-title {
@@ -514,7 +530,7 @@
 
 @media (max-width: 480px) {
   .construction-container {
-    padding: 10px;
+    padding: 15px;
   }
 
   .header-section {
@@ -524,7 +540,7 @@
 
   .logo-area {
     gap: 0.5rem;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .ministry-name {
@@ -542,6 +558,8 @@
 
   .hero-section {
     margin: 0 -10px 3rem -10px;
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
   }
 
   .hero-title {
@@ -585,6 +603,26 @@
   .contact-section,
   .footer {
     animation: none;
+  }
+}
+
+/* Large screen optimizations */
+@media (min-width: 1400px) {
+  .construction-container {
+    max-width: 80rem; /* ~1280px for very large screens */
+  }
+}
+
+@media (min-width: 2000px) {
+  .construction-container {
+    max-width: 90rem; /* ~1440px for ultra-wide screens */
+  }
+}
+
+/* Ensure hero section spans full width on all screen sizes */
+@media (min-width: 1200px) {
+  .hero-section {
+    min-height: clamp(400px, 60vh, 800px);
   }
 }
 
