@@ -1,6 +1,6 @@
 {
   "name": "dcci-website",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Ionic Framework",
   "homepage": "https://ionicframework.com/",
   "scripts": {
@@ -25,6 +25,8 @@
     "update-version": "node scripts/update-version.js",
     "vs": "node scripts/version-deploy.js staging",
     "vd": "node scripts/version-deploy.js production",
+    "fvd": "node scripts/version-deploy-feature.js",
+    "mvd": "node scripts/version-deploy-major.js",
     "test": "ng test",
     "lint": "ng lint"
   },

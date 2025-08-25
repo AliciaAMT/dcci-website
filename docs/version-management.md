@@ -1,231 +1,70 @@
-# Version Management System
+# Version Management
 
-This document explains how the version management system works in the DCCI website project.
-
-## Overview
-
-The version number is now automatically displayed in the footer and can be easily updated across all environments. The system uses environment variables to store version information, making it easy to maintain and deploy different versions.
-
-## How It Works
-
-### 1. Version Service (`src/app/services/version.service.ts`)
-
-The `VersionService` provides methods to retrieve version information:
-
-- `getVersion()`: Returns the current version string
-- `getFullVersionInfo()`: Returns version with environment info (e.g., "v0.0.1 (Development)")
-
-### 2. Environment Configuration
-
-Each environment file contains a `version` property:
-
-```typescript
-export const environment = {
-  production: false,
-  version: '0.0.1',  // ← This gets updated automatically
-  firebase: { ... },
-  disqusShortname: "..."
-};
-```
-
-### 3. Footer Display
-
-The footer automatically displays the current version:
-
-```html
-<p class="version-info">
-  <ion-icon name="information-circle-outline"></ion-icon>
-  Version: {{ version }}  <!-- ← Dynamically bound -->
-</p>
-```
-
-## Updating Versions
-
-### Automatic Method (Recommended)
-
-1. **Update version in `package.json`:**
-   ```json
-   {
-     "version": "0.0.2"
-   }
-   ```
-
-2. **Run the update script:**
-   ```bash
-   npm run update-version
-   ```
-
-3. **The script will automatically update all environment files**
-
-### Manual Method
-
-If you prefer to update manually, edit the `version` property in each environment file:
-
-- `src/environments/environment.ts`
-- `src/environments/environment.prod.ts`
-- `src/environments/environment.test.ts`
-- `src/environments/environment.prod.test.ts`
-- `src/environments/environment.example.ts`
+This document explains how to manage versions and deploy the DCCI website using the automated scripts.
 
 ## Available Scripts
 
-### `npm run update-version`
+### Version Bump + Deploy Scripts
 
-Updates the version number in all environment files based on `package.json`.
+| Script | Command | Purpose | Version Bump | Deploy Target |
+|--------|---------|---------|--------------|---------------|
+| **vs** | `npm run vs` | Staging deployment with patch bump | `1.2.3` → `1.2.4` | Staging |
+| **vd** | `npm run vd` | Production deployment with patch bump | `1.2.3` → `1.2.4` | Production (Live) |
+| **fvd** | `npm run fvd` | Production deployment with feature bump | `1.2.3` → `1.3.0` | Production (Live) |
+| **mvd** | `npm run mvd` | Production deployment with major bump | `1.2.3` → `2.0.0` | Production (Live) |
 
-### `npm run vs` (Version + Staging)
+### What Each Script Does
 
-Bumps the version number and deploys to staging environment.
+1. **Reads current version** from `package.json`
+2. **Bumps version** according to the script type:
+   - **Patch** (`vs`, `vd`): `1.2.3` → `1.2.4` (bug fixes, small changes)
+   - **Feature** (`fvd`): `1.2.3` → `1.3.0` (new features, minor changes)
+   - **Major** (`mvd`): `1.2.3` → `2.0.0` (breaking changes, major updates)
+3. **Updates all environment files** with the new version
+4. **Builds the project** for the target environment
+5. **Deploys to Firebase** (staging or production)
+6. **Rolls back** version if deployment fails
 
-### `npm run vd` (Version + Deploy)
+### When to Use Each Script
 
-Bumps the version number and deploys to production environment.
+- **`npm run vs`**: Testing new features on staging before going live
+- **`npm run vd`**: Deploying bug fixes and small updates to production
+- **`npm run fvd`**: Deploying new features to production
+- **`npm run mvd`**: Deploying major updates or breaking changes to production
 
-**What it does:**
-1. **Bumps patch version** (e.g., 0.0.1 → 0.0.2)
-2. **Updates package.json** with new version
-3. **Updates all environment files** automatically
-4. **Deploys to production** using `npm run ld`
-5. **Shows confirmation** before proceeding
-6. **Rolls back** if deployment fails
+### Safety Features
 
-**Example usage:**
+- **User confirmation** required before proceeding
+- **Automatic rollback** if deployment fails
+- **Clear feedback** on what will happen
+- **Error handling** with detailed error messages
+
+### Example Usage
+
 ```bash
+# Deploy a bug fix to production
 npm run vd
-```
 
-**Example output:**
-```
-🚀 Version Bump + Deploy to PRODUCTION
-📦 Current version: 0.0.1
-📦 New version: 0.0.2
+# Deploy a new feature to production
+npm run fvd
 
-⚠️  This will:
-   1. Bump version from 0.0.1 to 0.0.2
-   2. Update all environment files
-   3. Deploy to PRODUCTION
+# Deploy a major update to production
+npm run mvd
 
-Press Enter to continue or Ctrl+C to cancel...
-
-🔄 Starting version bump and deployment...
-✅ Updated package.json to version 0.0.2
-🔄 Updating environment files...
-✅ Updated src/environments/environment.ts
-✅ Updated src/environments/environment.prod.ts
-✅ Updated src/environments/environment.test.ts
-✅ Updated src/environments/environment.prod.test.ts
-✅ Updated src/environments/environment.example.ts
-🚀 Deploying to production...
-[deployment output...]
-
-🎉 SUCCESS!
-✅ Version bumped to 0.0.2
-✅ Deployed to PRODUCTION
-📱 Users will now see Version: 0.0.2 in the footer
-```
-
-### `npm run vs` (Version + Staging)
-
-Bumps the version number and deploys to staging environment.
-
-**What it does:**
-1. **Bumps patch version** (e.g., 0.0.1 → 0.0.2)
-2. **Updates package.json** with new version
-3. **Updates all environment files** automatically
-4. **Deploys to staging** using `npm run td`
-5. **Shows confirmation** before proceeding
-6. **Rolls back** if deployment fails
-
-**Example usage:**
-```bash
+# Test on staging first
 npm run vs
 ```
 
-**What it does:**
-- Reads current version from `package.json`
-- Updates all environment files
-- Provides feedback on success/failure
-- Shows current version information
+### Version Display
 
-**Example output:**
-```
-🔄 Updating version to 0.0.2 in all environment files...
-✅ Updated src/environments/environment.ts
-✅ Updated src/environments/environment.prod.ts
-✅ Updated src/environments/environment.test.ts
-✅ Updated src/environments/environment.prod.test.ts
-✅ Updated src/environments/environment.example.ts
+The version number is automatically displayed in the website footer, making it easy for users and support staff to identify which version they're using.
 
-🎉 Version update complete!
-✅ Successfully updated 5/5 files
-📦 Current version: 0.0.2
-```
+### Manual Version Updates
 
-## Version Display
-
-### Current Format
-
-The footer displays: `Version: 0.0.1`
-
-### Enhanced Format (Available)
-
-You can also use `getFullVersionInfo()` for more detailed information:
-
-```typescript
-// In your component
-this.fullVersion = this.versionService.getFullVersionInfo();
-// Returns: "v0.0.1 (Development)" or "v0.0.1 (Production)"
-```
-
-## Benefits
-
-1. **✅ No Hard-coding**: Version is always up-to-date
-2. **✅ Easy Updates**: Single command updates all environments
-3. **✅ Environment Aware**: Shows different versions per environment
-4. **✅ Support Friendly**: Users can easily identify their version
-5. **✅ Consistent**: All environments stay in sync
-6. **✅ Automated**: Reduces human error in version management
-
-## Troubleshooting
-
-### Version Not Updating
-
-1. **Check package.json**: Ensure version is correct
-2. **Run update script**: `npm run update-version`
-3. **Check environment files**: Verify version property exists
-4. **Rebuild**: Run `ng build` to see changes
-
-### Build Errors
-
-1. **Check imports**: Ensure `VersionService` is imported
-2. **Check environment**: Verify environment files have version property
-3. **Check component**: Ensure version is properly bound in template
-
-## Future Enhancements
-
-Potential improvements to consider:
-
-1. **Build-time version injection**: Inject version during build process
-2. **Git integration**: Auto-version based on git tags
-3. **Deployment tracking**: Track which version is deployed where
-4. **Version history**: Display version change log
-
-## Example Workflow
+If you need to update versions without deploying, you can use:
 
 ```bash
-# 1. Update version in package.json
-# 2. Update all environments
 npm run update-version
-
-# 3. Test the build
-ng build --configuration development
-
-# 4. Deploy to staging
-npm run td
-
-# 5. Test staging deployment
-# 6. Deploy to production
-npm run ld
 ```
 
-This system ensures that your version information is always accurate and makes it easy to provide support to users by identifying exactly which version they're running. 
+This will read the version from `package.json` and update all environment files without building or deploying. 
