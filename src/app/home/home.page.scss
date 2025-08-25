@@ -1,15 +1,15 @@
 .under-construction-page {
   --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
-  --content-max-width: 72rem; /* ~1152px - reasonable content width */
+  --content-max-width: 120rem; /* ~1920px - much wider content width */
   min-height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Content container with reasonable max-width for text content */
+/* Content container with wider max-width for better content spacing */
 .construction-container {
   max-width: var(--content-max-width);
   margin: 0 auto;
-  padding: 20px;
+  padding: 2rem 3rem;
   min-height: 4vh;
   display: flex;
   flex-direction: column;
@@ -22,10 +22,11 @@
   margin-bottom: 0;
   animation: fadeInDown 1s ease-out;
   background: var(--ion-color-light);
-  padding: 1rem;
+  padding: 2rem;
   border-radius: 0;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  margin: 0 -20px 0 -20px;
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
 }
 
 .logo-area {
@@ -38,8 +39,8 @@
 }
 
 .brand-logo {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
   flex-shrink: 0;
 }
@@ -51,7 +52,7 @@
 }
 
 .ministry-name {
-  font-size: 1.5rem !important;
+  font-size: 2.5rem !important;
   font-weight: 700;
   color: var(--ion-color-dark) !important;
   margin: 0;
@@ -61,10 +62,10 @@
 }
 
 .ministry-tagline {
-  font-size: .9rem !important;
+  font-size: 1.4rem !important;
   font-weight: 400;
   color: var(--ion-color-primary-tint) !important;
-  margin: 0.25rem 0 0 0;
+  margin: 0.5rem 0 0 0;
   letter-spacing: 0.5px;
   line-height: 1.2;
 }
@@ -76,10 +77,10 @@
   backdrop-filter: blur(10px);
   border: 1px solid rgba(var(--ion-color-primary-tint-rgb), 0.3);
   border-radius: 50px;
-  padding: 0.75rem 1.5rem;
+  padding: 1.5rem 3rem;
   color: var(--ion-color-light);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.8rem;
   box-shadow: 0 4px 15px rgba(var(--ion-color-primary-tint-rgb), 0.2);
 }
 
@@ -91,7 +92,7 @@
 
 /* Main Message Section */
 .main-message {
-  margin-bottom: 3rem;
+  margin-bottom: 4rem;
   animation: fadeInUp 1s ease-out 0.3s both;
 }
 
@@ -99,32 +100,33 @@
   background: var(--ion-color-light);
   backdrop-filter: blur(20px);
   border-radius: 20px;
-  padding: 2.5rem;
+  padding: 3rem 4rem;
   text-align: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+  max-width: 100%;
 }
 
 .message-icon {
-  font-size: 3rem;
+  font-size: 6rem;
   color: var(--ion-color-primary-tint);
-  margin-bottom: 1.5rem;
+  margin-bottom: 3rem;
 }
 
 .message-card h2 {
-  font-size: 2rem;
+  font-size: 3.5rem;
   font-weight: 700;
   color: var(--ion-color-dark);
-  margin: 0 0 1rem 0;
+  margin: 0 0 2rem 0;
   line-height: 1.3;
 }
 
 .primary-message {
-  font-size: 1.1rem;
+  font-size: 2rem;
   color: var(--ion-color-dark-shade);
   line-height: 1.6;
-  margin-bottom: 2rem;
-  max-width: 600px;
+  margin-bottom: 3rem;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
   font-weight: 500;
@@ -132,15 +134,15 @@
 
 .upgrade-features {
   text-align: left;
-  max-width: 500px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
 .upgrade-features h3 {
-  font-size: 1.3rem;
+  font-size: 2.5rem;
   font-weight: 600;
   color: var(--ion-color-dark);
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
   text-align: center;
 }
 
@@ -153,9 +155,9 @@
 .upgrade-features li {
   display: flex;
   align-items: center;
-  padding: 0.75rem 0;
+  padding: 1.5rem 0;
   color: var(--ion-color-dark);
-  font-size: 1rem;
+  font-size: 1.8rem;
   border-bottom: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
 }
 
@@ -174,18 +176,13 @@
 
 /* Hero Section - FULL BLEED, breaks out of container */
 .hero-section {
-  margin: 0 -20px 3rem -20px; /* Negative margins to break out */
-  animation: fadeInUp 1s ease-out 0.2s both;
   position: relative;
-  min-height: clamp(320px, 50vh, 720px);
+  animation: fadeInUp 1s ease-out 0.2s both;
+  min-height: clamp(250px, 35vh, 500px);
   width: 100vw;
   margin-left: calc(-50vw + 50%);
   margin-right: calc(-50vw + 50%);
-  /* Fallback for older browsers */
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
+  margin-bottom: 1rem;
 }
 
 .hero-image-container {
@@ -202,6 +199,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
+  object-position: center;
   max-width: none;
 }
 
@@ -232,7 +230,7 @@
 
 /* Wayback Machine Section */
 .wayback-section {
-  margin-bottom: 3rem;
+  margin-bottom: 4rem;
   animation: fadeInUp 1s ease-out 0.6s both;
 }
 
@@ -240,32 +238,33 @@
   background: var(--ion-color-light);
   backdrop-filter: blur(20px);
   border-radius: 20px;
-  padding: 2.5rem;
+  padding: 3rem 4rem;
   text-align: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+  max-width: 100%;
 }
 
 .wayback-icon {
-  font-size: 3rem;
+  font-size: 6rem;
   min-width: 24px;
   color: var(--ion-color-primary-tint);
-  margin-bottom: 1.5rem;
+  margin-bottom: 3rem;
 }
 
 .wayback-card h3 {
-  font-size: 1.8rem;
+  font-size: 3rem;
   font-weight: 700;
   color: var(--ion-color-dark);
-  margin: 0 0 1rem 0;
+  margin: 0 0 2rem 0;
 }
 
 .wayback-card p {
-  font-size: 1.1rem;
+  font-size: 2rem;
   color: var(--ion-color-dark-shade);
   line-height: 1.6;
-  margin-bottom: 2rem;
-  max-width: 600px;
+  margin-bottom: 3rem;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -281,11 +280,11 @@
 .wayback-button {
   display: inline-flex;
   align-items: center;
-  padding: 1rem 2rem;
+  padding: 1.5rem 3rem;
   border-radius: 50px;
   text-decoration: none;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.6rem;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
@@ -330,7 +329,7 @@
 
 /* Contact Section */
 .contact-section {
-  margin-bottom: 3rem;
+  margin-bottom: 4rem;
   animation: fadeInUp 1s ease-out 0.9s both;
 }
 
@@ -338,31 +337,32 @@
   background: var(--ion-color-light);
   backdrop-filter: blur(20px);
   border-radius: 20px;
-  padding: 2.5rem;
+  padding: 3rem 4rem;
   text-align: center;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+  max-width: 100%;
 }
 
 .contact-icon {
-  font-size: 3rem;
+  font-size: 6rem;
   color: var(--ion-color-primary-tint);
-  margin-bottom: 1.5rem;
+  margin-bottom: 3rem;
 }
 
 .contact-card h3 {
-  font-size: 1.8rem;
+  font-size: 3rem;
   font-weight: 700;
   color: var(--ion-color-dark);
-  margin: 0 0 1rem 0;
+  margin: 0 0 2rem 0;
 }
 
 .contact-card p {
-  font-size: 1.1rem;
+  font-size: 2rem;
   color: var(--ion-color-dark-shade);
   line-height: 1.6;
-  margin-bottom: 2rem;
-  max-width: 500px;
+  margin-bottom: 3rem;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -380,7 +380,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 1.25rem 2rem;
   border-radius: 25px;
   background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 100%);
   color: var(--ion-color-light);
@@ -388,7 +388,7 @@
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 1.4rem;
 }
 
 .social-link:hover {
@@ -398,7 +398,7 @@
 }
 
 .social-label {
-  font-size: 0.85rem;
+  font-size: 1.3rem;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -411,8 +411,8 @@
 }
 
 .footer p {
-  margin: 0.5rem 0;
-  font-size: 0.9rem;
+  margin: 1rem 0;
+  font-size: 1.5rem;
   text-align: center;
   justify-content: center;
 }
@@ -422,8 +422,19 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 1.5rem;
   color: var(--ion-color-light);
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  color: var(--ion-color-light);
+  opacity: 0.8;
+  margin-top: 0.5rem;
 }
 
 .time-icon {
@@ -454,39 +465,137 @@
   }
 }
 
+/* Tablet and iPad specific scaling */
+@media (min-width: 481px) and (max-width: 1024px) {
+  .hero-section {
+    min-height: clamp(120px, 25vh, 300px) !important;
+    margin-bottom: 0.5rem;
+  }
+  
+  .header-section {
+    padding: 1rem;
+  }
+  
+  .logo-area {
+    gap: 0.6rem;
+  }
+  
+  .ministry-name {
+    font-size: 0.8rem !important;
+  }
+  
+  .brand-logo {
+    width: 55px;
+    height: 55px;
+  }
+  
+  .ministry-tagline {
+    font-size: 0.6rem !important;
+  }
+}
+
+/* iPad Air and similar tablet resolutions */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .hero-section {
+    min-height: clamp(100px, 20vh, 250px) !important;
+    margin-bottom: 0.25rem;
+  }
+  
+  .header-section {
+    padding: 0.75rem;
+  }
+  
+  .logo-area {
+    gap: 0.5rem;
+  }
+  
+  .ministry-name {
+    font-size: 0.7rem !important;
+  }
+  
+  .brand-logo {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .ministry-tagline {
+    font-size: 0.5rem !important;
+  }
+}
+@media (min-width: 481px) and (max-width: 1024px) {
+  .hero-section {
+    min-height: clamp(120px, 25vh, 300px) !important;
+    margin-bottom: 0.5rem;
+  }
+  
+  .header-section {
+    padding: 1rem;
+  }
+  
+  .logo-area {
+    gap: 0.6rem;
+  }
+  
+  .ministry-name {
+    font-size: 0.8rem !important;
+  }
+  
+  .brand-logo {
+    width: 55px;
+    height: 55px;
+  }
+  
+  .ministry-tagline {
+    font-size: 0.6rem !important;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .construction-container {
-    padding: 15px;
+    padding: 1.5rem;
   }
 
   .header-section {
-    margin: 0 -15px 0 -15px;
-    padding: 1rem;
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding: 0.75rem;
+    min-height: auto;
   }
 
   .logo-area {
-    gap: 0.75rem;
+    gap: 0.4rem;
     flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .ministry-text {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .ministry-name {
-    font-size: 0.7rem;
+    font-size: 0.5rem !important;
+    line-height: 1;
+    margin: 0;
   }
 
   .brand-logo {
-    width: 60px;
-    height: 60px;
+    width: 45px;
+    height: 45px;
   }
 
   .ministry-tagline {
-    font-size: 0.6rem;
+    font-size: 0.4rem !important;
+    line-height: 1;
+    margin: 0.2rem 0 0 0;
   }
 
   .hero-section {
-    margin: 0 -15px 3rem -15px;
     margin-left: calc(-50vw + 50%);
     margin-right: calc(-50vw + 50%);
+    margin-bottom: 0.5rem;
+    min-height: clamp(180px, 30vh, 350px);
   }
 
   .hero-title {
@@ -500,7 +609,7 @@
   .message-card,
   .wayback-card,
   .contact-card {
-    padding: 2rem 1.5rem;
+    padding: 2.5rem 2rem;
   }
 
   .message-card h2 {
@@ -521,21 +630,38 @@
     width: 100%;
     max-width: 300px;
     justify-content: center;
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .construction-badge {
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .social-link {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
   }
 
   .upgrade-features li {
     font-size: 0.9rem;
   }
+  
+  .version-info {
+    font-size: 1rem;
+  }
 }
 
 @media (max-width: 480px) {
   .construction-container {
-    padding: 15px;
+    padding: 1rem;
   }
 
   .header-section {
-    margin: 0 -10px 0 -10px;
-    padding: 0.75rem;
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding: 1rem;
   }
 
   .logo-area {
@@ -557,9 +683,9 @@
   }
 
   .hero-section {
-    margin: 0 -10px 3rem -10px;
     margin-left: calc(-50vw + 50%);
     margin-right: calc(-50vw + 50%);
+    margin-bottom: 2rem;
   }
 
   .hero-title {
@@ -577,7 +703,7 @@
   .message-card,
   .wayback-card,
   .contact-card {
-    padding: 1.5rem 1rem;
+    padding: 2rem 1.5rem;
   }
 
   .primary-message,
@@ -593,6 +719,267 @@
   .upgrade-features li {
     font-size: 0.85rem;
   }
+  
+  .version-info {
+    font-size: 0.9rem;
+  }
+}
+
+/* Phone-specific scaling (smaller screens) */
+@media (max-width: 480px) {
+  /* Reduce hero height more aggressively for phones to eliminate blank space */
+  .hero-section {
+    min-height: clamp(80px, 15vh, 180px) !important;
+  }
+  
+  /* Ensure header text is properly sized for mobile */
+  .header-section {
+    padding: 0.5rem;
+    min-height: auto;
+  }
+  
+  .logo-area {
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  
+  .ministry-name {
+    font-size: 0.35rem !important;
+    line-height: 1;
+    margin: 0;
+  }
+  
+  .ministry-tagline {
+    font-size: 0.28rem !important;
+    line-height: 1;
+    margin: 0.15rem 0 0 0;
+  }
+  .construction-container {
+    padding: 0.75rem;
+  }
+
+  .header-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding: 0.5rem;
+  }
+
+  .logo-area {
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .ministry-text {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ministry-name {
+    font-size: 0.35rem !important;
+    line-height: 1;
+    margin: 0;
+  }
+
+  .brand-logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .ministry-tagline {
+    font-size: 0.28rem !important;
+    line-height: 1;
+    margin: 0.15rem 0 0 0;
+  }
+
+  .hero-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    margin-bottom: 0.5rem;
+    min-height: clamp(120px, 20vh, 250px);
+  }
+
+  .hero-title {
+    font-size: 1.4rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .hero-overlay {
+    padding: 1rem;
+  }
+
+  .message-card,
+  .wayback-card,
+  .contact-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .message-card h2 {
+    font-size: 1.3rem;
+  }
+
+  .wayback-card h3,
+  .contact-card h3 {
+    font-size: 1.2rem;
+  }
+
+  .primary-message,
+  .wayback-card p,
+  .contact-card p {
+    font-size: 0.9rem;
+  }
+
+  .upgrade-features h3 {
+    font-size: 1.1rem;
+  }
+
+  .upgrade-features li {
+    font-size: 0.8rem;
+  }
+
+  .wayback-button {
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+  }
+
+  .social-link {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .social-label {
+    font-size: 0.8rem;
+  }
+
+  .construction-badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .message-icon,
+  .wayback-icon,
+  .contact-icon {
+    font-size: 2rem;
+  }
+
+  .footer p {
+    font-size: 0.8rem;
+  }
+
+  .construction-note {
+    font-size: 1.2rem;
+  }
+
+  .version-info {
+    font-size: 0.8rem;
+  }
+}
+
+/* Extra small phone scaling */
+@media (max-width: 360px) {
+  .construction-container {
+    padding: 0.5rem;
+  }
+
+  .header-section {
+    padding: 0.4rem;
+  }
+
+  .logo-area {
+    gap: 0.25rem;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .ministry-text {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ministry-name {
+    font-size: 0.3rem !important;
+    line-height: 1;
+    margin: 0;
+  }
+
+  .brand-logo {
+    width: 25px;
+    height: 25px;
+  }
+
+  .ministry-tagline {
+    font-size: 0.25rem !important;
+    line-height: 1;
+    margin: 0.1rem 0 0 0;
+  }
+
+  .hero-section {
+    min-height: clamp(100px, 15vh, 200px);
+  }
+
+  .hero-title {
+    font-size: 1.2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.7rem;
+  }
+
+  .message-card,
+  .wayback-card,
+  .contact-card {
+    padding: 1rem 0.75rem;
+  }
+
+  .message-card h2 {
+    font-size: 1.1rem;
+  }
+
+  .wayback-card h3,
+  .contact-card h3 {
+    font-size: 1rem;
+  }
+
+  .primary-message,
+  .wayback-card p,
+  .contact-card p {
+    font-size: 0.8rem;
+  }
+
+  .wayback-button {
+    font-size: 0.8rem;
+    padding: 0.6rem 0.8rem;
+    margin: 0.4rem 0;
+  }
+
+  .social-link {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .construction-badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .message-icon,
+  .wayback-icon,
+  .contact-icon {
+    font-size: 1.5rem;
+  }
+
+  .construction-note {
+    font-size: 1rem;
+  }
+
+  .version-info {
+    font-size: 0.7rem;
+  }
 }
 
 /* Accessibility Improvements */
@@ -606,23 +993,162 @@
   }
 }
 
+/* Medium-large screen optimizations */
+@media (min-width: 1200px) {
+  .construction-container {
+    max-width: 120rem; /* ~1920px for medium-large screens */
+    padding: 3rem 4rem;
+  }
+  
+  .hero-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    margin-bottom: 2rem;
+  }
+  
+  .header-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding: 2.5rem;
+  }
+  
+  /* Scale up header elements for medium-large screens */
+  .brand-logo {
+    width: 140px;
+    height: 140px;
+  }
+  
+  .ministry-name {
+    font-size: 3rem !important;
+  }
+  
+  .ministry-tagline {
+    font-size: 1.8rem !important;
+  }
+  
+  .version-info {
+    font-size: 1.4rem;
+  }
+}
+
 /* Large screen optimizations */
 @media (min-width: 1400px) {
   .construction-container {
-    max-width: 80rem; /* ~1280px for very large screens */
+    max-width: 140rem; /* ~2240px for very large screens */
+    padding: 4rem 5rem;
+  }
+  
+  .hero-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    margin-bottom: 2rem;
+  }
+  
+  .header-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding: 3rem;
+  }
+  
+  /* Scale up header elements for large screens */
+  .brand-logo {
+    width: 160px;
+    height: 160px;
+  }
+  
+  .ministry-name {
+    font-size: 3.5rem !important;
+  }
+  
+  .ministry-tagline {
+    font-size: 2rem !important;
+  }
+  
+  .version-info {
+    font-size: 1.6rem;
   }
 }
 
 @media (min-width: 2000px) {
   .construction-container {
-    max-width: 90rem; /* ~1440px for ultra-wide screens */
+    max-width: 160rem; /* ~2560px for ultra-wide screens */
+    padding: 5rem 6rem;
+  }
+  
+  .hero-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    margin-bottom: 2rem;
+  }
+  
+  .header-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding: 4rem;
+  }
+  
+  /* Scale up header elements for ultra-wide screens */
+  .brand-logo {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .ministry-name {
+    font-size: 4.5rem !important;
+  }
+  
+  .ministry-tagline {
+    font-size: 2.5rem !important;
+  }
+  
+  .version-info {
+    font-size: 1.8rem;
   }
 }
 
 /* Ensure hero section spans full width on all screen sizes */
 @media (min-width: 1200px) {
   .hero-section {
-    min-height: clamp(400px, 60vh, 800px);
+    min-height: clamp(350px, 50vh, 700px);
+  }
+}
+
+/* Handle common problematic resolutions */
+@media (min-width: 1280px) and (max-width: 1440px) {
+  .hero-section {
+    min-height: clamp(280px, 40vh, 450px);
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .hero-section {
+    min-height: clamp(250px, 35vh, 400px);
+  }
+}
+
+/* Handle landscape orientations and shorter viewport heights */
+@media (max-height: 800px) {
+  .hero-section {
+    min-height: clamp(200px, 25vh, 350px);
+  }
+}
+
+@media (max-height: 600px) {
+  .hero-section {
+    min-height: clamp(150px, 20vh, 250px);
+  }
+}
+
+/* Specific handling for common problematic resolutions */
+@media (width: 1280px) and (height: 960px) {
+  .hero-section {
+    min-height: 250px;
+  }
+}
+
+@media (width: 1366px) and (height: 768px) {
+  .hero-section {
+    min-height: 220px;
   }
 }
 

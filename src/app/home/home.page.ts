@@ -3,6 +3,7 @@ import {
   IonContent,
   IonIcon
 } from '@ionic/angular/standalone';
+import { VersionService } from '../services/version.service';
 
 @Component({
   selector: 'app-home',
@@ -12,5 +13,9 @@ import {
   standalone: true
 })
 export class HomePage {
-  constructor() {}
+  version: string;
+  
+  constructor(private versionService: VersionService) {
+    this.version = this.versionService.getVersion();
+  }
 }
