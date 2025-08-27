@@ -20,6 +20,7 @@
     "ld": "node scripts/deploy.js production",
     "deploy:staging": "node scripts/deploy.js staging",
     "deploy:production": "node scripts/deploy.js production",
+    "deploy:functions": "node scripts/deploy-functions.js",
     "td:win": "scripts\\deploy-staging.bat",
     "ld:win": "scripts\\deploy-production.bat",
     "update-version": "node scripts/update-version.js",

@@ -9,5 +9,7 @@ export const environment = {
     messagingSenderId: "__SENDER_ID__",
     appId: "__APP_ID__"
   },
+  firebaseFunctionsUrl: "https://__REGION__-__PROJECT__.cloudfunctions.net",
+  contactEmail: "__CONTACT_EMAIL__", // Email address for contact form submissions
   disqusShortname: "__DISQUS_SHORTNAME__"
 };
