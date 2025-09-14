@@ -1,5 +1,6 @@
 export const environment = {
   production: false,
+  version: '0.0.2',
   firebase: {
     apiKey: "__PUBLIC_WEB_API_KEY__",
     authDomain: "__PROJECT__.firebaseapp.com",
@@ -8,5 +9,7 @@ export const environment = {
     messagingSenderId: "__SENDER_ID__",
     appId: "__APP_ID__"
   },
+  firebaseFunctionsUrl: "https://__REGION__-__PROJECT__.cloudfunctions.net",
+  contactEmail: "__CONTACT_EMAIL__", // Email address for contact form submissions
   disqusShortname: "__DISQUS_SHORTNAME__"
 };

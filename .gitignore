@@ -39,6 +39,11 @@ log.txt
 npm-debug.log
 yarn-error.log
 
+# Firebase Functions
+/functions/node_modules
+/functions/lib
+/functions/.env
+
 # IDEs and editors
 .idea/
 .project

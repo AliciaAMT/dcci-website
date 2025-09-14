@@ -6,13 +6,10 @@ export function registerIonicons(): void {
   if (registered) return;
   registered = true;
 
-  // Set asset path - use static path for production builds
+  // Avoid "Invalid base URL" if the loader ever fetches by URL
   try {
-    // For production builds, always use root path to avoid base URL issues
-    setAssetPath('/');
-  } catch (error) {
-    console.warn('Failed to set asset path:', error);
-  }
+    setAssetPath(document.baseURI || '/');
+  } catch {}
 
   addIcons({
     // ✱ include EVERY name you use in templates:
@@ -34,10 +31,5 @@ export function registerIonicons(): void {
     'close-outline': i.closeOutline,
     'wallet-outline': i.walletOutline,
     'time-outline': i.timeOutline,
-    // Contact form icons
-    'share-social-outline': i.shareSocialOutline,
-    'send-outline': i.sendOutline,
-    'checkmark-circle-outline': i.checkmarkCircleOutline,
-    'alert-circle-outline': i.alertCircleOutline,
   });
 }
