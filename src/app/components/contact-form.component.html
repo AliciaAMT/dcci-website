@@ -1,5 +1,6 @@
 <div class="contact-form-container">
   <div class="contact-form-card">
+    <!-- Form Header -->
     <div class="form-header">
       <ion-icon name="mail-outline" class="form-icon"></ion-icon>
       <h2 class="form-title">Contact Form</h2>
@@ -10,8 +11,8 @@
     <div *ngIf="submitSuccess" class="success-message">
       <ion-icon name="checkmark-circle-outline" class="success-icon"></ion-icon>
       <h4>Message Sent Successfully!</h4>
-      <p>Thank you for contacting us. We'll get back to you soon.</p>
-      <ion-button fill="clear" size="small" (click)="resetForm()">
+      <p>Thank you for your message. We'll get back to you as soon as possible.</p>
+      <ion-button (click)="resetForm()" fill="outline" color="primary">
         Send Another Message
       </ion-button>
     </div>
@@ -24,7 +25,7 @@
 
     <!-- Contact Form -->
     <form [formGroup]="contactForm" (ngSubmit)="onSubmit()" *ngIf="!submitSuccess" class="contact-form">
-            <div class="form-field-group">
+      <div class="form-field-group">
         <label for="name" class="form-label">Name *</label>
         <ion-input
           id="name"
@@ -39,7 +40,7 @@
         </div>
       </div>
 
-            <div class="form-field-group">
+      <div class="form-field-group">
         <label for="email" class="form-label">Email *</label>
         <ion-input
           id="email"
@@ -54,12 +55,12 @@
         </div>
       </div>
 
-            <div class="form-field-group">
+      <div class="form-field-group">
         <label for="subject" class="form-label">Subject *</label>
         <ion-input
           id="subject"
           formControlName="subject"
-          placeholder="What is this about?"
+          placeholder="Enter the subject"
           type="text"
           class="form-input"
           required>
@@ -69,14 +70,14 @@
         </div>
       </div>
 
-                  <div class="form-field-group">
+      <div class="form-field-group">
         <label for="message" class="form-label">Message *</label>
         <ion-textarea
           id="message"
           formControlName="message"
-          placeholder="Tell us more about your inquiry..."
-          rows="4"
+          placeholder="Enter your message"
           class="form-input"
+          rows="5"
           required>
         </ion-textarea>
         <div *ngIf="getErrorMessage('message')" class="error-text">
@@ -84,25 +85,23 @@
         </div>
       </div>
 
-      <!-- Honeypot field - hidden from users but visible to bots -->
-      <div class="honeypot-field" style="display: none;">
+      <!-- Honeypot field - hidden from users -->
+      <div class="honeypot-field">
         <ion-input
           formControlName="website"
-          placeholder="Leave this empty"
-          type="text"
-          tabindex="-1"
-          aria-hidden="true">
+          placeholder="Leave this field empty"
+          type="text">
         </ion-input>
       </div>
 
       <div class="form-actions">
         <ion-button
           type="submit"
+          [disabled]="isSubmitting"
+          class="submit-button"
           expand="block"
-          [disabled]="isSubmitting || !contactForm.valid"
-          class="submit-button">
-          <ion-icon name="send-outline" slot="start" *ngIf="!isSubmitting"></ion-icon>
-          <ion-spinner name="crescent" *ngIf="isSubmitting"></ion-spinner>
+          color="primary">
+          <ion-icon name="send-outline" slot="start"></ion-icon>
           {{ isSubmitting ? 'Sending...' : 'Send Message' }}
         </ion-button>
       </div>

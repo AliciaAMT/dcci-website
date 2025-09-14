@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as corsLib from "cors";
-import nodemailer from "nodemailer";
+import * as nodemailer from "nodemailer";
 
 admin.initializeApp();
 const cors = corsLib({ origin: true });
@@ -19,18 +19,18 @@ const tx = nodemailer.createTransport({
 
 export const submitContactForm = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
-    if (req.method !== "POST") return res.status(405).send("Method not allowed");
+    if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
 
     const { name, email, subject, message, website } = req.body || {};
 
     // Honeypot check - if website field is filled, it's likely a bot
     if (website) {
       console.log('Bot detected via honeypot');
-      return res.status(204).end(); // Silently fail
+      res.status(204).end(); return; // Silently fail
     }
 
     if (!name || !email || !subject || !message) {
-      return res.status(400).json({ error: "Missing required fields" });
+      res.status(400).json({ error: "Missing required fields" }); return;
     }
 
     try {

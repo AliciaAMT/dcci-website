@@ -1,5 +1,6 @@
 // For information on how to create your own theme, please see:
 // http://ionicframework.com/docs/theming/
+
 :root {
   --ion-color-primary: #37a7d7;
   --ion-color-primary-rgb: 42, 147, 191;
@@ -7,4 +8,40 @@
   --ion-color-primary-contrast-rgb: 255, 255, 255;
   --ion-color-primary-shade: #379ac2;
   --ion-color-primary-tint: #4cb4dd;
+
+  // Light theme colors
+  --ion-background-color: #ffffff;
+  --ion-background-color-rgb: 255, 255, 255;
+  --ion-text-color: #000000;
+  --ion-text-color-rgb: 0, 0, 0;
+  --ion-card-background: #ffffff;
+  --ion-item-background: #ffffff;
+  --ion-border-color: #e0e0e0;
+  --ion-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+// Dark theme
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ion-background-color: #1a1a1a;
+    --ion-background-color-rgb: 26, 26, 26;
+    --ion-text-color: #ffffff;
+    --ion-text-color-rgb: 255, 255, 255;
+    --ion-card-background: #2d2d2d;
+    --ion-item-background: #2d2d2d;
+    --ion-border-color: #404040;
+    --ion-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// Ionic dark theme
+.ion-color-dark {
+  --ion-background-color: #1a1a1a;
+  --ion-background-color-rgb: 26, 26, 26;
+  --ion-text-color: #ffffff;
+  --ion-text-color-rgb: 255, 255, 255;
+  --ion-card-background: #2d2d2d;
+  --ion-item-background: #2d2d2d;
+  --ion-border-color: #404040;
+  --ion-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
