@@ -11,6 +11,9 @@ const user = functions.config().mail.user as string;
 const pass = functions.config().mail.pass as string;
 const to = functions.config().mail.to as string;
 
+// Cooldown period in milliseconds (5 minutes)
+const COOLDOWN_PERIOD = 5 * 60 * 1000;
+
 const tx = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
@@ -36,6 +39,27 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
     }
 
     try {
+      // Simple cooldown check - get all contacts from this IP and check timestamps
+      const allContacts = await db.collection('contacts').get();
+      const recentSubmissions = allContacts.docs
+        .filter(doc => doc.data().ipAddress === clientIP)
+        .sort((a, b) => b.data().submittedAt?.toMillis() - a.data().submittedAt?.toMillis());
+
+      if (recentSubmissions.length > 0) {
+        const lastSubmission = recentSubmissions[0].data();
+        const lastSubmissionTime = lastSubmission.submittedAt?.toMillis() || 0;
+        const currentTime = Date.now();
+        
+        if (currentTime - lastSubmissionTime < COOLDOWN_PERIOD) {
+          console.log('Cooldown period active for IP:', clientIP);
+          res.status(429).json({ 
+            error: "Please wait before submitting another message",
+            retryAfter: Math.ceil((COOLDOWN_PERIOD - (currentTime - lastSubmissionTime)) / 1000)
+          });
+          return;
+        }
+      }
+
       // Store contact form data in Firestore
       const contactData = {
         name: name.trim(),
