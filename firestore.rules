@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only allow writes to contacts collection from Firebase Functions
+    match /contacts/{document} {
+      // Allow create only (no update, no delete)
+      allow create: if request.auth != null || 
+        (resource == null && request.resource != null);
+      
+      // Deny all other operations
+      allow read, update, delete: if false;
+    }
+    
+    // Allow writes to subscribers collection from Firebase Functions
+    match /subscribers/{document} {
+      // Allow create and update (for newsletter management)
+      allow create, update: if request.auth != null || 
+        (resource == null && request.resource != null);
+      
+      // Deny read and delete
+      allow read, delete: if false;
+    }
+    
+    // Deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
