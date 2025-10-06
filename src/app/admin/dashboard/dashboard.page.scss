@@ -39,13 +39,37 @@
     gap: 8px;
     flex-wrap: wrap;
 
-    ion-chip {
-      --background: rgba(255, 255, 255, 0.2);
-      --color: white;
-      font-weight: 600;
+    .admin-chip {
+      --background: #ffffff !important;
+      --color: #1e40af !important;
+      font-weight: 700;
+      border: 2px solid #ffffff;
 
       ion-icon {
         font-size: 1rem;
+        color: #1e40af !important;
+      }
+
+      ion-label {
+        color: #1e40af !important;
+        font-weight: 700;
+      }
+    }
+
+    .verified-chip {
+      --background: #ffffff !important;
+      --color: #059669 !important;
+      font-weight: 700;
+      border: 2px solid #ffffff;
+
+      ion-icon {
+        font-size: 1rem;
+        color: #059669 !important;
+      }
+
+      ion-label {
+        color: #059669 !important;
+        font-weight: 700;
       }
     }
   }
@@ -53,9 +77,9 @@
 
 .header-actions {
   .logout-button {
-    --background: rgba(255, 255, 255, 0.2);
-    --color: white;
-    --border-color: rgba(255, 255, 255, 0.3);
+    --background: rgba(255, 255, 255, 0.9);
+    --color: var(--ion-color-primary);
+    --border-color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
 
     ion-icon {
@@ -72,14 +96,14 @@
 }
 
 .stat-card {
-  background: var(--ion-color-light);
+  background: var(--ion-card-background);
   border-radius: 16px;
   padding: 24px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--ion-color-light-shade);
+  box-shadow: var(--ion-box-shadow);
+  border: 1px solid var(--ion-border-color);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
@@ -88,12 +112,13 @@
   }
 
   .stat-icon {
-    background: var(--ion-color-primary-tint);
+    background: #ffffff;
     border-radius: 12px;
     padding: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
     ion-icon {
       font-size: 1.5rem;
@@ -107,7 +132,7 @@
     h3 {
       font-size: 0.9rem;
       font-weight: 600;
-      color: var(--ion-color-medium);
+      color: var(--ion-text-color);
       margin: 0 0 4px 0;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -116,14 +141,16 @@
     .stat-number {
       font-size: 2rem;
       font-weight: 700;
-      color: var(--ion-color-dark);
+      color: var(--ion-text-color);
       margin: 0 0 4px 0;
     }
 
     .stat-label {
       font-size: 0.8rem;
-      color: var(--ion-color-medium);
+      color: var(--ion-text-color);
       margin: 0;
+      font-weight: 500;
+      opacity: 0.7;
     }
   }
 }
@@ -136,20 +163,20 @@
 }
 
 .content-card {
-  background: var(--ion-color-light);
+  background: var(--ion-card-background);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--ion-color-light-shade);
+  box-shadow: var(--ion-box-shadow);
+  border: 1px solid var(--ion-border-color);
 }
 
 .card-header {
-  background: var(--ion-color-light-shade);
+  background: var(--ion-item-background);
   padding: 16px 20px;
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid var(--ion-color-light-tint);
+  border-bottom: 1px solid var(--ion-border-color);
 
   ion-icon {
     font-size: 1.2rem;
@@ -159,7 +186,7 @@
   h3 {
     font-size: 1.1rem;
     font-weight: 600;
-    color: var(--ion-color-dark);
+    color: var(--ion-text-color);
     margin: 0;
   }
 }
@@ -175,11 +202,16 @@
 
   .action-btn {
     --border-radius: 12px;
+    --background: #ffffff;
+    --color: var(--ion-color-primary);
+    --border-color: var(--ion-color-primary);
+    --border-width: 2px;
     font-weight: 600;
     height: 44px;
 
     ion-icon {
       font-size: 1rem;
+      color: var(--ion-color-primary);
     }
   }
 }
@@ -197,12 +229,13 @@
     }
 
     .activity-icon {
-      background: var(--ion-color-primary-tint);
+      background: #ffffff;
       border-radius: 8px;
       padding: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 
       ion-icon {
         font-size: 1rem;
@@ -215,15 +248,17 @@
 
       .activity-text {
         font-size: 0.9rem;
-        color: var(--ion-color-dark);
+        color: var(--ion-text-color);
         margin: 0 0 2px 0;
         font-weight: 500;
       }
 
       .activity-time {
         font-size: 0.8rem;
-        color: var(--ion-color-medium);
+        color: var(--ion-text-color);
         margin: 0;
+        font-weight: 500;
+        opacity: 0.7;
       }
     }
   }
@@ -279,8 +314,14 @@
     span {
       flex: 1;
       font-size: 0.9rem;
-      color: var(--ion-color-dark);
+      color: var(--ion-text-color);
       font-weight: 500;
+    }
+
+    // Fix contrast for warning status text
+    &.warning-text span {
+      color: var(--ion-text-color);
+      font-weight: 600;
     }
   }
 }
@@ -313,11 +354,12 @@
 
         &:first-child {
           font-weight: 600;
-          color: var(--ion-color-dark);
+          color: var(--ion-text-color);
         }
 
         &:last-child {
-          color: var(--ion-color-medium);
+          color: var(--ion-text-color);
+          opacity: 0.7;
         }
       }
     }
@@ -335,7 +377,7 @@
 }
 
 .dashboard-footer {
-  background: var(--ion-color-light-shade);
+  background: var(--ion-item-background);
   border-radius: 12px;
   padding: 16px 20px;
   text-align: center;
@@ -344,7 +386,9 @@
     p {
       margin: 4px 0;
       font-size: 0.8rem;
-      color: var(--ion-color-medium);
+      color: var(--ion-text-color);
+      font-weight: 500;
+      opacity: 0.7;
     }
   }
 }
@@ -395,24 +439,4 @@
   }
 }
 
-// Dark mode support
-@media (prefers-color-scheme: dark) {
-  .dashboard-header {
-    background: linear-gradient(135deg, var(--ion-color-primary), var(--ion-color-primary-shade));
-  }
-
-  .stat-card,
-  .content-card {
-    background: var(--ion-color-dark);
-    border-color: var(--ion-color-dark-shade);
-  }
-
-  .card-header {
-    background: var(--ion-color-dark-tint);
-    border-bottom-color: var(--ion-color-dark-shade);
-  }
-
-  .dashboard-footer {
-    background: var(--ion-color-dark-tint);
-  }
-}
+// Dark mode is handled automatically by Ionic's CSS variables

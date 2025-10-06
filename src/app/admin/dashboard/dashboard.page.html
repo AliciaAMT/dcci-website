@@ -7,11 +7,11 @@
           <h1>Admin Dashboard</h1>
           <p class="welcome-message">Welcome back, {{ currentUser?.email }}!</p>
           <div class="user-info">
-            <ion-chip color="primary" *ngIf="currentUser?.isAdmin">
+            <ion-chip class="admin-chip" *ngIf="currentUser?.isAdmin">
               <ion-icon name="shield-checkmark-outline"></ion-icon>
               <ion-label>Admin</ion-label>
             </ion-chip>
-            <ion-chip color="success" *ngIf="currentUser?.emailVerified">
+            <ion-chip class="verified-chip" *ngIf="currentUser?.emailVerified">
               <ion-icon name="checkmark-circle-outline"></ion-icon>
               <ion-label>Verified</ion-label>
             </ion-chip>
@@ -150,10 +150,10 @@
                 <ion-label>Active</ion-label>
               </ion-chip>
             </div>
-            <div class="status-item">
+            <div class="status-item warning-text">
               <div class="status-indicator warning"></div>
               <span>Storage Usage</span>
-              <ion-chip color="warning" size="small">
+              <ion-chip color="primary" size="small">
                 <ion-label>75%</ion-label>
               </ion-chip>
             </div>

@@ -36,6 +36,11 @@ export const routes: Routes = [
     path: 'admin/reset-password',
     loadComponent: () => import('./admin/reset-password/reset-password.page').then( m => m.ResetPasswordPage)
   },
+  {
+    path: 'admin/verification-required',
+    loadComponent: () => import('./admin/verification-required/verification-required.page').then( m => m.VerificationRequiredPage)
+  },
+
 
 
 

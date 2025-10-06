@@ -39,7 +39,7 @@ export class LoginPage implements OnInit, OnDestroy {
   isSignUpMode = false;
   isLoading = false;
   showPassword = false;
-  statusMessage: { success: boolean; message: string } | null = null;
+  statusMessage: { success: boolean; message: string; needsVerification?: boolean } | null = null;
   private userSubscription: Subscription = new Subscription();
 
   constructor(
@@ -83,6 +83,14 @@ export class LoginPage implements OnInit, OnDestroy {
           result = await this.authService.signUp(email, password);
         } else {
           result = await this.authService.signIn(email, password);
+        }
+
+        if (result.needsVerification) {
+          // User needs email verification - redirect to verification page
+          this.router.navigate(['/admin/verification-required'], {
+            queryParams: { email: email }
+          });
+          return;
         }
 
         this.statusMessage = result;

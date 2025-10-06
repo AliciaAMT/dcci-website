@@ -30,13 +30,18 @@ export class AuthService {
   ) {
     // Listen for auth state changes
     this.auth.onAuthStateChanged(async (user: User | null) => {
-      this.ngZone.run(async () => {
-        if (user) {
-          // Only load user data if user is verified (to avoid errors during signup)
-          if (user.emailVerified) {
-            await this.loadUserData(user.uid);
-          } else {
-            // For unverified users, just set basic user info
+      if (user) {
+        // Only load user data if user is verified (to avoid errors during signup)
+        if (user.emailVerified) {
+          // Use setTimeout to defer the call to the next tick, ensuring proper Angular context
+          setTimeout(async () => {
+            await this.ngZone.run(async () => {
+              await this.loadUserData(user.uid);
+            });
+          }, 0);
+        } else {
+          // For unverified users, just set basic user info
+          this.ngZone.run(() => {
             this.currentUserSubject.next({
               uid: user.uid,
               email: user.email || '',
@@ -44,18 +49,20 @@ export class AuthService {
               emailVerified: user.emailVerified,
               createdAt: new Date()
             });
-          }
-        } else {
-          this.currentUserSubject.next(null);
+          });
         }
-      });
+      } else {
+        this.ngZone.run(() => {
+          this.currentUserSubject.next(null);
+        });
+      }
     });
   }
 
   /**
    * Sign up a new admin user
    */
-  async signUp(email: string, password: string): Promise<{ success: boolean; message: string }> {
+  async signUp(email: string, password: string): Promise<{ success: boolean; message: string; needsVerification?: boolean }> {
     try {
       // Ensure we're in the proper Angular zone
       return await this.ngZone.run(async () => {
@@ -115,50 +122,58 @@ export class AuthService {
   /**
    * Sign in an existing admin user
    */
-  async signIn(email: string, password: string): Promise<{ success: boolean; message: string }> {
+  async signIn(email: string, password: string): Promise<{ success: boolean; message: string; needsVerification?: boolean }> {
     try {
-      // Sanitize inputs
-      const sanitizedEmail = this.sanitization.sanitizeEmail(email);
-      const sanitizedPassword = this.sanitization.sanitizePassword(password);
+      // Ensure we're in the proper Angular zone
+      return await this.ngZone.run(async () => {
+        try {
+          // Sanitize inputs
+          const sanitizedEmail = this.sanitization.sanitizeEmail(email);
+          const sanitizedPassword = this.sanitization.sanitizePassword(password);
 
-      // Validate inputs
-      if (!this.sanitization.isValidEmail(sanitizedEmail)) {
-        return { success: false, message: 'Please enter a valid email address.' };
-      }
+          // Validate inputs
+          if (!this.sanitization.isValidEmail(sanitizedEmail)) {
+            return { success: false, message: 'Please enter a valid email address.' };
+          }
 
-      if (!sanitizedPassword) {
-        return { success: false, message: 'Please enter a password.' };
-      }
+          if (!sanitizedPassword) {
+            return { success: false, message: 'Please enter a password.' };
+          }
 
-      // Sign in with Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(this.auth, sanitizedEmail, sanitizedPassword);
-      const user = userCredential.user;
+          // Sign in with Firebase Auth
+          const userCredential = await signInWithEmailAndPassword(this.auth, sanitizedEmail, sanitizedPassword);
+          const user = userCredential.user;
 
-      // Check if email is verified
-      if (!user.emailVerified) {
-        await this.signOut();
-        return { success: false, message: 'Please verify your email address before logging in. Check your inbox for a verification email.' };
-      }
+          // Check if email is verified
+          if (!user.emailVerified) {
+            // Don't sign out - keep user logged in but redirect to verification page
+            return { success: false, message: 'EMAIL_NOT_VERIFIED', needsVerification: true };
+          }
 
-      // Load user data from Firestore
-      const userData = await this.loadUserData(user.uid);
+          // Load user data from Firestore
+          const userData = await this.loadUserData(user.uid);
 
-      if (userData && userData.isAdmin) {
-        // Update last login time and email verification status
-        await setDoc(doc(this.firestore, 'adminUsers', user.uid), {
-          lastLoginAt: new Date(),
-          emailVerified: user.emailVerified
-        }, { merge: true });
+          if (userData && userData.isAdmin) {
+            // Update last login time and email verification status
+            await setDoc(doc(this.firestore, 'adminUsers', user.uid), {
+              lastLoginAt: new Date(),
+              emailVerified: user.emailVerified
+            }, { merge: true });
 
-        return { success: true, message: 'Login successful!' };
-      } else {
-        // User exists but is not an admin - sign them out and redirect
-        await this.signOut();
-        return { success: false, message: 'Access denied. Admin privileges required.' };
-      }
+            return { success: true, message: 'Login successful!' };
+          } else {
+            // User exists but is not an admin - sign them out and redirect
+            await this.signOut();
+            return { success: false, message: 'Access denied. Admin privileges required.' };
+          }
+        } catch (error: any) {
+          console.error('Sign in error:', error);
+          return { success: false, message: this.getErrorMessage(error.code) };
+        }
+      });
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      return { success: false, message: this.getErrorMessage(error.code) };
+      console.error('Sign in zone error:', error);
+      return { success: false, message: 'An unexpected error occurred. Please try again.' };
     }
   }
 
@@ -187,6 +202,15 @@ export class AuthService {
 
           if (userDoc.exists()) {
             const userData = userDoc.data() as AdminUser;
+            
+            // Convert Firestore Timestamps to JavaScript Dates
+            if (userData.createdAt && (userData.createdAt as any).toDate) {
+              userData.createdAt = (userData.createdAt as any).toDate();
+            }
+            if (userData.lastLoginAt && (userData.lastLoginAt as any).toDate) {
+              userData.lastLoginAt = (userData.lastLoginAt as any).toDate();
+            }
+            
             this.currentUserSubject.next(userData);
             return userData;
           } else {
@@ -214,16 +238,29 @@ export class AuthService {
    */
   async sendEmailVerification(): Promise<{ success: boolean; message: string }> {
     try {
-      const user = this.auth.currentUser;
-      if (!user) {
-        return { success: false, message: 'No user is currently logged in.' };
-      }
+      return await this.ngZone.run(async () => {
+        try {
+          const user = this.auth.currentUser;
+          if (!user) {
+            return { success: false, message: 'No user is currently logged in.' };
+          }
 
-      await sendEmailVerification(user);
-      return { success: true, message: 'Verification email sent! Please check your inbox.' };
+          await sendEmailVerification(user);
+          return { success: true, message: 'Verification email sent! Please check your inbox.' };
+        } catch (error: any) {
+          console.error('Send verification error:', error);
+          
+          // Handle specific error cases
+          if (error.code === 'auth/too-many-requests') {
+            return { success: false, message: 'Too many requests. Please wait a few minutes before requesting another verification email.' };
+          }
+          
+          return { success: false, message: this.getErrorMessage(error.code) };
+        }
+      });
     } catch (error: any) {
-      console.error('Send verification error:', error);
-      return { success: false, message: this.getErrorMessage(error.code) };
+      console.error('Send verification email zone error:', error);
+      return { success: false, message: 'An unexpected error occurred. Please try again.' };
     }
   }
 
