@@ -70,8 +70,14 @@ export class AuthService {
   /**
    * Sign up a new admin user
    */
-  async signUp(email: string, password: string): Promise<{ success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean }> {
+  async signUp(email: string, password: string, honeypot?: string): Promise<{ success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean }> {
     try {
+      // Check honeypot field - if filled, it's likely a bot
+      if (honeypot && honeypot.trim() !== '') {
+        console.log('Bot detected via honeypot in signUp');
+        return { success: false, message: 'Invalid request. Please try again.' };
+      }
+
       // Ensure we're in the proper Angular zone
       return await this.ngZone.run(async () => {
         try {
@@ -130,8 +136,14 @@ export class AuthService {
   /**
    * Sign in an existing admin user
    */
-  async signIn(email: string, password: string): Promise<{ success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean }> {
+  async signIn(email: string, password: string, honeypot?: string): Promise<{ success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean }> {
     try {
+      // Check honeypot field - if filled, it's likely a bot
+      if (honeypot && honeypot.trim() !== '') {
+        console.log('Bot detected via honeypot in signIn');
+        return { success: false, message: 'Invalid request. Please try again.' };
+      }
+
       // Ensure we're in the proper Angular zone
       return await this.ngZone.run(async () => {
         try {

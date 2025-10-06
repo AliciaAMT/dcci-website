@@ -50,7 +50,8 @@ export class LoginPage implements OnInit, OnDestroy {
   ) {
     this.loginForm = this.formBuilder.group({
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]]
+      password: ['', [Validators.required, Validators.minLength(8)]],
+      website: [''] // Honeypot field - should remain empty
     });
   }
 
@@ -79,18 +80,27 @@ export class LoginPage implements OnInit, OnDestroy {
 
   async onSubmit() {
     if (this.loginForm.valid) {
+      // Check honeypot field - if filled, it's likely a bot
+      const honeypotValue = this.loginForm.get('website')?.value;
+      if (honeypotValue && honeypotValue.trim() !== '') {
+        // Silently reject - don't show any error message to avoid alerting bots
+        console.log('Bot detected via honeypot field');
+        return;
+      }
+
       this.isLoading = true;
       this.statusMessage = null;
 
       const email = this.loginForm.get('email')?.value;
       const password = this.loginForm.get('password')?.value;
+      const honeypot = this.loginForm.get('website')?.value;
 
       try {
         let result;
         if (this.isSignUpMode) {
-          result = await this.authService.signUp(email, password);
+          result = await this.authService.signUp(email, password, honeypot);
         } else {
-          result = await this.authService.signIn(email, password);
+          result = await this.authService.signIn(email, password, honeypot);
         }
         
         console.log('Auth result:', result);

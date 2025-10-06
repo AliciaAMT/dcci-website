@@ -214,6 +214,23 @@
     }
   }
 
+  // Honeypot field - completely hidden from users
+  .honeypot-field {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    overflow: hidden;
+
+    ion-input {
+      display: none;
+    }
+  }
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .admin-login-page {

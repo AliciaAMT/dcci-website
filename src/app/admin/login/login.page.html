@@ -49,6 +49,17 @@
           {{ getFieldError('password') }}
         </ion-note>
 
+        <!-- Honeypot Field (Hidden from users) -->
+        <div class="honeypot-field">
+          <ion-input
+            type="text"
+            formControlName="website"
+            placeholder="Leave this field empty"
+            tabindex="-1"
+            autocomplete="off">
+          </ion-input>
+        </div>
+
         <!-- Submit Button -->
         <ion-button
           expand="block"
