@@ -1,0 +1,258 @@
+.admin-login-page {
+  --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.login-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 3rem 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.login-logo {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.login-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ion-color-dark);
+  margin: 0 0 0.5rem 0;
+}
+
+.login-header p {
+  font-size: 1.1rem;
+  color: var(--ion-color-medium);
+  margin: 0;
+}
+
+.login-form {
+  margin-bottom: 2rem;
+}
+
+.form-item {
+  --background: transparent;
+  --border-radius: 12px;
+  --border-width: 2px;
+  --border-color: var(--ion-color-light-shade);
+  --border-style: solid;
+  --padding-start: 1rem;
+  --padding-end: 1rem;
+  --padding-top: 1rem;
+  --padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  transition: border-color 0.3s ease;
+}
+
+.form-item:hover {
+  --border-color: var(--ion-color-primary-tint);
+}
+
+.form-item.ion-focused {
+  --border-color: var(--ion-color-primary);
+}
+
+.form-item.ion-invalid {
+  --border-color: var(--ion-color-danger);
+}
+
+.error-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-top: -1rem;
+  margin-bottom: 1rem;
+  margin-left: 1rem;
+}
+
+.login-button {
+  --border-radius: 12px;
+  --padding-top: 1rem;
+  --padding-bottom: 1rem;
+  margin: 2rem 0 1rem 0;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.toggle-button {
+  --color: var(--ion-color-medium);
+  font-size: 0.95rem;
+  margin-top: 1rem;
+}
+
+.status-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.status-message.success {
+  background: rgba(var(--ion-color-success-rgb), 0.1);
+  color: var(--ion-color-success);
+  border: 1px solid rgba(var(--ion-color-success-rgb), 0.3);
+}
+
+.status-message.error {
+  background: rgba(var(--ion-color-danger-rgb), 0.1);
+  color: var(--ion-color-danger);
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.3);
+}
+
+.security-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: rgba(var(--ion-color-primary-rgb), 0.05);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.2);
+  border-radius: 12px;
+  margin-top: 2rem;
+}
+
+.security-notice ion-icon {
+  color: var(--ion-color-primary);
+  font-size: 1.2rem;
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.security-notice p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ion-color-dark-shade);
+  line-height: 1.5;
+}
+
+.security-notice strong {
+  color: var(--ion-color-dark);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .admin-login-page {
+    padding: 1rem;
+  }
+
+  .login-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .login-header h1 {
+    font-size: 2rem;
+  }
+
+  .login-logo {
+    width: 60px;
+    height: 60px;
+  }
+
+  .form-item {
+    --padding-start: 0.75rem;
+    --padding-end: 0.75rem;
+  }
+
+  .login-button {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .login-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .login-header p {
+    font-size: 1rem;
+  }
+
+  .login-logo {
+    width: 50px;
+    height: 50px;
+  }
+
+  .security-notice {
+    padding: 1rem;
+  }
+
+  .security-notice p {
+    font-size: 0.85rem;
+  }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  .form-item,
+  .login-button {
+    transition: none;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .login-card {
+    background: #ffffff;
+    border: 2px solid #000000;
+  }
+
+  .form-item {
+    --border-color: #000000;
+  }
+
+  .form-item.ion-focused {
+    --border-color: #000000;
+  }
+
+  .login-button {
+    --background: #000000;
+    --color: #ffffff;
+  }
+
+  .security-notice {
+    background: #ffffff;
+    border: 2px solid #000000;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .admin-login-page {
+    --background: #ffffff;
+  }
+
+  .login-card {
+    background: #ffffff;
+    border: 1px solid #000000;
+    box-shadow: none;
+  }
+}
