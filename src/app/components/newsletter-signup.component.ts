@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { IonicModule } from '@ionic/angular';
-// No standalone imports needed - IonicModule provides all components
+import { IonInput, IonButton, IonIcon } from '@ionic/angular/standalone';
 import { ContactService } from 'src/app/services/contact.service';
 
 @Component({
@@ -10,7 +9,7 @@ import { ContactService } from 'src/app/services/contact.service';
   templateUrl: './newsletter-signup.component.html',
   styleUrls: ['./newsletter-signup.component.scss'],
   standalone: true,
-  imports: [CommonModule, IonicModule, FormsModule, ReactiveFormsModule]
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, IonInput, IonButton, IonIcon]
 })
 export class NewsletterSignupComponent implements OnInit {
   newsletterForm: FormGroup;
