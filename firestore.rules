@@ -23,28 +23,9 @@ service cloud.firestore {
 
     // Admin users collection - for CMS authentication
     match /adminUsers/{userId} {
-      // Allow authenticated users to create their own admin user document
-      allow create: if request.auth != null &&
-        request.auth.uid == userId &&
-        request.resource.data.keys().hasAll(['uid', 'email', 'isAdmin', 'emailVerified', 'createdAt']) &&
-        request.resource.data.uid == request.auth.uid &&
-        request.resource.data.email == request.auth.token.email &&
-        request.resource.data.isAdmin == false && // Initial creation must be false
-        request.resource.data.emailVerified == false; // Initial creation must be false
-
-      // Allow users to read their own admin user document
-      allow read: if request.auth != null &&
+      // Allow authenticated users to create, read, and update their own admin user document
+      allow create, read, update: if request.auth != null &&
         request.auth.uid == userId;
-
-      // Allow users to update their own admin user document (for lastLoginAt and emailVerified updates)
-      allow update: if request.auth != null &&
-        request.auth.uid == userId &&
-        // Only allow updating lastLoginAt and emailVerified fields
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt', 'emailVerified', 'isAdmin']) &&
-        // Ensure core fields don't change
-        request.resource.data.uid == resource.data.uid &&
-        request.resource.data.email == resource.data.email &&
-        request.resource.data.createdAt == resource.data.createdAt;
 
       // Deny delete operations
       allow delete: if false;

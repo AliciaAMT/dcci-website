@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import {
@@ -14,6 +14,7 @@ import {
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { SanitizationService } from '../../services/sanitization';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -33,12 +34,13 @@ import { SanitizationService } from '../../services/sanitization';
     ReactiveFormsModule
   ]
 })
-export class LoginPage implements OnInit {
+export class LoginPage implements OnInit, OnDestroy {
   loginForm: FormGroup;
   isSignUpMode = false;
   isLoading = false;
   showPassword = false;
   statusMessage: { success: boolean; message: string } | null = null;
+  private userSubscription: Subscription = new Subscription();
 
   constructor(
     private formBuilder: FormBuilder,
@@ -54,11 +56,17 @@ export class LoginPage implements OnInit {
 
   ngOnInit() {
     // Check if user is already logged in and is admin
-    this.authService.currentUser$.subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
       if (user && user.isAdmin && user.emailVerified) {
         this.router.navigate(['/admin/dashboard']);
       }
     });
+  }
+
+  ngOnDestroy() {
+    if (this.userSubscription) {
+      this.userSubscription.unsubscribe();
+    }
   }
 
   async onSubmit() {

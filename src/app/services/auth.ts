@@ -32,7 +32,19 @@ export class AuthService {
     this.auth.onAuthStateChanged(async (user: User | null) => {
       this.ngZone.run(async () => {
         if (user) {
-          await this.loadUserData(user.uid);
+          // Only load user data if user is verified (to avoid errors during signup)
+          if (user.emailVerified) {
+            await this.loadUserData(user.uid);
+          } else {
+            // For unverified users, just set basic user info
+            this.currentUserSubject.next({
+              uid: user.uid,
+              email: user.email || '',
+              isAdmin: false,
+              emailVerified: user.emailVerified,
+              createdAt: new Date()
+            });
+          }
         } else {
           this.currentUserSubject.next(null);
         }
@@ -45,50 +57,58 @@ export class AuthService {
    */
   async signUp(email: string, password: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Sanitize inputs
-      const sanitizedEmail = this.sanitization.sanitizeEmail(email);
-      const sanitizedPassword = this.sanitization.sanitizePassword(password);
+      // Ensure we're in the proper Angular zone
+      return await this.ngZone.run(async () => {
+        try {
+          // Sanitize inputs
+          const sanitizedEmail = this.sanitization.sanitizeEmail(email);
+          const sanitizedPassword = this.sanitization.sanitizePassword(password);
 
-      // Validate inputs
-      if (!this.sanitization.isValidEmail(sanitizedEmail)) {
-        return { success: false, message: 'Please enter a valid email address.' };
-      }
+          // Validate inputs
+          if (!this.sanitization.isValidEmail(sanitizedEmail)) {
+            return { success: false, message: 'Please enter a valid email address.' };
+          }
 
-      if (!this.sanitization.isValidPassword(sanitizedPassword)) {
-        return { success: false, message: 'Password must be at least 8 characters long and contain both letters and numbers.' };
-      }
+          if (!this.sanitization.isValidPassword(sanitizedPassword)) {
+            return { success: false, message: 'Password must be at least 8 characters long and contain both letters and numbers.' };
+          }
 
-      // Create user with Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(this.auth, sanitizedEmail, sanitizedPassword);
-      const user = userCredential.user;
+          // Create user with Firebase Auth
+          const userCredential = await createUserWithEmailAndPassword(this.auth, sanitizedEmail, sanitizedPassword);
+          const user = userCredential.user;
 
-      // Send email verification
-      await sendEmailVerification(user);
+          // Send email verification
+          await sendEmailVerification(user);
 
-      // Create user document in Firestore
-      const userData: AdminUser = {
-        uid: user.uid,
-        email: sanitizedEmail,
-        isAdmin: false, // Will be set to true manually in Firestore
-        emailVerified: false, // Will be updated when email is verified
-        createdAt: new Date()
-      };
+          // Create user document in Firestore
+          const userData: AdminUser = {
+            uid: user.uid,
+            email: sanitizedEmail,
+            isAdmin: false, // Will be set to true manually in Firestore
+            emailVerified: false, // Will be updated when email is verified
+            createdAt: new Date()
+          };
 
-      await setDoc(doc(this.firestore, 'adminUsers', user.uid), userData);
+          await setDoc(doc(this.firestore, 'adminUsers', user.uid), userData);
 
-      return { success: true, message: 'Account created successfully! Please check your email and verify your account before logging in.' };
+          return { success: true, message: 'Account created successfully! Please check your email and verify your account before logging in.' };
+        } catch (error: any) {
+          console.error('Sign up error:', error);
+
+          // Handle specific error cases
+          if (error.code === 'auth/email-already-in-use') {
+            return {
+              success: false,
+              message: 'An account with this email already exists. Please try signing in instead, or use a different email address.'
+            };
+          }
+
+          return { success: false, message: this.getErrorMessage(error.code) };
+        }
+      });
     } catch (error: any) {
-      console.error('Sign up error:', error);
-
-      // Handle specific error cases
-      if (error.code === 'auth/email-already-in-use') {
-        return {
-          success: false,
-          message: 'An account with this email already exists. Please try signing in instead, or use a different email address.'
-        };
-      }
-
-      return { success: false, message: this.getErrorMessage(error.code) };
+      console.error('Sign up zone error:', error);
+      return { success: false, message: 'An unexpected error occurred. Please try again.' };
     }
   }
 
@@ -160,20 +180,30 @@ export class AuthService {
    */
   private async loadUserData(uid: string): Promise<AdminUser | null> {
     try {
-      const userDoc = await this.ngZone.run(async () => {
-        return await getDoc(doc(this.firestore, 'adminUsers', uid));
-      });
+      // Ensure we're in the proper Angular zone
+      return await this.ngZone.run(async () => {
+        try {
+          const userDoc = await getDoc(doc(this.firestore, 'adminUsers', uid));
 
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as AdminUser;
-        this.currentUserSubject.next(userData);
-        return userData;
-      } else {
-        this.currentUserSubject.next(null);
-        return null;
-      }
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as AdminUser;
+            this.currentUserSubject.next(userData);
+            return userData;
+          } else {
+            // User document doesn't exist yet - this is normal during signup
+            console.log('User document not found in Firestore yet - this is normal during signup');
+            this.currentUserSubject.next(null);
+            return null;
+          }
+        } catch (firestoreError) {
+          console.error('Firestore error loading user data:', firestoreError);
+          this.currentUserSubject.next(null);
+          return null;
+        }
+      });
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('Error in loadUserData:', error);
+      // Don't throw the error, just log it and return null
       this.currentUserSubject.next(null);
       return null;
     }
