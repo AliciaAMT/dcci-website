@@ -14,6 +14,14 @@ export interface AdminUser {
   lastLoginAt?: Date;
 }
 
+export interface FailedAttempt {
+  email: string;
+  attempts: number;
+  lastAttempt: Date;
+  lockedUntil?: Date;
+  ipAddress?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -62,7 +70,7 @@ export class AuthService {
   /**
    * Sign up a new admin user
    */
-  async signUp(email: string, password: string): Promise<{ success: boolean; message: string; needsVerification?: boolean }> {
+  async signUp(email: string, password: string): Promise<{ success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean }> {
     try {
       // Ensure we're in the proper Angular zone
       return await this.ngZone.run(async () => {
@@ -122,7 +130,7 @@ export class AuthService {
   /**
    * Sign in an existing admin user
    */
-  async signIn(email: string, password: string): Promise<{ success: boolean; message: string; needsVerification?: boolean }> {
+  async signIn(email: string, password: string): Promise<{ success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean }> {
     try {
       // Ensure we're in the proper Angular zone
       return await this.ngZone.run(async () => {
@@ -140,9 +148,23 @@ export class AuthService {
             return { success: false, message: 'Please enter a password.' };
           }
 
+          // Check if account is locked due to too many failed attempts
+          const failedAttempts = await this.getFailedAttempts(sanitizedEmail);
+          if (failedAttempts && failedAttempts.lockedUntil && failedAttempts.lockedUntil > new Date()) {
+            const lockTimeRemaining = Math.ceil((failedAttempts.lockedUntil.getTime() - new Date().getTime()) / (1000 * 60));
+            return { 
+              success: false, 
+              message: `Account locked due to too many failed attempts. Please try again in ${lockTimeRemaining} minutes or use password recovery.`,
+              isLocked: true
+            };
+          }
+
           // Sign in with Firebase Auth
           const userCredential = await signInWithEmailAndPassword(this.auth, sanitizedEmail, sanitizedPassword);
           const user = userCredential.user;
+
+          // Clear failed attempts on successful login
+          await this.clearFailedAttempts(sanitizedEmail);
 
           // Check if email is verified
           if (!user.emailVerified) {
@@ -168,6 +190,10 @@ export class AuthService {
           }
         } catch (error: any) {
           console.error('Sign in error:', error);
+          
+          // Record failed attempt
+          await this.recordFailedAttempt(email);
+          
           return { success: false, message: this.getErrorMessage(error.code) };
         }
       });
@@ -384,6 +410,92 @@ export class AuthService {
         return 'This account has been disabled.';
       default:
         return 'An error occurred. Please try again.';
+    }
+  }
+
+  /**
+   * Record a failed login attempt
+   */
+  private async recordFailedAttempt(email: string): Promise<void> {
+    try {
+      const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
+      const failedAttemptsDoc = await getDoc(failedAttemptsRef);
+      
+      let attempts = 1;
+      let lockedUntil: Date | undefined;
+      
+      if (failedAttemptsDoc.exists()) {
+        const data = failedAttemptsDoc.data() as FailedAttempt;
+        attempts = data.attempts + 1;
+        
+        // If this is the 3rd attempt, lock the account for 15 minutes
+        if (attempts >= 3) {
+          lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+        }
+      }
+      
+      await setDoc(failedAttemptsRef, {
+        email,
+        attempts,
+        lastAttempt: new Date(),
+        lockedUntil,
+        ipAddress: await this.getClientIP()
+      });
+    } catch (error) {
+      console.error('Error recording failed attempt:', error);
+    }
+  }
+
+  /**
+   * Get failed attempts for an email
+   */
+  private async getFailedAttempts(email: string): Promise<FailedAttempt | null> {
+    try {
+      const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
+      const failedAttemptsDoc = await getDoc(failedAttemptsRef);
+      
+      if (failedAttemptsDoc.exists()) {
+        const data = failedAttemptsDoc.data() as FailedAttempt;
+        // Convert Firestore timestamps to Date objects
+        return {
+          ...data,
+          lastAttempt: data.lastAttempt instanceof Date ? data.lastAttempt : new Date(data.lastAttempt),
+          lockedUntil: data.lockedUntil ? (data.lockedUntil instanceof Date ? data.lockedUntil : new Date(data.lockedUntil)) : undefined
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting failed attempts:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear failed attempts for an email (on successful login)
+   */
+  private async clearFailedAttempts(email: string): Promise<void> {
+    try {
+      const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
+      await setDoc(failedAttemptsRef, {
+        email,
+        attempts: 0,
+        lastAttempt: new Date(),
+        lockedUntil: null
+      });
+    } catch (error) {
+      console.error('Error clearing failed attempts:', error);
+    }
+  }
+
+  /**
+   * Get client IP address (simplified version)
+   */
+  private async getClientIP(): Promise<string> {
+    try {
+      // This is a simplified approach - in production you'd want to get the real IP
+      return 'unknown';
+    } catch (error) {
+      return 'unknown';
     }
   }
 }

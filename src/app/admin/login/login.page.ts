@@ -39,7 +39,7 @@ export class LoginPage implements OnInit, OnDestroy {
   isSignUpMode = false;
   isLoading = false;
   showPassword = false;
-  statusMessage: { success: boolean; message: string; needsVerification?: boolean } | null = null;
+  statusMessage: { success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean } | null = null;
   private userSubscription: Subscription = new Subscription();
 
   constructor(
@@ -93,13 +93,20 @@ export class LoginPage implements OnInit, OnDestroy {
           return;
         }
 
+        if (result.isLocked) {
+          // Account is locked - show message and disable form
+          this.statusMessage = result;
+          this.loginForm.disable();
+          return;
+        }
+
         this.statusMessage = result;
 
-              if (result.success && !this.isSignUpMode) {
-                // Successful login - redirect to admin dashboard
-                setTimeout(() => {
-                  this.router.navigate(['/admin/dashboard']);
-                }, 1000);
+        if (result.success && !this.isSignUpMode) {
+          // Successful login - redirect to admin dashboard
+          setTimeout(() => {
+            this.router.navigate(['/admin/dashboard']);
+          }, 1000);
         } else if (result.success && this.isSignUpMode) {
           // Successful signup - switch to login mode
           setTimeout(() => {

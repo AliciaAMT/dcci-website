@@ -31,6 +31,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Failed attempts collection - for rate limiting
+    match /failedAttempts/{email} {
+      // Allow anyone to create and update failed attempt records (for rate limiting)
+      // This is necessary for tracking failed login attempts even for non-authenticated users
+      allow create, update: if true;
+      
+      // Only allow reading if the user is authenticated and it's their own email
+      allow read: if request.auth != null && 
+        request.auth.token.email == email;
+      
+      // Deny delete operations
+      allow delete: if false;
+    }
+
     // Deny all other collections
     match /{document=**} {
       allow read, write: if false;

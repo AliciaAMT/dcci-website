@@ -85,6 +85,19 @@
       <div *ngIf="statusMessage" class="status-message" [class.success]="statusMessage.success" [class.error]="!statusMessage.success">
         <ion-icon [name]="statusMessage.success ? 'checkmark-circle-outline' : 'alert-circle-outline'"></ion-icon>
         <span>{{ statusMessage.message }}</span>
+        
+        <!-- Forgot Password Button for Locked Accounts -->
+        <div *ngIf="statusMessage.isLocked" class="locked-account-actions">
+          <ion-button 
+            fill="outline" 
+            color="primary" 
+            size="small" 
+            (click)="goToForgotPassword()"
+            class="forgot-password-btn">
+            <ion-icon name="key-outline" slot="start"></ion-icon>
+            Reset Password
+          </ion-button>
+        </div>
       </div>
 
       <!-- Security Notice -->
