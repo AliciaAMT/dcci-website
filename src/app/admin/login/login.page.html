@@ -88,14 +88,21 @@
         
         <!-- Forgot Password Button for Locked Accounts -->
         <div *ngIf="statusMessage.isLocked" class="locked-account-actions">
+          <div class="lockout-instructions">
+            <ion-icon name="lock-closed-outline" class="lock-icon"></ion-icon>
+            <p><strong>To regain access:</strong></p>
+            <p>1. Click "Reset Password" below</p>
+            <p>2. Check your email for reset instructions</p>
+            <p>3. Create a new password</p>
+          </div>
           <ion-button 
-            fill="outline" 
+            fill="solid" 
             color="primary" 
-            size="small" 
+            size="default" 
             (click)="goToForgotPassword()"
             class="forgot-password-btn">
             <ion-icon name="key-outline" slot="start"></ion-icon>
-            Reset Password
+            Reset Password Now
           </ion-button>
         </div>
       </div>

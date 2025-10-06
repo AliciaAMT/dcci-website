@@ -169,16 +169,47 @@
   }
 
   .locked-account-actions {
-    margin-top: 16px;
+    margin-top: 20px;
     text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    border: 2px solid var(--ion-color-danger);
+
+    .lockout-instructions {
+      margin-bottom: 20px;
+      color: var(--ion-color-light);
+
+      .lock-icon {
+        font-size: 2rem;
+        color: var(--ion-color-danger);
+        margin-bottom: 12px;
+        display: block;
+      }
+
+      p {
+        margin: 8px 0;
+        font-size: 0.9rem;
+        line-height: 1.4;
+
+        strong {
+          color: var(--ion-color-light);
+          font-weight: 600;
+        }
+      }
+    }
 
     .forgot-password-btn {
-      --border-color: var(--ion-color-primary);
-      --color: var(--ion-color-primary);
+      --background: var(--ion-color-primary);
+      --color: white;
+      --border-radius: 8px;
       font-weight: 600;
+      font-size: 1rem;
+      height: 48px;
+      min-width: 200px;
 
       ion-icon {
-        font-size: 1rem;
+        font-size: 1.1rem;
       }
     }
   }

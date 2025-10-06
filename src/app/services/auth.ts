@@ -154,7 +154,7 @@ export class AuthService {
             const lockTimeRemaining = Math.ceil((failedAttempts.lockedUntil.getTime() - new Date().getTime()) / (1000 * 60));
             return { 
               success: false, 
-              message: `Account locked due to too many failed attempts. Please try again in ${lockTimeRemaining} minutes or use password recovery.`,
+              message: `🔒 Account locked for ${lockTimeRemaining} minutes due to 3 failed login attempts. For security, you must reset your password to regain access.`,
               isLocked: true
             };
           }
@@ -399,7 +399,7 @@ export class AuthService {
       case 'auth/wrong-password':
         return 'Incorrect password. Please try again.';
       case 'auth/too-many-requests':
-        return 'Too many failed attempts. Please try again later.';
+        return 'Account temporarily locked due to multiple failed attempts. Please use password recovery to reset your password and regain access.';
       case 'auth/network-request-failed':
         return 'Network error. Please check your connection and try again.';
       case 'auth/expired-action-code':
