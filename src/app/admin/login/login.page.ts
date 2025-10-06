@@ -61,6 +61,9 @@ export class LoginPage implements OnInit, OnDestroy {
         this.router.navigate(['/admin/dashboard']);
       }
     });
+    
+    // Check for existing lockouts when page loads
+    this.checkForExistingLockout();
   }
 
   ngOnDestroy() {
@@ -84,6 +87,8 @@ export class LoginPage implements OnInit, OnDestroy {
         } else {
           result = await this.authService.signIn(email, password);
         }
+        
+        console.log('Auth result:', result);
 
         if (result.needsVerification) {
           // User needs email verification - redirect to verification page
@@ -115,7 +120,8 @@ export class LoginPage implements OnInit, OnDestroy {
           }, 2000);
         }
       } catch (error) {
-        this.statusMessage = { success: false, message: 'An unexpected error occurred. Please try again.' };
+        console.error('Login error:', error);
+        this.statusMessage = { success: false, message: 'An unexpected error occurred. Please check your connection and try again.' };
       } finally {
         this.isLoading = false;
       }

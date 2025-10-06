@@ -189,17 +189,20 @@ export class AuthService {
             return { success: false, message: 'Access denied. Admin privileges required.' };
           }
         } catch (error: any) {
-          console.error('Sign in error:', error);
+          console.error('Sign in error (inner catch):', error);
+          console.error('Error code:', error.code);
           
           // Record failed attempt
           await this.recordFailedAttempt(email);
           
-          return { success: false, message: this.getErrorMessage(error.code) };
+          const errorMessage = this.getErrorMessage(error.code);
+          console.log('Generated error message:', errorMessage);
+          return { success: false, message: errorMessage };
         }
       });
     } catch (error: any) {
       console.error('Sign in zone error:', error);
-      return { success: false, message: 'An unexpected error occurred. Please try again.' };
+      return { success: false, message: 'Network error. Please check your connection and try again.' };
     }
   }
 
@@ -391,13 +394,15 @@ export class AuthService {
       case 'auth/email-already-in-use':
         return 'An account with this email already exists.';
       case 'auth/invalid-email':
-        return 'Please enter a valid email address.';
+        return '❌ Invalid email format. Please enter a valid email address (e.g., user@example.com).';
       case 'auth/weak-password':
         return 'Password is too weak. Please choose a stronger password.';
       case 'auth/user-not-found':
-        return 'No account found with this email address.';
+        return '❌ No account found with this email address. Please check your email or create a new account.';
       case 'auth/wrong-password':
-        return 'Incorrect password. Please try again.';
+        return '❌ Wrong password. Please check your password and try again. If you forgot your password, use "Forgot Password?" below.';
+      case 'auth/invalid-credential':
+        return '❌ Wrong password. Please check your password and try again. If you forgot your password, use "Forgot Password?" below.';
       case 'auth/too-many-requests':
         return 'Account temporarily locked due to multiple failed attempts. Please use password recovery to reset your password and regain access.';
       case 'auth/network-request-failed':
