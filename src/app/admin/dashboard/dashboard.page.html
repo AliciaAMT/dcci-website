@@ -1,0 +1,217 @@
+<ion-content class="ion-padding">
+  <div class="dashboard-container">
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div class="header-content">
+        <div class="welcome-section">
+          <h1>Admin Dashboard</h1>
+          <p class="welcome-message">Welcome back, {{ currentUser?.email }}!</p>
+          <div class="user-info">
+            <ion-chip color="primary" *ngIf="currentUser?.isAdmin">
+              <ion-icon name="shield-checkmark-outline"></ion-icon>
+              <ion-label>Admin</ion-label>
+            </ion-chip>
+            <ion-chip color="success" *ngIf="currentUser?.emailVerified">
+              <ion-icon name="checkmark-circle-outline"></ion-icon>
+              <ion-label>Verified</ion-label>
+            </ion-chip>
+          </div>
+        </div>
+        <div class="header-actions">
+          <ion-button fill="outline" (click)="logout()" class="logout-button">
+            <ion-icon name="log-out-outline" slot="start"></ion-icon>
+            Logout
+          </ion-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <ion-icon name="people-outline"></ion-icon>
+        </div>
+        <div class="stat-content">
+          <h3>Users</h3>
+          <p class="stat-number">{{ stats.totalUsers || 0 }}</p>
+          <p class="stat-label">Total Registered</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <ion-icon name="mail-outline"></ion-icon>
+        </div>
+        <div class="stat-content">
+          <h3>Messages</h3>
+          <p class="stat-number">{{ stats.totalMessages || 0 }}</p>
+          <p class="stat-label">Contact Form</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <ion-icon name="newspaper-outline"></ion-icon>
+        </div>
+        <div class="stat-content">
+          <h3>Newsletter</h3>
+          <p class="stat-number">{{ stats.newsletterSubscribers || 0 }}</p>
+          <p class="stat-label">Subscribers</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <ion-icon name="analytics-outline"></ion-icon>
+        </div>
+        <div class="stat-content">
+          <h3>Views</h3>
+          <p class="stat-number">{{ stats.totalViews || 0 }}</p>
+          <p class="stat-label">This Month</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+      <!-- Quick Actions -->
+      <div class="content-card">
+        <div class="card-header">
+          <ion-icon name="flash-outline"></ion-icon>
+          <h3>Quick Actions</h3>
+        </div>
+        <div class="card-content">
+          <div class="action-buttons">
+            <ion-button expand="block" fill="outline" class="action-btn">
+              <ion-icon name="create-outline" slot="start"></ion-icon>
+              Create Content
+            </ion-button>
+            <ion-button expand="block" fill="outline" class="action-btn">
+              <ion-icon name="settings-outline" slot="start"></ion-icon>
+              Site Settings
+            </ion-button>
+            <ion-button expand="block" fill="outline" class="action-btn">
+              <ion-icon name="people-outline" slot="start"></ion-icon>
+              Manage Users
+            </ion-button>
+            <ion-button expand="block" fill="outline" class="action-btn">
+              <ion-icon name="mail-outline" slot="start"></ion-icon>
+              View Messages
+            </ion-button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="content-card">
+        <div class="card-header">
+          <ion-icon name="time-outline"></ion-icon>
+          <h3>Recent Activity</h3>
+        </div>
+        <div class="card-content">
+          <div class="activity-list">
+            <div class="activity-item" *ngFor="let activity of recentActivity">
+              <div class="activity-icon">
+                <ion-icon [name]="activity.icon"></ion-icon>
+              </div>
+              <div class="activity-content">
+                <p class="activity-text">{{ activity.text }}</p>
+                <p class="activity-time">{{ activity.time }}</p>
+              </div>
+            </div>
+            <div *ngIf="recentActivity.length === 0" class="no-activity">
+              <ion-icon name="time-outline"></ion-icon>
+              <p>No recent activity</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Status -->
+      <div class="content-card">
+        <div class="card-header">
+          <ion-icon name="server-outline"></ion-icon>
+          <h3>System Status</h3>
+        </div>
+        <div class="card-content">
+          <div class="status-list">
+            <div class="status-item">
+              <div class="status-indicator success"></div>
+              <span>Database Connection</span>
+              <ion-chip color="success" size="small">
+                <ion-label>Online</ion-label>
+              </ion-chip>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator success"></div>
+              <span>Email Service</span>
+              <ion-chip color="success" size="small">
+                <ion-label>Active</ion-label>
+              </ion-chip>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator warning"></div>
+              <span>Storage Usage</span>
+              <ion-chip color="warning" size="small">
+                <ion-label>75%</ion-label>
+              </ion-chip>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator success"></div>
+              <span>SSL Certificate</span>
+              <ion-chip color="success" size="small">
+                <ion-label>Valid</ion-label>
+              </ion-chip>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Alerts -->
+      <div class="content-card">
+        <div class="card-header">
+          <ion-icon name="shield-outline"></ion-icon>
+          <h3>Security Center</h3>
+        </div>
+        <div class="card-content">
+          <div class="security-info">
+            <div class="security-item">
+              <ion-icon name="checkmark-circle" color="success"></ion-icon>
+              <div>
+                <p><strong>Two-Factor Authentication</strong></p>
+                <p>Enabled for admin accounts</p>
+              </div>
+            </div>
+            <div class="security-item">
+              <ion-icon name="checkmark-circle" color="success"></ion-icon>
+              <div>
+                <p><strong>Email Verification</strong></p>
+                <p>Required for all accounts</p>
+              </div>
+            </div>
+            <div class="security-item">
+              <ion-icon name="checkmark-circle" color="success"></ion-icon>
+              <div>
+                <p><strong>Input Sanitization</strong></p>
+                <p>Active protection against XSS</p>
+              </div>
+            </div>
+          </div>
+          <ion-button expand="block" fill="outline" class="security-btn">
+            <ion-icon name="settings-outline" slot="start"></ion-icon>
+            Security Settings
+          </ion-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Info -->
+    <div class="dashboard-footer">
+      <div class="footer-content">
+        <p>Last login: {{ currentUser?.lastLoginAt | date:'medium' }}</p>
+        <p>Session expires in: 2 hours</p>
+      </div>
+    </div>
+  </div>
+</ion-content>

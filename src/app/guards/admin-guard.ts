@@ -7,16 +7,16 @@ export const adminGuard: CanActivateFn = (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  return authService.currentUser$.pipe(
-    take(1),
-    map(user => {
-      if (user && user.isAdmin) {
-        return true;
-      } else {
-        // Redirect to home page if not admin
-        router.navigate(['/home']);
-        return false;
-      }
-    })
-  );
+        return authService.currentUser$.pipe(
+          take(1),
+          map(user => {
+            if (user && user.isAdmin && user.emailVerified) {
+              return true;
+            } else {
+              // Redirect to home page if not admin or email not verified
+              router.navigate(['/home']);
+              return false;
+            }
+          })
+        );
 };

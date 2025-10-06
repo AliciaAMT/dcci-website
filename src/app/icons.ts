@@ -42,5 +42,26 @@ export function registerIonicons(): void {
     // Admin login icons
     'lock-closed-outline': i.lockClosedOutline,
     'eye-off-outline': i.eyeOffOutline,
+    // Dashboard icons
+    'log-out-outline': i.logOutOutline,
+    'flash-outline': i.flashOutline,
+    'create-outline': i.createOutline,
+    'settings-outline': i.settingsOutline,
+    'server-outline': i.serverOutline,
+    'analytics-outline': i.analyticsOutline,
+    'newspaper-outline': i.newspaperOutline,
+    'people-outline': i.peopleOutline,
+    'person-add-outline': i.personAddOutline,
+    'log-in-outline': i.logInOutline,
+    'checkmark-circle': i.checkmarkCircle,
+    'alert-circle': i.alertCircle,
+    'shield-outline': i.shieldOutline,
+    // Password recovery icons
+    'arrow-back-outline': i.arrowBackOutline,
+    'help-circle-outline': i.helpCircleOutline,
+    'refresh-outline': i.refreshOutline,
+    'person-outline': i.personOutline,
+    'checkmark-outline': i.checkmarkOutline,
+    'close-circle': i.closeCircle,
   });
 }

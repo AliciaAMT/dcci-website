@@ -67,6 +67,18 @@
           class="toggle-button">
           {{ isSignUpMode ? 'Already have an account? Sign In' : "Don't have an account? Create One" }}
         </ion-button>
+
+        <!-- Forgot Password Link (only show in login mode) -->
+        <div *ngIf="!isSignUpMode" class="forgot-password-section">
+          <ion-button
+            fill="clear"
+            size="small"
+            (click)="goToForgotPassword()"
+            class="forgot-password-button">
+            <ion-icon name="help-circle-outline" slot="start"></ion-icon>
+            Forgot Password?
+          </ion-button>
+        </div>
       </form>
 
       <!-- Status Message -->

@@ -154,6 +154,20 @@
   color: var(--ion-color-dark);
 }
 
+.forgot-password-section {
+  text-align: center;
+  margin-top: 16px;
+  
+  .forgot-password-button {
+    --color: var(--ion-color-medium);
+    font-size: 0.9rem;
+    
+    ion-icon {
+      font-size: 1rem;
+    }
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .admin-login-page {

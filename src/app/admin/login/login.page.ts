@@ -55,8 +55,8 @@ export class LoginPage implements OnInit {
   ngOnInit() {
     // Check if user is already logged in and is admin
     this.authService.currentUser$.subscribe(user => {
-      if (user && user.isAdmin) {
-        this.router.navigate(['/admin/dashboard']); // Will redirect to CMS dashboard when created
+      if (user && user.isAdmin && user.emailVerified) {
+        this.router.navigate(['/admin/dashboard']);
       }
     });
   }
@@ -79,11 +79,11 @@ export class LoginPage implements OnInit {
 
         this.statusMessage = result;
 
-        if (result.success && !this.isSignUpMode) {
-          // Successful login - redirect will be handled by auth state change
-          setTimeout(() => {
-            this.router.navigate(['/admin/dashboard']); // Will redirect to CMS dashboard when created
-          }, 1000);
+              if (result.success && !this.isSignUpMode) {
+                // Successful login - redirect to admin dashboard
+                setTimeout(() => {
+                  this.router.navigate(['/admin/dashboard']);
+                }, 1000);
         } else if (result.success && this.isSignUpMode) {
           // Successful signup - switch to login mode
           setTimeout(() => {
@@ -109,6 +109,10 @@ export class LoginPage implements OnInit {
 
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
+  }
+
+  goToForgotPassword() {
+    this.router.navigate(['/admin/forgot-password']);
   }
 
   isFieldInvalid(fieldName: string): boolean {
