@@ -454,7 +454,7 @@ export class AuthService {
   /**
    * Get failed attempts for an email
    */
-  private async getFailedAttempts(email: string): Promise<FailedAttempt | null> {
+  async getFailedAttempts(email: string): Promise<FailedAttempt | null> {
     try {
       const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
       const failedAttemptsDoc = await getDoc(failedAttemptsRef);

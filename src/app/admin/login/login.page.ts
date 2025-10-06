@@ -64,6 +64,11 @@ export class LoginPage implements OnInit, OnDestroy {
     
     // Check for existing lockouts when page loads
     this.checkForExistingLockout();
+    
+    // Listen for email changes to check for lockouts
+    this.loginForm.get('email')?.valueChanges.subscribe(() => {
+      this.checkForExistingLockout();
+    });
   }
 
   ngOnDestroy() {
@@ -142,6 +147,38 @@ export class LoginPage implements OnInit, OnDestroy {
 
   goToForgotPassword() {
     this.router.navigate(['/admin/forgot-password']);
+  }
+
+  async checkForExistingLockout() {
+    const email = this.loginForm.get('email')?.value;
+    if (email && this.sanitizationService.isValidEmail(email)) {
+      try {
+        const failedAttempts = await this.authService.getFailedAttempts(email);
+        if (failedAttempts && failedAttempts.lockedUntil && failedAttempts.lockedUntil > new Date()) {
+          const lockTimeRemaining = Math.ceil((failedAttempts.lockedUntil.getTime() - new Date().getTime()) / (1000 * 60));
+          this.statusMessage = { 
+            success: false, 
+            message: `🔒 Account locked for ${lockTimeRemaining} minutes due to 3 failed login attempts. For security, you must reset your password to regain access.`,
+            isLocked: true
+          };
+          this.loginForm.disable();
+        } else {
+          // Lockout has expired or doesn't exist - clear any lockout message and re-enable form
+          if (this.statusMessage?.isLocked) {
+            this.statusMessage = null;
+            this.loginForm.enable();
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for lockout:', error);
+      }
+    } else {
+      // No valid email - clear any lockout message and re-enable form
+      if (this.statusMessage?.isLocked) {
+        this.statusMessage = null;
+        this.loginForm.enable();
+      }
+    }
   }
 
   isFieldInvalid(fieldName: string): boolean {
