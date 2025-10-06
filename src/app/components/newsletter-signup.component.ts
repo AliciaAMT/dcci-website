@@ -2,70 +2,44 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
-import { IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox } from '@ionic/angular/standalone';
+// No standalone imports needed - IonicModule provides all components
 import { ContactService } from 'src/app/services/contact.service';
 
 @Component({
-  selector: 'app-contact-form',
-  templateUrl: './contact-form.component.html',
-  styleUrls: ['./contact-form.component.scss'],
+  selector: 'app-newsletter-signup',
+  templateUrl: './newsletter-signup.component.html',
+  styleUrls: ['./newsletter-signup.component.scss'],
   standalone: true,
-  imports: [CommonModule, IonicModule, FormsModule, ReactiveFormsModule, IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox]
+  imports: [CommonModule, IonicModule, FormsModule, ReactiveFormsModule]
 })
-export class ContactFormComponent implements OnInit {
-  contactForm: FormGroup;
+export class NewsletterSignupComponent implements OnInit {
+  newsletterForm: FormGroup;
   isSubmitting = false;
   submitSuccess = false;
   submitError = '';
-  formLoadTime: number = 0;
 
   constructor(
     private formBuilder: FormBuilder,
     private contactService: ContactService
   ) {
-    // Record when the form was loaded (for bot detection)
-    this.formLoadTime = Date.now();
-
-    this.contactForm = this.formBuilder.group({
+    this.newsletterForm = this.formBuilder.group({
       name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
-      email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
-      subject: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(200)]],
-      message: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(5000)]],
-      newsletter: [false], // Newsletter subscription (optional)
-      website: [''], // Honeypot field - should always be empty
-      formTimestamp: [this.formLoadTime] // Hidden field for bot detection
+      email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]]
     });
   }
 
   ngOnInit() {}
 
   async onSubmit() {
-    // Honeypot check - if website field is filled, it's likely a bot
-    if (this.contactForm.get('website')?.value) {
-      console.log('Bot detected via honeypot');
-      // Silently fail - don't let bots know they were caught
-      this.submitSuccess = true;
-      this.contactForm.reset();
-      return;
-    }
-
-    if (this.contactForm.valid) {
+    if (this.newsletterForm.valid) {
       this.isSubmitting = true;
       this.submitError = '';
 
       try {
-        // Prepare form data and add submission timestamp
-        const formData = { ...this.contactForm.value };
-        delete formData.website; // Remove honeypot field
-
-        // Add submission timestamp for bot detection
-        formData.submissionTime = Date.now();
-        formData.formLoadTime = formData.formTimestamp; // The original form load time
-        delete formData.formTimestamp; // Clean up the form field
-
-        await this.contactService.submitContactForm(formData);
+        const formData = this.newsletterForm.value;
+        await this.contactService.subscribeToNewsletter(formData);
         this.submitSuccess = true;
-        this.contactForm.reset();
+        this.newsletterForm.reset();
       } catch (error: any) {
         // Check for VPN detection error
         if (error.error?.error === 'VPN detected') {
@@ -75,10 +49,14 @@ export class ContactFormComponent implements OnInit {
         else if (error.error?.error === 'Invalid input' && error.error?.details) {
           this.submitError = 'Please check your input: ' + error.error.details.join(', ');
         }
-        else {
-          this.submitError = 'Failed to send message. Please try again.';
+        // Check for existing subscriber
+        else if (error.error?.error === 'Already subscribed') {
+          this.submitError = error.error.message || 'This email is already subscribed to our newsletter.';
         }
-        console.error('Contact form submission error:', error);
+        else {
+          this.submitError = 'Failed to subscribe. Please try again.';
+        }
+        console.error('Newsletter subscription error:', error);
       } finally {
         this.isSubmitting = false;
       }
@@ -88,14 +66,14 @@ export class ContactFormComponent implements OnInit {
   }
 
   private markFormGroupTouched() {
-    Object.keys(this.contactForm.controls).forEach(key => {
-      const control = this.contactForm.get(key);
+    Object.keys(this.newsletterForm.controls).forEach(key => {
+      const control = this.newsletterForm.get(key);
       control?.markAsTouched();
     });
   }
 
   getErrorMessage(controlName: string): string {
-    const control = this.contactForm.get(controlName);
+    const control = this.newsletterForm.get(controlName);
     if (control?.errors && control.touched) {
       if (control.errors['required']) {
         return `${this.getFieldLabel(controlName)} is required`;
@@ -118,9 +96,7 @@ export class ContactFormComponent implements OnInit {
   private getFieldLabel(controlName: string): string {
     const labels: { [key: string]: string } = {
       name: 'Name',
-      email: 'Email',
-      subject: 'Subject',
-      message: 'Message'
+      email: 'Email'
     };
     return labels[controlName] || controlName;
   }
@@ -128,6 +104,6 @@ export class ContactFormComponent implements OnInit {
   resetForm() {
     this.submitSuccess = false;
     this.submitError = '';
-    this.contactForm.reset();
+    this.newsletterForm.reset();
   }
 }

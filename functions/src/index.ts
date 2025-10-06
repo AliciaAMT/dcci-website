@@ -2,6 +2,7 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as corsLib from "cors";
 import * as nodemailer from "nodemailer";
+import { sanitizeContactForm, escapeHtmlForEmail, sanitizeNewsletterForm } from "./sanitization";
 
 admin.initializeApp();
 const cors = corsLib({ origin: true });
@@ -25,8 +26,40 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
 
-    const { name, email, subject, message, newsletter, website } = req.body || {};
-    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const { name, email, subject, message, newsletter, website, formLoadTime, submissionTime } = req.body || {};
+    // Get client IP from various sources
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const firstForwardedIP = Array.isArray(forwardedFor)
+      ? forwardedFor[0]?.trim()
+      : forwardedFor?.split(',')[0]?.trim();
+
+    const clientIP: string = req.ip ||
+                    req.connection?.remoteAddress ||
+                    req.socket?.remoteAddress ||
+                    firstForwardedIP ||
+                    (Array.isArray(req.headers['x-real-ip']) ? req.headers['x-real-ip'][0] : req.headers['x-real-ip']) ||
+                    'unknown';
+
+    console.log('Client IP detected:', clientIP);
+    console.log('Request headers:', {
+      'x-forwarded-for': req.headers['x-forwarded-for'],
+      'x-real-ip': req.headers['x-real-ip'],
+      'req.ip': req.ip,
+      'remoteAddress': req.connection?.remoteAddress
+    });
+
+    // IP blocking check - block common VPN/spam IP ranges
+    const blockedRanges = ['111.', '185.', '45.', '91.', '104.']; // Common VPN/spam ranges
+    const isBlockedIP = blockedRanges.some(range => clientIP.startsWith(range));
+
+    if (isBlockedIP) {
+      console.log('Blocked IP detected:', clientIP);
+      res.status(403).json({
+        error: "VPN detected",
+        message: "We've detected that you're using a VPN. To help prevent spam, please turn off your VPN and try again. If you're not using a VPN, please contact us directly."
+      });
+      return;
+    }
 
     // Honeypot check - if website field is filled, it's likely a bot
     if (website) {
@@ -34,9 +67,20 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
       res.status(204).end(); return; // Silently fail
     }
 
-    if (!name || !email || !subject || !message) {
-      res.status(400).json({ error: "Missing required fields" }); return;
+    // Sanitize and validate all input data
+    const validation = sanitizeContactForm({ name, email, subject, message, newsletter, formLoadTime, submissionTime });
+
+    if (!validation.isValid) {
+      console.log('Input validation failed:', validation.errors);
+      res.status(400).json({
+        error: "Invalid input",
+        message: "Please check your input and try again.",
+        details: validation.errors
+      });
+      return;
     }
+
+    const { name: sanitizedName, email: sanitizedEmail, subject: sanitizedSubject, message: sanitizedMessage, newsletter: sanitizedNewsletter, formLoadTime: sanitizedFormLoadTime, submissionTime: sanitizedSubmissionTime } = validation.sanitizedData!;
 
     try {
       // Simple cooldown check - get all contacts from this IP and check timestamps
@@ -49,10 +93,10 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
         const lastSubmission = recentSubmissions[0].data();
         const lastSubmissionTime = lastSubmission.submittedAt?.toMillis() || 0;
         const currentTime = Date.now();
-        
+
         if (currentTime - lastSubmissionTime < COOLDOWN_PERIOD) {
           console.log('Cooldown period active for IP:', clientIP);
-          res.status(429).json({ 
+          res.status(429).json({
             error: "Please wait before submitting another message",
             retryAfter: Math.ceil((COOLDOWN_PERIOD - (currentTime - lastSubmissionTime)) / 1000)
           });
@@ -60,13 +104,16 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
         }
       }
 
-      // Store contact form data in Firestore
+      // Store contact form data in Firestore (using sanitized data)
       const contactData = {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        subject: subject.trim(),
-        message: message.trim(),
-        newsletter: Boolean(newsletter),
+        name: sanitizedName,
+        email: sanitizedEmail,
+        subject: sanitizedSubject,
+        message: sanitizedMessage,
+        newsletter: sanitizedNewsletter,
+        formLoadTime: sanitizedFormLoadTime,
+        submissionTime: sanitizedSubmissionTime,
+        timeToFill: sanitizedSubmissionTime - sanitizedFormLoadTime,
         submittedAt: admin.firestore.FieldValue.serverTimestamp(),
         ipAddress: clientIP,
         userAgent: req.get('User-Agent') || 'Unknown'
@@ -77,10 +124,10 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
       console.log('Contact stored with ID:', contactRef.id);
 
       // If they want newsletter updates, add to subscribers collection
-      if (newsletter) {
+      if (sanitizedNewsletter) {
         const subscriberData = {
-          email: email.trim().toLowerCase(),
-          name: name.trim(),
+          email: sanitizedEmail,
+          name: sanitizedName,
           subscribedAt: admin.firestore.FieldValue.serverTimestamp(),
           source: 'contact_form',
           status: 'active'
@@ -88,43 +135,43 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
 
         // Check if email already exists in subscribers
         const existingSubscriber = await db.collection('subscribers')
-          .where('email', '==', email.trim().toLowerCase())
+          .where('email', '==', sanitizedEmail)
           .limit(1)
           .get();
 
         if (existingSubscriber.empty) {
           await db.collection('subscribers').add(subscriberData);
-          console.log('Added to newsletter subscribers:', email);
+          console.log('Added to newsletter subscribers:', sanitizedEmail);
         } else {
-          console.log('Email already subscribed:', email);
+          console.log('Email already subscribed:', sanitizedEmail);
         }
       }
 
-      // Send email notification
+      // Send email notification (using sanitized data and escaped HTML)
       await tx.sendMail({
         from: `"DCCI Ministries Website" <${user}>`,
         to,
-        replyTo: `${name} <${email}>`,
-        subject: `Contact Form: ${subject}`,
-        text: `Name: ${name}\nEmail: ${email}\nSubject: ${subject}\nNewsletter: ${newsletter ? 'Yes' : 'No'}\nIP: ${clientIP}\n\n${message}`,
+        replyTo: `${sanitizedName} <${sanitizedEmail}>`,
+        subject: `Contact Form: ${sanitizedSubject}`,
+        text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nNewsletter: ${sanitizedNewsletter ? 'Yes' : 'No'}\nIP: ${clientIP}\n\n${sanitizedMessage}`,
         html: `
           <h3>New Contact Form Submission</h3>
-          <p><b>Name:</b> ${name}</p>
-          <p><b>Email:</b> ${email}</p>
-          <p><b>Subject:</b> ${subject}</p>
-          <p><b>Newsletter Subscription:</b> ${newsletter ? 'Yes' : 'No'}</p>
-          <p><b>IP Address:</b> ${clientIP}</p>
+          <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
+          <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
+          <p><b>Subject:</b> ${escapeHtmlForEmail(sanitizedSubject)}</p>
+          <p><b>Newsletter Subscription:</b> ${sanitizedNewsletter ? 'Yes' : 'No'}</p>
+          <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
           <hr>
           <p><b>Message:</b></p>
-          <p>${String(message).replace(/\n/g, "<br>")}</p>
+          <p>${escapeHtmlForEmail(sanitizedMessage)}</p>
           <hr>
           <p><small>This email was sent from the DCCI Ministries contact form.</small></p>
           <p><small>Contact ID: ${contactRef.id}</small></p>
         `
       });
 
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         message: "Email sent successfully",
         contactId: contactRef.id
       });
@@ -148,18 +195,127 @@ export const testContactForm = functions.https.onRequest((req, res) => {
   });
 });
 
+// Newsletter subscription endpoint
+export const subscribeToNewsletter = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
+
+    const { name, email } = req.body || {};
+
+    // Get client IP from various sources
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const firstForwardedIP = Array.isArray(forwardedFor)
+      ? forwardedFor[0]?.trim()
+      : forwardedFor?.split(',')[0]?.trim();
+
+    const clientIP: string = req.ip ||
+                    req.connection?.remoteAddress ||
+                    req.socket?.remoteAddress ||
+                    firstForwardedIP ||
+                    (Array.isArray(req.headers['x-real-ip']) ? req.headers['x-real-ip'][0] : req.headers['x-real-ip']) ||
+                    'unknown';
+
+    console.log('Newsletter subscription - Client IP detected:', clientIP);
+
+    // IP blocking check - block common VPN/spam IP ranges
+    const blockedRanges = ['111.', '185.', '45.', '91.', '104.']; // Common VPN/spam ranges
+    const isBlockedIP = blockedRanges.some(range => clientIP.startsWith(range));
+
+    if (isBlockedIP) {
+      console.log('Blocked IP detected for newsletter subscription:', clientIP);
+      res.status(403).json({
+        error: "VPN detected",
+        message: "We've detected that you're using a VPN. To help prevent spam, please turn off your VPN and try again. If you're not using a VPN, please contact us directly."
+      });
+      return;
+    }
+
+    // Sanitize and validate input data
+    const validation = sanitizeNewsletterForm({ name, email });
+
+    if (!validation.isValid) {
+      console.log('Newsletter subscription validation failed:', validation.errors);
+      res.status(400).json({
+        error: "Invalid input",
+        message: "Please check your input and try again.",
+        details: validation.errors
+      });
+      return;
+    }
+
+    const { name: sanitizedName, email: sanitizedEmail } = validation.sanitizedData!;
+
+    try {
+      // Check if email already exists in subscribers
+      const existingSubscriber = await db.collection('subscribers')
+        .where('email', '==', sanitizedEmail)
+        .limit(1)
+        .get();
+
+      if (!existingSubscriber.empty) {
+        console.log('Email already subscribed:', sanitizedEmail);
+        res.status(409).json({
+          error: "Already subscribed",
+          message: "This email address is already subscribed to our newsletter."
+        });
+        return;
+      }
+
+      // Add to subscribers collection
+      const subscriberData = {
+        email: sanitizedEmail,
+        name: sanitizedName,
+        subscribedAt: admin.firestore.FieldValue.serverTimestamp(),
+        source: 'newsletter_signup',
+        status: 'active',
+        ipAddress: clientIP,
+        userAgent: req.get('User-Agent') || 'Unknown'
+      };
+
+      const subscriberRef = await db.collection('subscribers').add(subscriberData);
+      console.log('Newsletter subscription added with ID:', subscriberRef.id);
+
+      // Send email notification to admin
+      await tx.sendMail({
+        from: `"DCCI Ministries Website" <${user}>`,
+        to,
+        subject: `New Newsletter Subscription: ${sanitizedName}`,
+        text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nIP: ${clientIP}\n\nThis person subscribed to the newsletter through the standalone signup form.`,
+        html: `
+          <h3>New Newsletter Subscription</h3>
+          <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
+          <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
+          <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
+          <hr>
+          <p><small>This subscription was made through the standalone newsletter signup form.</small></p>
+          <p><small>Subscriber ID: ${subscriberRef.id}</small></p>
+        `
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Successfully subscribed to newsletter",
+        subscriberId: subscriberRef.id
+      });
+    } catch (e) {
+      console.error('Newsletter subscription error:', e);
+      res.status(500).json({ error: "Failed to process newsletter subscription" });
+    }
+  });
+});
+
 // Function to get contact statistics (for admin use)
 export const getContactStats = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
     try {
       const contactsSnapshot = await db.collection('contacts').get();
       const subscribersSnapshot = await db.collection('subscribers').get();
-      
+
       const totalContacts = contactsSnapshot.size;
       const totalSubscribers = subscribersSnapshot.size;
-      
+
       // Count newsletter subscribers from contacts
-      const newsletterSubscribers = contactsSnapshot.docs.filter(doc => 
+      const newsletterSubscribers = contactsSnapshot.docs.filter(doc =>
         doc.data().newsletter === true
       ).length;
 
