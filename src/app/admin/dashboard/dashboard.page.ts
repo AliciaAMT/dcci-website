@@ -8,8 +8,11 @@ import {
   IonLabel
 } from '@ionic/angular/standalone';
 import { Router } from '@angular/router';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
 import { AuthService, AdminUser } from '../../services/auth';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 interface DashboardStats {
   totalUsers: number;
@@ -35,7 +38,8 @@ interface ActivityItem {
     IonIcon,
     IonChip,
     IonLabel,
-    CommonModule
+    CommonModule,
+    HttpClientModule
   ]
 })
 export class DashboardPage implements OnInit, OnDestroy {
@@ -52,7 +56,9 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private firestore: Firestore,
+    private http: HttpClient
   ) {}
 
   ngOnInit() {
@@ -78,14 +84,25 @@ export class DashboardPage implements OnInit, OnDestroy {
   }
 
   async loadDashboardData() {
-    // TODO: Implement actual data loading from Firestore
-    // For now, using mock data
-    this.stats = {
-      totalUsers: 12,
-      totalMessages: 8,
-      newsletterSubscribers: 45,
-      totalViews: 1250
-    };
+    try {
+      const adminUsersRef = collection(this.firestore, 'adminUsers');
+      const adminQuery = query(adminUsersRef, where('isAdmin', '==', true));
+      const snapshot = await getDocs(adminQuery);
+
+      // Fetch contact/message stats from Cloud Functions
+      const statsResponse: any = await firstValueFrom(
+        this.http.get(environment.firebaseFunctionsUrl + '/getContactStats')
+      );
+
+      this.stats = {
+        ...this.stats,
+        totalUsers: snapshot.size,
+        totalMessages: statsResponse?.totalContacts ?? 0,
+        newsletterSubscribers: statsResponse?.totalSubscribers ?? 0
+      };
+    } catch (error) {
+      console.error('Error loading admin user count:', error);
+    }
   }
 
   loadRecentActivity() {

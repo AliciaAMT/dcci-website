@@ -21,11 +21,24 @@ service cloud.firestore {
       allow read, delete: if false;
     }
 
+    // Helper function to check if the current user is an admin
+    function isAdminUser() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     // Admin users collection - for CMS authentication
     match /adminUsers/{userId} {
-      // Allow authenticated users to create, read, and update their own admin user document
-      allow create, read, update: if request.auth != null &&
+      // Allow authenticated users to create and update their own admin user document
+      allow create, update: if request.auth != null &&
         request.auth.uid == userId;
+
+      // Allow reading own document OR allow admins to read any admin document
+      allow get: if request.auth != null &&
+        (request.auth.uid == userId || isAdminUser());
+
+      // Allow listing documents only for admins (needed for admin dashboards)
+      allow list: if isAdminUser();
 
       // Deny delete operations
       allow delete: if false;
