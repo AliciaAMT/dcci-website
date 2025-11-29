@@ -331,3 +331,98 @@ export const getContactStats = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+// Track unique page views (approximate real users)
+export const trackPageView = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+      }
+
+      const { path } = req.body || {};
+
+      // Basic validation
+      if (typeof path !== "string" || !path) {
+        res.status(400).json({ error: "Invalid path" });
+        return;
+      }
+
+      const userAgent = (req.get("User-Agent") || "").toLowerCase();
+
+      // Very basic bot filtering
+      const botSignatures = [
+        "bot",
+        "crawler",
+        "spider",
+        "crawl",
+        "slurp",
+        "bingpreview",
+        "facebookexternalhit",
+        "monitor",
+      ];
+
+      if (!userAgent || botSignatures.some((sig) => userAgent.includes(sig))) {
+        console.log("Skipping bot or unknown user agent for page view");
+        res.status(204).end();
+        return;
+      }
+
+      // Build a coarse fingerprint (no PII stored directly)
+      const forwardedFor = req.headers["x-forwarded-for"];
+      const firstForwardedIP = Array.isArray(forwardedFor)
+        ? forwardedFor[0]?.trim()
+        : forwardedFor?.split(",")[0]?.trim();
+
+      const clientIP: string =
+        req.ip ||
+        req.connection?.remoteAddress ||
+        req.socket?.remoteAddress ||
+        firstForwardedIP ||
+        (Array.isArray(req.headers["x-real-ip"])
+          ? req.headers["x-real-ip"][0]
+          : (req.headers["x-real-ip"] as string | undefined)) ||
+        "unknown";
+
+      const today = new Date();
+      const dayKey = `${today.getUTCFullYear()}-${
+        today.getUTCMonth() + 1
+      }-${today.getUTCDate()}`;
+
+      const fingerprintSource = `${clientIP}|${userAgent}|${dayKey}`;
+      const fingerprintId = Buffer.from(fingerprintSource).toString("base64");
+
+      const viewDocRef = db.collection("pageViews").doc(fingerprintId);
+      const statsDocRef = db.collection("stats").doc("siteStats");
+
+      await db.runTransaction(async (tx) => {
+        const existingView = await tx.get(viewDocRef);
+
+        // If we've already seen this fingerprint today, don't double-count
+        if (existingView.exists) {
+          return;
+        }
+
+        tx.set(viewDocRef, {
+          path,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          dayKey,
+        });
+
+        tx.set(
+          statsDocRef,
+          {
+            totalUniqueVisitors: admin.firestore.FieldValue.increment(1),
+          },
+          { merge: true }
+        );
+      });
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error tracking page view:", error);
+      res.status(500).json({ error: "Failed to track page view" });
+    }
+  });
+});

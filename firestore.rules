@@ -57,6 +57,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Page views collection - stores unique daily visitor fingerprints (no direct PII)
+    match /pageViews/{viewId} {
+      // Only allow writes from backend (Cloud Functions / admin SDK)
+      allow read, write: if false;
+    }
+
+    // Aggregated statistics collection (e.g., siteStats)
+    match /stats/{statId} {
+      // Only allow reads for authenticated admins (for dashboard)
+      allow read: if isAdminUser();
+
+      // Writes only from backend (Cloud Functions / admin SDK)
+      allow write: if false;
+    }
+
     // Deny all other collections
     match /{document=**} {
       allow read, write: if false;

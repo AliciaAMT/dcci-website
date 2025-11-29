@@ -94,11 +94,17 @@ export class DashboardPage implements OnInit, OnDestroy {
         this.http.get(environment.firebaseFunctionsUrl + '/getContactStats')
       );
 
+      // Fetch site view stats from Firestore (aggregated by Cloud Function)
+      const statsDocRef = collection(this.firestore, 'stats');
+      const statsDocSnap = await getDocs(query(statsDocRef, where('__name__', '==', 'siteStats')));
+      const siteStatsData = !statsDocSnap.empty ? statsDocSnap.docs[0].data() as any : null;
+
       this.stats = {
         ...this.stats,
         totalUsers: snapshot.size,
         totalMessages: statsResponse?.totalContacts ?? 0,
-        newsletterSubscribers: statsResponse?.totalSubscribers ?? 0
+        newsletterSubscribers: statsResponse?.totalSubscribers ?? 0,
+        totalViews: siteStatsData?.totalUniqueVisitors ?? 0
       };
     } catch (error) {
       console.error('Error loading admin user count:', error);

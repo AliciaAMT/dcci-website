@@ -4,6 +4,7 @@ import {
   IonIcon
 } from '@ionic/angular/standalone';
 import { VersionService } from '../services/version.service';
+import { AnalyticsService } from '../services/analytics.service';
 import { ContactFormComponent } from '../components/contact-form.component';
 import { NewsletterSignupComponent } from '../components/newsletter-signup.component';
 
@@ -17,7 +18,13 @@ import { NewsletterSignupComponent } from '../components/newsletter-signup.compo
 export class WelcomePage {
   version: string;
 
-  constructor(private versionService: VersionService) {
+  constructor(
+    private versionService: VersionService,
+    private analyticsService: AnalyticsService
+  ) {
     this.version = this.versionService.getVersion();
+    this.analyticsService.trackPageView('/welcome').catch(() => {
+      // Ignore tracking errors; already logged by service
+    });
   }
 }

@@ -4,6 +4,7 @@ import {
   IonIcon
 } from '@ionic/angular/standalone';
 import { VersionService } from '../services/version.service';
+import { AnalyticsService } from '../services/analytics.service';
 import { ContactFormComponent } from '../components/contact-form.component';
 import { NewsletterSignupComponent } from '../components/newsletter-signup.component';
 
@@ -17,7 +18,14 @@ import { NewsletterSignupComponent } from '../components/newsletter-signup.compo
 export class HomePage {
   version: string;
 
-  constructor(private versionService: VersionService) {
+  constructor(
+    private versionService: VersionService,
+    private analyticsService: AnalyticsService
+  ) {
     this.version = this.versionService.getVersion();
+    // Fire-and-forget tracking of home page views
+    this.analyticsService.trackPageView('/home').catch(() => {
+      // Swallow errors; already logged in service
+    });
   }
 }
