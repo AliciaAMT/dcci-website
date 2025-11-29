@@ -15,6 +15,20 @@ const to = functions.config().mail.to as string;
 // Cooldown period in milliseconds (5 minutes)
 const COOLDOWN_PERIOD = 5 * 60 * 1000;
 
+const FREE_TIER_STORAGE_BYTES = 1024 * 1024 * 1024; // 1 GB free tier
+
+function getDefaultBucketName(): string {
+  const configuredBucket = admin.app().options.storageBucket;
+  if (configuredBucket) {
+    if (configuredBucket.endsWith('.firebasestorage.app')) {
+      return configuredBucket.replace('.firebasestorage.app', '.appspot.com');
+    }
+    return configuredBucket;
+  }
+  const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || 'unknown-project';
+  return `${projectId}.appspot.com`;
+}
+
 const tx = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
@@ -423,6 +437,54 @@ export const trackPageView = functions.https.onRequest((req, res) => {
     } catch (error) {
       console.error("Error tracking page view:", error);
       res.status(500).json({ error: "Failed to track page view" });
+    }
+  });
+});
+
+// Get Firebase Storage usage vs. free-tier allowance
+export const getStorageUsage = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    try {
+      const bucket = admin.storage().bucket(getDefaultBucketName());
+      let totalBytes = 0;
+      let nextQuery: { autoPaginate: false; pageToken?: string } = { autoPaginate: false };
+
+      do {
+        const [files, queryResult] = await bucket.getFiles(nextQuery);
+        files.forEach(file => {
+          const size = Number(file.metadata?.size || 0);
+          if (!Number.isNaN(size)) {
+            totalBytes += size;
+          }
+        });
+        nextQuery.pageToken = queryResult?.pageToken;
+      } while (nextQuery.pageToken);
+
+      const bytesRemaining = Math.max(0, FREE_TIER_STORAGE_BYTES - totalBytes);
+      const percentUsed = Math.min(
+        100,
+        Number(((totalBytes / FREE_TIER_STORAGE_BYTES) * 100).toFixed(2))
+      );
+
+      res.json({
+        totalBytes,
+        freeTierBytes: FREE_TIER_STORAGE_BYTES,
+        bytesRemaining,
+        percentUsed
+      });
+    } catch (error: any) {
+      if (error?.code === 404 || error?.message?.includes('bucket does not exist')) {
+        res.json({
+          totalBytes: 0,
+          freeTierBytes: FREE_TIER_STORAGE_BYTES,
+          bytesRemaining: FREE_TIER_STORAGE_BYTES,
+          percentUsed: 0,
+          note: 'Bucket not found; returning zero usage.'
+        });
+        return;
+      }
+      console.error("Error getting storage usage:", error);
+      res.status(500).json({ error: "Failed to get storage usage" });
     }
   });
 });

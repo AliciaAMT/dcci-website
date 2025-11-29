@@ -150,11 +150,15 @@
                 <ion-label>Active</ion-label>
               </ion-chip>
             </div>
-            <div class="status-item warning-text">
-              <div class="status-indicator warning"></div>
-              <span>Storage Usage</span>
+            <div class="status-item" [class.warning-text]="stats.storagePercentUsed >= 80">
+              <div class="status-indicator" [ngClass]="stats.storagePercentUsed >= 80 ? 'warning' : 'success'"></div>
+              <span>
+                Storage Usage
+                ({{ (stats.storageUsedBytes / (1024 * 1024 * 1024)) | number:'1.1-1' }} /
+                {{ (stats.storageLimitBytes / (1024 * 1024 * 1024)) | number:'1.1-1' }} GB)
+              </span>
               <ion-chip color="primary" size="small">
-                <ion-label>75%</ion-label>
+                <ion-label>{{ stats.storagePercentUsed | number:'1.0-0' }}%</ion-label>
               </ion-chip>
             </div>
             <div class="status-item">

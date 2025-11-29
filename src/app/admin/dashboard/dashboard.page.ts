@@ -9,7 +9,7 @@ import {
 } from '@ionic/angular/standalone';
 import { Router } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, doc, getDoc, getDocs, query, where } from '@angular/fire/firestore';
 import { AuthService, AdminUser } from '../../services/auth';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -19,6 +19,9 @@ interface DashboardStats {
   totalMessages: number;
   newsletterSubscribers: number;
   totalViews: number;
+  storageUsedBytes: number;
+  storageLimitBytes: number;
+  storagePercentUsed: number;
 }
 
 interface ActivityItem {
@@ -48,7 +51,10 @@ export class DashboardPage implements OnInit, OnDestroy {
     totalUsers: 0,
     totalMessages: 0,
     newsletterSubscribers: 0,
-    totalViews: 0
+    totalViews: 0,
+    storageUsedBytes: 0,
+    storageLimitBytes: 1024 * 1024 * 1024,
+    storagePercentUsed: 0
   };
   recentActivity: ActivityItem[] = [];
 
@@ -87,24 +93,29 @@ export class DashboardPage implements OnInit, OnDestroy {
     try {
       const adminUsersRef = collection(this.firestore, 'adminUsers');
       const adminQuery = query(adminUsersRef, where('isAdmin', '==', true));
-      const snapshot = await getDocs(adminQuery);
 
-      // Fetch contact/message stats from Cloud Functions
-      const statsResponse: any = await firstValueFrom(
-        this.http.get(environment.firebaseFunctionsUrl + '/getContactStats')
-      );
+      const [adminSnapshot, contactStats, storageStats, siteStatsSnap] = await Promise.all([
+        getDocs(adminQuery),
+        firstValueFrom(this.http.get(environment.firebaseFunctionsUrl + '/getContactStats')),
+        firstValueFrom(this.http.get(environment.firebaseFunctionsUrl + '/getStorageUsage')),
+        getDoc(doc(this.firestore, 'stats', 'siteStats'))
+      ]);
 
-      // Fetch site view stats from Firestore (aggregated by Cloud Function)
-      const statsDocRef = collection(this.firestore, 'stats');
-      const statsDocSnap = await getDocs(query(statsDocRef, where('__name__', '==', 'siteStats')));
-      const siteStatsData = !statsDocSnap.empty ? statsDocSnap.docs[0].data() as any : null;
+      const siteStatsData = siteStatsSnap.exists() ? (siteStatsSnap.data() as any) : null;
+      const storageData = storageStats as any;
+      const storageLimitBytes = storageData?.freeTierBytes ?? this.stats.storageLimitBytes;
+      const storageUsedBytes = storageData?.totalBytes ?? 0;
+      const storagePercentUsed = storageData?.percentUsed ?? 0;
 
       this.stats = {
         ...this.stats,
-        totalUsers: snapshot.size,
-        totalMessages: statsResponse?.totalContacts ?? 0,
-        newsletterSubscribers: statsResponse?.totalSubscribers ?? 0,
-        totalViews: siteStatsData?.totalUniqueVisitors ?? 0
+        totalUsers: adminSnapshot.size,
+        totalMessages: (contactStats as any)?.totalContacts ?? 0,
+        newsletterSubscribers: (contactStats as any)?.totalSubscribers ?? 0,
+        totalViews: siteStatsData?.totalUniqueVisitors ?? 0,
+        storageUsedBytes,
+        storageLimitBytes,
+        storagePercentUsed
       };
     } catch (error) {
       console.error('Error loading admin user count:', error);
