@@ -1,0 +1,131 @@
+<ion-content [fullscreen]="true" class="admin-login-page">
+  <div class="login-container">
+    <div class="login-card">
+      <!-- Header -->
+      <div class="login-header">
+        <img src="assets/icon/icon-no-text.webp" alt="DCCI Ministries" class="login-logo">
+        <h1>Admin Login</h1>
+        <p>DCCI Ministries CMS Access</p>
+      </div>
+
+      <!-- Login Form -->
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        <!-- Email Field -->
+        <ion-item class="form-item">
+          <ion-icon name="mail-outline" slot="start"></ion-icon>
+          <ion-label position="stacked">Email Address</ion-label>
+          <ion-input
+            type="email"
+            formControlName="email"
+            placeholder="Enter your email"
+            [class.ion-invalid]="isFieldInvalid('email')">
+          </ion-input>
+        </ion-item>
+        <ion-note *ngIf="isFieldInvalid('email')" color="danger" class="error-note">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          {{ getFieldError('email') }}
+        </ion-note>
+
+        <!-- Password Field -->
+        <ion-item class="form-item">
+          <ion-icon name="lock-closed-outline" slot="start"></ion-icon>
+          <ion-label position="stacked">Password</ion-label>
+          <ion-input
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            placeholder="Enter your password"
+            [class.ion-invalid]="isFieldInvalid('password')">
+          </ion-input>
+          <ion-button
+            fill="clear"
+            slot="end"
+            (click)="togglePasswordVisibility()"
+            aria-label="Toggle password visibility">
+            <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          </ion-button>
+        </ion-item>
+        <ion-note *ngIf="isFieldInvalid('password')" color="danger" class="error-note">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          {{ getFieldError('password') }}
+        </ion-note>
+
+        <!-- Honeypot Field (Hidden from users) -->
+        <div class="honeypot-field">
+          <ion-input
+            type="text"
+            formControlName="website"
+            placeholder="Leave this field empty"
+            tabindex="-1"
+            autocomplete="off">
+          </ion-input>
+        </div>
+
+        <!-- Submit Button -->
+        <ion-button
+          expand="block"
+          type="submit"
+          [disabled]="loginForm.invalid || isLoading"
+          class="login-button">
+          <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
+          <span *ngIf="!isLoading">{{ isSignUpMode ? 'Create Account' : 'Sign In' }}</span>
+        </ion-button>
+
+        <!-- Toggle Mode Button -->
+        <ion-button
+          fill="clear"
+          expand="block"
+          (click)="toggleMode()"
+          class="toggle-button">
+          {{ isSignUpMode ? 'Already have an account? Sign In' : "Don't have an account? Create One" }}
+        </ion-button>
+
+        <!-- Forgot Password Link (only show in login mode) -->
+        <div *ngIf="!isSignUpMode" class="forgot-password-section">
+          <ion-button
+            fill="clear"
+            size="small"
+            (click)="goToForgotPassword()"
+            class="forgot-password-button">
+            <ion-icon name="help-circle-outline" slot="start"></ion-icon>
+            Forgot Password?
+          </ion-button>
+        </div>
+      </form>
+
+      <!-- Status Message -->
+      <div *ngIf="statusMessage" class="status-message" [class.success]="statusMessage.success" [class.error]="!statusMessage.success">
+        <ion-icon [name]="statusMessage.success ? 'checkmark-circle-outline' : 'alert-circle-outline'"></ion-icon>
+        <span>{{ statusMessage.message }}</span>
+        
+        <!-- Forgot Password Button for Locked Accounts -->
+        <div *ngIf="statusMessage.isLocked" class="locked-account-actions">
+          <div class="lockout-instructions">
+            <ion-icon name="lock-closed-outline" class="lock-icon"></ion-icon>
+            <p><strong>To regain access:</strong></p>
+            <p>1. Click "Reset Password" below</p>
+            <p>2. Check your email for reset instructions</p>
+            <p>3. Create a new password</p>
+          </div>
+          <ion-button 
+            fill="solid" 
+            color="primary" 
+            size="default" 
+            (click)="goToForgotPassword()"
+            class="forgot-password-btn">
+            <ion-icon name="key-outline" slot="start"></ion-icon>
+            Reset Password Now
+          </ion-button>
+        </div>
+      </div>
+
+      <!-- Security Notice -->
+      <div class="security-notice">
+        <ion-icon name="shield-checkmark-outline"></ion-icon>
+        <p>
+          <strong>Security Notice:</strong> This is a secure admin area.
+          All login attempts are logged and monitored. Unauthorized access is prohibited.
+        </p>
+      </div>
+    </div>
+  </div>
+</ion-content>

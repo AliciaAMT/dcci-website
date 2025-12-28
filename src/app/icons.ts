@@ -8,10 +8,19 @@ export function registerIonicons(): void {
 
   // Set asset path - use static path for production builds
   try {
-    // For production builds, always use root path to avoid base URL issues
-    setAssetPath('/');
+    // Use document.baseURI if available, otherwise fall back to root path
+    // This prevents "Invalid base URL" errors during icon loading
+    const basePath = (typeof document !== 'undefined' && document.baseURI)
+      ? new URL(document.baseURI).pathname || '/'
+      : '/';
+    setAssetPath(basePath);
   } catch (error) {
-    console.warn('Failed to set asset path:', error);
+    // Fallback to root path if baseURI fails
+    try {
+      setAssetPath('/');
+    } catch (fallbackError) {
+      console.warn('Failed to set asset path:', fallbackError);
+    }
   }
 
   addIcons({
@@ -39,5 +48,36 @@ export function registerIonicons(): void {
     'send-outline': i.sendOutline,
     'checkmark-circle-outline': i.checkmarkCircleOutline,
     'alert-circle-outline': i.alertCircleOutline,
+    // Admin login icons
+    'lock-closed-outline': i.lockClosedOutline,
+    'eye-off-outline': i.eyeOffOutline,
+    // Dashboard icons
+    'log-out-outline': i.logOutOutline,
+    'flash-outline': i.flashOutline,
+    'create-outline': i.createOutline,
+    'settings-outline': i.settingsOutline,
+    'server-outline': i.serverOutline,
+    'analytics-outline': i.analyticsOutline,
+    'newspaper-outline': i.newspaperOutline,
+    'people-outline': i.peopleOutline,
+    'person-add-outline': i.personAddOutline,
+    'log-in-outline': i.logInOutline,
+    'checkmark-circle': i.checkmarkCircle,
+    'alert-circle': i.alertCircle,
+    'shield-outline': i.shieldOutline,
+    // Password recovery icons
+    'arrow-back-outline': i.arrowBackOutline,
+    'help-circle-outline': i.helpCircleOutline,
+    'refresh-outline': i.refreshOutline,
+    'person-outline': i.personOutline,
+    'checkmark-outline': i.checkmarkOutline,
+    'close-circle': i.closeCircle,
+    // Content creation icons
+    'save-outline': i.saveOutline,
+    'document-text-outline': i.documentTextOutline,
+    'pencil-outline': i.pencilOutline,
+    'trash-outline': i.trashOutline,
+    // Comments icons
+    'chatbubbles-outline': i.chatbubblesOutline,
   });
 }

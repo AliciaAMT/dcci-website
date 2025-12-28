@@ -1,0 +1,195 @@
+.newsletter-signup-container {
+  margin: 2rem 0;
+
+  .newsletter-signup-card {
+    background: var(--ion-card-background, #ffffff);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--ion-box-shadow, 0 4px 16px rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--ion-border-color, #e0e0e0);
+    max-width: 700px;
+    margin: 0 auto;
+
+    .newsletter-header {
+      text-align: center;
+      margin-bottom: 2rem;
+
+      .newsletter-icon {
+        font-size: 4rem;
+        color: var(--ion-color-primary, #3880ff);
+        margin-bottom: 1rem;
+      }
+
+      .newsletter-title {
+        margin: 0 0 1rem 0;
+        color: var(--ion-text-color, #000000);
+        font-size: 2.5rem;
+        font-weight: 600;
+      }
+
+      p {
+        margin: 0;
+        color: var(--ion-text-color-step-600, #666666);
+        line-height: 1.5;
+        font-size: 1.2rem;
+      }
+    }
+
+    .success-message {
+      text-align: center;
+      padding: 2rem;
+
+      .success-icon {
+        font-size: 4rem;
+        color: var(--ion-color-success, #2dd36f);
+        margin-bottom: 1rem;
+      }
+
+      h4 {
+        margin: 0 0 0.5rem 0;
+        color: var(--ion-color-success, #2dd36f);
+        font-size: 1.5rem;
+      }
+
+      p {
+        margin: 0 0 1rem 0;
+        color: var(--ion-text-color-step-600, #666666);
+      }
+    }
+
+    .error-message {
+      background: rgba(var(--ion-color-danger-rgb, 245, 61, 61), 0.1);
+      border: 1px solid var(--ion-color-danger, #f53d3d);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      .error-icon {
+        font-size: 1.5rem;
+        color: var(--ion-color-danger, #f53d3d);
+        flex-shrink: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--ion-color-danger, #f53d3d);
+        font-weight: 500;
+      }
+    }
+
+    .newsletter-form {
+
+      .form-field-group {
+        margin-bottom: 1.5rem;
+
+        .form-label {
+          display: block;
+          color: var(--ion-text-color, #000000);
+          font-weight: 700;
+          font-size: 1.3rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .form-input {
+          --background: var(--ion-item-background, #ffffff);
+          --color: var(--ion-text-color, #000000);
+          --placeholder-color: var(--ion-text-color-step-400, #999999);
+          --border-radius: 8px;
+          --border-width: 1px;
+          --border-style: solid;
+          --border-color: var(--ion-border-color, #e0e0e0);
+          --padding-start: 1rem;
+          --padding-end: 1rem;
+          --padding-top: 0.75rem;
+          --padding-bottom: 0.75rem;
+          font-size: 1.1rem;
+          width: 100%;
+          min-height: 48px;
+          display: block;
+
+          &::part(native) {
+            padding: 0;
+          }
+
+          // Fallback styles for production builds
+          background: var(--background, #ffffff) !important;
+          color: var(--color, #000000) !important;
+          border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #e0e0e0) !important;
+          border-radius: var(--border-radius, 8px) !important;
+          padding: var(--padding-top, 0.75rem) var(--padding-end, 1rem) var(--padding-bottom, 0.75rem) var(--padding-start, 1rem) !important;
+        }
+
+        .error-text {
+          color: var(--ion-color-danger, #f53d3d);
+          font-size: 0.9rem;
+          margin: 0.25rem 0 0 0;
+          font-weight: 500;
+        }
+      }
+
+      .form-actions {
+        margin-top: 2rem;
+
+        .subscribe-button {
+          --border-radius: 8px;
+          --padding-top: 1rem;
+          --padding-bottom: 1rem;
+          font-weight: 600;
+          font-size: 1.1rem;
+          height: 3.5rem;
+
+          &:disabled {
+            --opacity: 0.6;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .newsletter-signup-container {
+    margin: 1rem 0;
+
+    .newsletter-signup-card {
+      padding: 1.5rem;
+      margin: 0 1rem;
+
+      .newsletter-header {
+        margin-bottom: 1.5rem;
+
+        .newsletter-icon {
+          font-size: 3rem;
+        }
+
+        .newsletter-title {
+          font-size: 1.8rem;
+        }
+
+        p {
+          font-size: 1rem;
+        }
+      }
+
+      .newsletter-form {
+        .form-field-group {
+          .form-label {
+            font-size: 1.1rem;
+          }
+
+          .form-input {
+            font-size: 1rem;
+          }
+        }
+
+        .form-actions {
+          margin-top: 1.5rem;
+        }
+      }
+    }
+  }
+}

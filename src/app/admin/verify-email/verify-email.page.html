@@ -1,0 +1,76 @@
+<ion-content class="ion-padding">
+  <div class="verification-container">
+    <div class="verification-card">
+      <!-- Success State -->
+      <div *ngIf="verificationStatus === 'success'" class="status-section success">
+        <ion-icon name="checkmark-circle" class="status-icon"></ion-icon>
+        <h2>Email Verified Successfully!</h2>
+        <p>Your email address has been verified. You can now log in to access the admin dashboard.</p>
+        <ion-button expand="block" (click)="goToLogin()" class="action-button">
+          <ion-icon name="log-in-outline" slot="start"></ion-icon>
+          Go to Login
+        </ion-button>
+      </div>
+
+      <!-- Error State -->
+      <div *ngIf="verificationStatus === 'error'" class="status-section error">
+        <ion-icon name="alert-circle" class="status-icon"></ion-icon>
+        <h2>Verification Failed</h2>
+        <p>{{ errorMessage }}</p>
+        <div class="action-buttons">
+          <ion-button expand="block" (click)="goToLogin()" class="action-button">
+            <ion-icon name="log-in-outline" slot="start"></ion-icon>
+            Back to Login
+          </ion-button>
+          <ion-button expand="block" fill="outline" (click)="resendVerification()" class="action-button" [disabled]="isResending">
+            <ion-spinner *ngIf="isResending" name="crescent" slot="start"></ion-spinner>
+            <ion-icon *ngIf="!isResending" name="mail-outline" slot="start"></ion-icon>
+            {{ isResending ? 'Sending...' : 'Resend Verification Email' }}
+          </ion-button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="verificationStatus === 'loading'" class="status-section loading">
+        <ion-spinner name="crescent" class="loading-spinner"></ion-spinner>
+        <h2>Verifying Email...</h2>
+        <p>Please wait while we verify your email address.</p>
+      </div>
+
+      <!-- Pending State (for manual verification) -->
+      <div *ngIf="verificationStatus === 'pending'" class="status-section pending">
+        <ion-icon name="mail-outline" class="status-icon"></ion-icon>
+        <h2>Check Your Email</h2>
+        <p>We've sent a verification link to your email address. Please click the link to verify your account.</p>
+        <div class="info-box">
+          <ion-icon name="information-circle-outline"></ion-icon>
+          <div>
+            <strong>Didn't receive the email?</strong>
+            <ul>
+              <li>Check your spam/junk folder</li>
+              <li>Make sure you entered the correct email address</li>
+              <li>Wait a few minutes and try again</li>
+            </ul>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <ion-button expand="block" (click)="goToLogin()" class="action-button">
+            <ion-icon name="log-in-outline" slot="start"></ion-icon>
+            Back to Login
+          </ion-button>
+          <ion-button expand="block" fill="outline" (click)="resendVerification()" class="action-button" [disabled]="isResending">
+            <ion-spinner *ngIf="isResending" name="crescent" slot="start"></ion-spinner>
+            <ion-icon *ngIf="!isResending" name="mail-outline" slot="start"></ion-icon>
+            {{ isResending ? 'Sending...' : 'Resend Verification Email' }}
+          </ion-button>
+        </div>
+      </div>
+
+      <!-- Success Message for Resend -->
+      <div *ngIf="resendMessage" class="resend-message" [class.success]="resendMessage.success" [class.error]="!resendMessage.success">
+        <ion-icon [name]="resendMessage.success ? 'checkmark-circle' : 'alert-circle'"></ion-icon>
+        {{ resendMessage.message }}
+      </div>
+    </div>
+  </div>
+</ion-content>

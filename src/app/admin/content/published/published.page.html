@@ -1,0 +1,101 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/admin/content/manage"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Published</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="published-container">
+    <!-- Search and Filter Section -->
+    <div class="search-section">
+      <ion-item>
+        <ion-label position="stacked">Search</ion-label>
+        <ion-input
+          [(ngModel)]="searchTerm"
+          placeholder="Search published articles..."
+          (ionInput)="onSearch()"
+        ></ion-input>
+        <ion-icon name="search-outline" slot="end"></ion-icon>
+      </ion-item>
+
+      <div class="filter-row">
+        <ion-item>
+          <ion-label>Search by:</ion-label>
+          <ion-select [(ngModel)]="searchType" (ionChange)="onSearch()">
+            <ion-select-option value="title">Title</ion-select-option>
+            <ion-select-option value="content">Content</ion-select-option>
+            <ion-select-option value="tags">Tags</ion-select-option>
+            <ion-select-option value="date">Date</ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item>
+          <ion-label>Sort by:</ion-label>
+          <ion-select [(ngModel)]="sortBy" (ionChange)="onSortChange()">
+            <ion-select-option value="date">Date</ion-select-option>
+            <ion-select-option value="title">Title</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div *ngIf="isLoading" class="loading-container">
+      <ion-spinner></ion-spinner>
+      <p>Loading published articles...</p>
+    </div>
+
+    <!-- Published List -->
+    <div *ngIf="!isLoading" class="published-list">
+      <div *ngIf="filteredPublished.length === 0" class="empty-state">
+        <ion-icon name="newspaper-outline"></ion-icon>
+        <p>No published articles found</p>
+      </div>
+
+      <div *ngFor="let article of filteredPublished" class="article-card">
+        <div class="article-header">
+          <h3>{{ article.title }}</h3>
+          <div class="article-meta">
+            <span class="date" *ngIf="article.publishedAt">
+              Published: {{ getDate(article.publishedAt) | date:'short' }}
+            </span>
+            <span class="date" *ngIf="!article.publishedAt">
+              {{ getDate(article.createdAt) | date:'short' }}
+            </span>
+          </div>
+        </div>
+        
+        <p class="article-excerpt" *ngIf="article.excerpt">{{ article.excerpt }}</p>
+        
+        <div class="article-tags" *ngIf="article.tags && article.tags.length > 0">
+          <ion-chip *ngFor="let tag of article.tags" color="primary" size="small">
+            <ion-label>{{ tag }}</ion-label>
+          </ion-chip>
+        </div>
+
+        <div class="article-actions">
+          <ion-button fill="clear" size="small" (click)="viewPublished(article)">
+            <ion-icon name="eye-outline" slot="start"></ion-icon>
+            View
+          </ion-button>
+          <ion-button fill="clear" size="small" (click)="editPublished(article)">
+            <ion-icon name="pencil-outline" slot="start"></ion-icon>
+            Edit
+          </ion-button>
+          <ion-button fill="clear" size="small" color="warning" (click)="unpublishContent(article)">
+            <ion-icon name="archive-outline" slot="start"></ion-icon>
+            Unpublish
+          </ion-button>
+          <ion-button fill="clear" size="small" color="danger" (click)="deletePublished(article)">
+            <ion-icon name="trash-outline" slot="start"></ion-icon>
+            Delete
+          </ion-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</ion-content>
+

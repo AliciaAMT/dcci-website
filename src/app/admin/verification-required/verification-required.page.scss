@@ -1,0 +1,381 @@
+.verification-required-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.verification-required-card {
+  background: var(--ion-color-light);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--ion-color-light-shade);
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
+  
+  .status-icon {
+    margin-bottom: 20px;
+    
+    ion-icon {
+      font-size: 4rem;
+      color: var(--ion-color-warning);
+    }
+  }
+  
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+    color: var(--ion-color-dark);
+  }
+  
+  .page-description {
+    font-size: 1.1rem;
+    line-height: 1.5;
+    color: var(--ion-color-medium);
+    margin: 0;
+  }
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--ion-color-primary);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  
+  ion-icon {
+    font-size: 1.1rem;
+    color: white;
+  }
+}
+
+.instructions-section {
+  margin-bottom: 32px;
+  
+  h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0 0 20px 0;
+    color: var(--ion-color-dark);
+  }
+  
+  .instruction-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .instruction-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    
+    .step-number {
+      background: var(--ion-color-primary);
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    
+    .step-content {
+      flex: 1;
+      
+      h4 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        color: var(--ion-color-dark);
+      }
+      
+      p {
+        font-size: 0.95rem;
+        line-height: 1.4;
+        color: var(--ion-color-medium);
+        margin: 0;
+      }
+    }
+  }
+}
+
+.troubleshooting-section {
+  background: var(--ion-color-light-tint);
+  border: 1px solid var(--ion-color-light-shade);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 32px;
+  
+  h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    color: var(--ion-color-dark);
+  }
+  
+  .troubleshooting-tips {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .tip-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--ion-color-medium);
+    
+    ion-icon {
+      color: var(--ion-color-success);
+      font-size: 1rem;
+    }
+  }
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  
+  .primary-button {
+    --border-radius: 12px;
+    font-weight: 600;
+    height: 48px;
+    
+    ion-icon {
+      font-size: 1.1rem;
+    }
+  }
+  
+  .secondary-button {
+    --border-radius: 12px;
+    font-weight: 600;
+    height: 48px;
+    
+    ion-icon {
+      font-size: 1.1rem;
+    }
+  }
+}
+
+.status-message {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  animation: slideIn 0.3s ease-out;
+  
+  ion-icon {
+    margin-right: 8px;
+    font-size: 1.1rem;
+  }
+  
+  &.success {
+    background: var(--ion-color-success-tint);
+    color: var(--ion-color-success-shade);
+    border: 1px solid var(--ion-color-success);
+  }
+  
+  &.error {
+    background: var(--ion-color-danger-tint);
+    color: var(--ion-color-danger-shade);
+    border: 1px solid var(--ion-color-danger);
+  }
+}
+
+.success-section {
+  text-align: center;
+  animation: fadeIn 0.5s ease-in-out;
+  
+  .success-icon {
+    margin-bottom: 20px;
+    
+    ion-icon {
+      font-size: 4rem;
+      color: var(--ion-color-success);
+    }
+  }
+  
+  h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    color: var(--ion-color-dark);
+  }
+  
+  p {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--ion-color-medium);
+    margin: 0 0 12px 0;
+    
+    &.success-instructions {
+      font-weight: 500;
+      color: var(--ion-color-dark);
+    }
+  }
+  
+  .countdown-info {
+    background: var(--ion-color-warning-tint);
+    color: var(--ion-color-warning-shade);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+}
+
+.footer-info {
+  background: var(--ion-color-light-shade);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  margin-top: 24px;
+  
+  p {
+    font-size: 0.9rem;
+    color: var(--ion-color-medium);
+    margin: 0;
+    
+    strong {
+      color: var(--ion-color-dark);
+    }
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Mobile responsiveness
+@media (max-width: 768px) {
+  .verification-required-container {
+    padding: 16px;
+  }
+  
+  .verification-required-card {
+    padding: 24px;
+  }
+  
+  .page-header {
+    .status-icon ion-icon {
+      font-size: 3rem;
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+    }
+    
+    .page-description {
+      font-size: 1rem;
+    }
+  }
+  
+  .instruction-step {
+    .step-number {
+      width: 28px;
+      height: 28px;
+      font-size: 0.8rem;
+    }
+    
+    .step-content {
+      h4 {
+        font-size: 1rem;
+      }
+      
+      p {
+        font-size: 0.9rem;
+      }
+    }
+  }
+  
+  .troubleshooting-section {
+    padding: 16px;
+  }
+  
+  .success-section {
+    .success-icon ion-icon {
+      font-size: 3rem;
+    }
+    
+    h2 {
+      font-size: 1.5rem;
+    }
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .verification-required-card {
+    background: var(--ion-color-dark);
+    border-color: var(--ion-color-dark-shade);
+  }
+  
+  h1, h3, h4 {
+    color: var(--ion-color-light);
+  }
+  
+  .user-info {
+    background: var(--ion-color-primary);
+    color: white;
+    
+    ion-icon {
+      color: white;
+    }
+  }
+  
+  .troubleshooting-section {
+    background: var(--ion-color-dark-tint);
+    border-color: var(--ion-color-dark-shade);
+  }
+  
+  .footer-info {
+    background: var(--ion-color-dark-tint);
+    
+    p strong {
+      color: var(--ion-color-light);
+    }
+  }
+}

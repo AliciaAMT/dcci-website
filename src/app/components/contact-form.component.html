@@ -85,12 +85,32 @@
         </div>
       </div>
 
+      <!-- Newsletter Subscription -->
+      <div class="form-field-group">
+        <ion-checkbox
+          id="newsletter"
+          formControlName="newsletter"
+          class="newsletter-checkbox">
+        </ion-checkbox>
+        <label for="newsletter" class="newsletter-label">
+          I would like to receive occasional email updates and newsletters from DCCI Ministries
+        </label>
+      </div>
+
       <!-- Honeypot field - hidden from users -->
       <div class="honeypot-field">
         <ion-input
           formControlName="website"
           placeholder="Leave this field empty"
           type="text">
+        </ion-input>
+      </div>
+
+      <!-- Hidden timestamp field for bot detection -->
+      <div class="honeypot-field">
+        <ion-input
+          formControlName="formTimestamp"
+          type="hidden">
         </ion-input>
       </div>
 

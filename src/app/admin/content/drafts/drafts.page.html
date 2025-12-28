@@ -1,0 +1,96 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/admin/content/manage"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Drafts</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="drafts-container">
+    <!-- Search and Filter Section -->
+    <div class="search-section">
+      <ion-item>
+        <ion-label position="stacked">Search</ion-label>
+        <ion-input
+          [(ngModel)]="searchTerm"
+          placeholder="Search drafts..."
+          (ionInput)="onSearch()"
+        ></ion-input>
+        <ion-icon name="search-outline" slot="end"></ion-icon>
+      </ion-item>
+
+      <div class="filter-row">
+        <ion-item>
+          <ion-label>Search by:</ion-label>
+          <ion-select [(ngModel)]="searchType" (ionChange)="onSearch()">
+            <ion-select-option value="title">Title</ion-select-option>
+            <ion-select-option value="content">Content</ion-select-option>
+            <ion-select-option value="tags">Tags</ion-select-option>
+            <ion-select-option value="date">Date</ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item>
+          <ion-label>Sort by:</ion-label>
+          <ion-select [(ngModel)]="sortBy" (ionChange)="onSortChange()">
+            <ion-select-option value="date">Date</ion-select-option>
+            <ion-select-option value="title">Title</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div *ngIf="isLoading" class="loading-container">
+      <ion-spinner></ion-spinner>
+      <p>Loading drafts...</p>
+    </div>
+
+    <!-- Drafts List -->
+    <div *ngIf="!isLoading" class="drafts-list">
+      <div *ngIf="filteredDrafts.length === 0" class="empty-state">
+        <ion-icon name="document-text-outline"></ion-icon>
+        <p>No drafts found</p>
+      </div>
+
+      <div *ngFor="let draft of filteredDrafts" class="draft-card">
+        <div class="draft-header">
+          <h3>{{ draft.title }}</h3>
+          <div class="draft-meta">
+            <span class="date">{{ getDate(draft.updatedAt) | date:'short' }}</span>
+          </div>
+        </div>
+
+        <p class="draft-excerpt" *ngIf="draft.excerpt">{{ draft.excerpt }}</p>
+
+        <div class="draft-tags" *ngIf="draft.tags && draft.tags.length > 0">
+          <ion-chip *ngFor="let tag of draft.tags" color="primary" size="small">
+            <ion-label>{{ tag }}</ion-label>
+          </ion-chip>
+        </div>
+
+        <div class="draft-actions">
+          <ion-button fill="clear" size="small" (click)="viewDraft(draft)">
+            <ion-icon name="eye-outline" slot="start"></ion-icon>
+            View
+          </ion-button>
+          <ion-button fill="clear" size="small" (click)="editDraft(draft)">
+            <ion-icon name="pencil-outline" slot="start"></ion-icon>
+            Edit
+          </ion-button>
+          <ion-button fill="clear" size="small" color="success" (click)="publishDraft(draft)">
+            <ion-icon name="checkmark-outline" slot="start"></ion-icon>
+            Publish
+          </ion-button>
+          <ion-button fill="clear" size="small" color="danger" (click)="deleteDraft(draft)">
+            <ion-icon name="trash-outline" slot="start"></ion-icon>
+            Delete
+          </ion-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</ion-content>
+

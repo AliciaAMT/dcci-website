@@ -1,6 +1,6 @@
 {
   "name": "dcci-website",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "author": "Ionic Framework",
   "homepage": "https://ionicframework.com/",
   "scripts": {
@@ -15,7 +15,10 @@
     "build:test": "ng build --configuration test",
     "build:prod": "ng build --configuration production",
     "build:prod-test": "ng build --configuration prod-test",
+    "build:all": "node scripts/build-all.js",
     "watch": "ng build --watch --configuration development",
+    "dev:public": "cd public-site && npm run dev",
+    "build:public": "cd public-site && npm run build",
     "td": "node scripts/deploy.js staging",
     "ld": "node scripts/deploy.js production",
     "deploy:staging": "node scripts/deploy.js staging",

@@ -1,0 +1,560 @@
+.welcome-page {
+  --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
+  --content-max-width: 120rem;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Content container */
+.welcome-container {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 2rem 3rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Header Section */
+.header-section {
+  text-align: center;
+  margin-bottom: 3rem;
+  animation: fadeInDown 1s ease-out;
+  background: var(--ion-color-light);
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+}
+
+.logo-area {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.brand-logo {
+  width: 120px;
+  height: 120px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  flex-shrink: 0;
+}
+
+.ministry-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ministry-name {
+  font-size: 2.5rem !important;
+  font-weight: 700;
+  color: var(--ion-color-dark) !important;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: 1px;
+  line-height: 1.1;
+}
+
+.ministry-tagline {
+  font-size: 1.4rem !important;
+  font-weight: 400;
+  color: var(--ion-color-primary-tint) !important;
+  margin: 0.5rem 0 0 0;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+/* Hero Section */
+.hero-section {
+  margin-bottom: 4rem;
+  animation: fadeInUp 1s ease-out 0.2s both;
+  text-align: center;
+}
+
+.hero-content {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 3rem 4rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: var(--ion-color-dark);
+  margin: 0 0 1rem 0;
+  line-height: 1.3;
+}
+
+.hero-subtitle {
+  font-size: 1.8rem;
+  color: var(--ion-color-dark-shade);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  font-weight: 500;
+}
+
+.hero-image-container {
+  margin-top: 2rem;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.hero-image {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Mission Section */
+.mission-section {
+  margin-bottom: 4rem;
+  animation: fadeInUp 1s ease-out 0.4s both;
+}
+
+.mission-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 3rem 4rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+}
+
+.mission-icon {
+  font-size: 4rem;
+  color: var(--ion-color-primary-tint);
+  margin-bottom: 2rem;
+}
+
+.mission-card h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ion-color-dark);
+  margin: 0 0 2rem 0;
+}
+
+.mission-card p {
+  font-size: 1.6rem;
+  color: var(--ion-color-dark-shade);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Features Section */
+.features-section {
+  margin-bottom: 4rem;
+  animation: fadeInUp 1s ease-out 0.6s both;
+}
+
+.features-section h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.feature-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+.feature-icon {
+  font-size: 3rem;
+  color: var(--ion-color-primary-tint);
+  margin-bottom: 1.5rem;
+}
+
+.feature-card h4 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--ion-color-dark);
+  margin: 0 0 1rem 0;
+}
+
+.feature-card p {
+  font-size: 1.3rem;
+  color: var(--ion-color-dark-shade);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Social Section */
+.social-section {
+  margin-bottom: 4rem;
+  animation: fadeInUp 1s ease-out 0.8s both;
+}
+
+.social-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 3rem 4rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+}
+
+.social-icon {
+  font-size: 4rem;
+  color: var(--ion-color-primary-tint);
+  margin-bottom: 2rem;
+}
+
+.social-card h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ion-color-dark);
+  margin: 0 0 2rem 0;
+}
+
+.social-card p {
+  font-size: 1.6rem;
+  color: var(--ion-color-dark-shade);
+  line-height: 1.6;
+  margin-bottom: 3rem;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.social-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.25rem 2rem;
+  border-radius: 25px;
+  background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 100%);
+  color: var(--ion-color-light);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+  font-size: 1.4rem;
+}
+
+.social-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, var(--ion-color-primary-shade) 0%, var(--ion-color-primary-tint) 100%);
+}
+
+.social-label {
+  font-size: 1.3rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  color: var(--ion-color-light);
+  animation: fadeInUp 1s ease-out 1s both;
+}
+
+.footer p {
+  margin: 1rem 0;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  color: var(--ion-color-light);
+  opacity: 0.8;
+  margin-top: 0.5rem;
+}
+
+/* Animations */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .welcome-container {
+    padding: 1.5rem;
+  }
+
+  .header-section {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding: 1.5rem;
+  }
+
+  .logo-area {
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .ministry-text {
+    align-items: center;
+  }
+
+  .ministry-name {
+    font-size: 2rem !important;
+    text-align: center;
+  }
+
+  .ministry-tagline {
+    font-size: 1.1rem !important;
+    text-align: center;
+  }
+
+  .brand-logo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .hero-content {
+    padding: 2rem 2rem;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.4rem;
+  }
+
+  .hero-image {
+    height: 200px;
+  }
+
+  .mission-card,
+  .social-card {
+    padding: 2rem 2rem;
+  }
+
+  .mission-card h3,
+  .social-card h3 {
+    font-size: 2rem;
+  }
+
+  .mission-card p,
+  .social-card p {
+    font-size: 1.3rem;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .feature-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .social-links {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .social-link {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-container {
+    padding: 1rem;
+  }
+
+  .header-section {
+    padding: 1rem;
+  }
+
+  .logo-area {
+    gap: 0.8rem;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .ministry-name {
+    font-size: 1.8rem !important;
+  }
+
+  .ministry-tagline {
+    font-size: 1rem !important;
+  }
+
+  .brand-logo {
+    width: 70px;
+    height: 70px;
+  }
+
+  .hero-content {
+    padding: 1.5rem 1.5rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.2rem;
+  }
+
+  .hero-image {
+    height: 150px;
+  }
+
+  .mission-card,
+  .social-card {
+    padding: 1.5rem 1.5rem;
+  }
+
+  .mission-card h3,
+  .social-card h3 {
+    font-size: 1.8rem;
+  }
+
+  .mission-card p,
+  .social-card p {
+    font-size: 1.1rem;
+  }
+
+  .features-section h3 {
+    font-size: 2rem;
+  }
+
+  .feature-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .feature-card h4 {
+    font-size: 1.5rem;
+  }
+
+  .feature-card p {
+    font-size: 1.1rem;
+  }
+
+  .social-link {
+    font-size: 1.2rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .footer p {
+    font-size: 1.2rem;
+  }
+
+  .version-info {
+    font-size: 1rem;
+  }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  .header-section,
+  .hero-section,
+  .mission-section,
+  .features-section,
+  .social-section,
+  .footer {
+    animation: none;
+  }
+
+  .feature-card:hover {
+    transform: none;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .hero-content,
+  .mission-card,
+  .feature-card,
+  .social-card {
+    background: #ffffff;
+    border: 2px solid #000000;
+  }
+
+  .social-link {
+    background: #000000;
+    color: #ffffff;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .welcome-page {
+    --background: #ffffff;
+  }
+
+  .welcome-container {
+    color: #000000;
+  }
+
+  .hero-content,
+  .mission-card,
+  .feature-card,
+  .social-card {
+    background: #ffffff;
+    border: 1px solid #000000;
+    box-shadow: none;
+  }
+}

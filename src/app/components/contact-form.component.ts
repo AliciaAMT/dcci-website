@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { IonicModule } from '@ionic/angular';
-import { IonInput, IonButton, IonIcon, IonTextarea } from '@ionic/angular/standalone';
+import { IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox } from '@ionic/angular/standalone';
 import { ContactService } from 'src/app/services/contact.service';
 
 @Component({
@@ -10,24 +9,30 @@ import { ContactService } from 'src/app/services/contact.service';
   templateUrl: './contact-form.component.html',
   styleUrls: ['./contact-form.component.scss'],
   standalone: true,
-  imports: [CommonModule, IonicModule, FormsModule, ReactiveFormsModule, IonInput, IonButton, IonIcon, IonTextarea]
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox]
 })
 export class ContactFormComponent implements OnInit {
   contactForm: FormGroup;
   isSubmitting = false;
   submitSuccess = false;
   submitError = '';
+  formLoadTime: number = 0;
 
   constructor(
     private formBuilder: FormBuilder,
     private contactService: ContactService
   ) {
+    // Record when the form was loaded (for bot detection)
+    this.formLoadTime = Date.now();
+
     this.contactForm = this.formBuilder.group({
-      name: ['', [Validators.required, Validators.minLength(2)]],
-      email: ['', [Validators.required, Validators.email]],
-      subject: ['', [Validators.required, Validators.minLength(5)]],
-      message: ['', [Validators.required, Validators.minLength(10)]],
-      website: [''] // Honeypot field - should always be empty
+      name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+      email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+      subject: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(200)]],
+      message: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(5000)]],
+      newsletter: [false], // Newsletter subscription (optional)
+      website: [''], // Honeypot field - should always be empty
+      formTimestamp: [this.formLoadTime] // Hidden field for bot detection
     });
   }
 
@@ -48,15 +53,30 @@ export class ContactFormComponent implements OnInit {
       this.submitError = '';
 
       try {
-        // Remove honeypot field before sending
+        // Prepare form data and add submission timestamp
         const formData = { ...this.contactForm.value };
-        delete formData.website;
+        delete formData.website; // Remove honeypot field
+
+        // Add submission timestamp for bot detection
+        formData.submissionTime = Date.now();
+        formData.formLoadTime = formData.formTimestamp; // The original form load time
+        delete formData.formTimestamp; // Clean up the form field
 
         await this.contactService.submitContactForm(formData);
         this.submitSuccess = true;
         this.contactForm.reset();
-      } catch (error) {
-        this.submitError = 'Failed to send message. Please try again.';
+      } catch (error: any) {
+        // Check for VPN detection error
+        if (error.error?.error === 'VPN detected') {
+          this.submitError = error.error.message || 'VPN detected. Please turn off your VPN and try again.';
+        }
+        // Check for input validation errors
+        else if (error.error?.error === 'Invalid input' && error.error?.details) {
+          this.submitError = 'Please check your input: ' + error.error.details.join(', ');
+        }
+        else {
+          this.submitError = 'Failed to send message. Please try again.';
+        }
         console.error('Contact form submission error:', error);
       } finally {
         this.isSubmitting = false;
@@ -85,6 +105,10 @@ export class ContactFormComponent implements OnInit {
       if (control.errors['minlength']) {
         const requiredLength = control.errors['minlength'].requiredLength;
         return `${this.getFieldLabel(controlName)} must be at least ${requiredLength} characters`;
+      }
+      if (control.errors['maxlength']) {
+        const maxLength = control.errors['maxlength'].requiredLength;
+        return `${this.getFieldLabel(controlName)} must be less than ${maxLength} characters`;
       }
     }
     return '';

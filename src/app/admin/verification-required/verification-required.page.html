@@ -1,0 +1,116 @@
+<ion-content class="ion-padding">
+  <div class="verification-required-container">
+    <div class="verification-required-card">
+      <!-- Header -->
+      <div class="page-header">
+        <div class="status-icon">
+          <ion-icon name="mail-outline"></ion-icon>
+        </div>
+        <h1>Email Verification Required</h1>
+        <p class="page-description">Your account has been created, but you need to verify your email address before you can access the admin dashboard.</p>
+      </div>
+
+      <!-- User Info -->
+      <div class="user-info" *ngIf="userEmail">
+        <ion-icon name="person-outline"></ion-icon>
+        <span>{{ userEmail }}</span>
+      </div>
+
+      <!-- Instructions -->
+      <div class="instructions-section">
+        <h3>What to do next:</h3>
+        <div class="instruction-steps">
+          <div class="instruction-step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h4>Check Your Email</h4>
+              <p>Look for a verification email from us in your inbox.</p>
+            </div>
+          </div>
+          
+          <div class="instruction-step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h4>Click the Verification Link</h4>
+              <p>Open the email and click the verification link to activate your account.</p>
+            </div>
+          </div>
+          
+          <div class="instruction-step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h4>Return and Sign In</h4>
+              <p>Once verified, come back here and sign in to access the admin dashboard.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Troubleshooting -->
+      <div class="troubleshooting-section">
+        <h3>Didn't receive the email?</h3>
+        <div class="troubleshooting-tips">
+          <div class="tip-item">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+            <span>Check your spam/junk folder</span>
+          </div>
+          <div class="tip-item">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+            <span>Make sure you entered the correct email address</span>
+          </div>
+          <div class="tip-item">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+            <span>Wait a few minutes - emails can take time to arrive</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <ion-button
+          expand="block"
+          (click)="resendVerificationEmail()"
+          [disabled]="isResending"
+          class="primary-button">
+          <ion-spinner *ngIf="isResending" name="crescent" slot="start"></ion-spinner>
+          <ion-icon *ngIf="!isResending" name="refresh-outline" slot="start"></ion-icon>
+          {{ isResending ? 'Sending...' : 'Resend Verification Email' }}
+        </ion-button>
+
+        <ion-button
+          expand="block"
+          fill="outline"
+          (click)="goToLogin()"
+          class="secondary-button">
+          <ion-icon name="log-in-outline" slot="start"></ion-icon>
+          Back to Login
+        </ion-button>
+      </div>
+
+      <!-- Status Message -->
+      <div *ngIf="statusMessage" class="status-message" [class.success]="statusMessage.success" [class.error]="!statusMessage.success">
+        <ion-icon [name]="statusMessage.success ? 'checkmark-circle' : 'alert-circle'"></ion-icon>
+        {{ statusMessage.message }}
+      </div>
+
+      <!-- Success State -->
+      <div *ngIf="showSuccessState" class="success-section">
+        <div class="success-icon">
+          <ion-icon name="checkmark-circle"></ion-icon>
+        </div>
+        <h2>Verification Email Sent!</h2>
+        <p>We've sent a new verification email to <strong>{{ userEmail }}</strong></p>
+        <p class="success-instructions">Please check your inbox and click the verification link to activate your account.</p>
+        
+        <div class="countdown-info" *ngIf="resendCooldown > 0">
+          <p>You can request another verification email in {{ resendCooldown }} seconds.</p>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="footer-info">
+        <p><strong>Need help?</strong> Contact your system administrator if you continue to have issues with email verification.</p>
+      </div>
+    </div>
+  </div>
+</ion-content>

@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only allow writes to contacts collection from Firebase Functions
+    match /contacts/{document} {
+      // Allow create only (no update, no delete)
+      allow create: if request.auth != null ||
+        (resource == null && request.resource != null);
+
+      // Deny all other operations
+      allow read, update, delete: if false;
+    }
+
+    // Allow writes to subscribers collection from Firebase Functions
+    match /subscribers/{document} {
+      // Allow create and update (for newsletter management)
+      allow create, update: if request.auth != null ||
+        (resource == null && request.resource != null);
+
+      // Deny read and delete
+      allow read, delete: if false;
+    }
+
+    // Helper function to check if the current user is an admin
+    // Hardened with exists() check before get() to avoid errors
+    function isAdminUser() {
+      return request.auth != null && 
+             request.auth.uid != null &&
+             exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Admin users collection - for CMS authentication
+    match /adminUsers/{userId} {
+      // Allow authenticated users to create and update their own admin user document
+      allow create, update: if request.auth != null &&
+        request.auth.uid == userId;
+
+      // CRITICAL: Allow users to read their own document (required for isAdminUser() to work)
+      allow get: if request.auth != null && request.auth.uid == userId;
+
+      // Allow admins to list all admin documents (for dashboard)
+      allow list: if isAdminUser();
+
+      // Deny delete operations
+      allow delete: if false;
+    }
+
+    // Failed attempts collection - for rate limiting
+    match /failedAttempts/{email} {
+      // Allow anyone to create and update failed attempt records (for rate limiting)
+      // This is necessary for tracking failed login attempts even for non-authenticated users
+      allow create, update: if true;
+
+      // Allow reading for rate limiting checks (even without auth)
+      allow read: if true;
+
+      // Deny delete operations
+      allow delete: if false;
+    }
+
+    // Page views collection - stores unique daily visitor fingerprints (no direct PII)
+    match /pageViews/{viewId} {
+      // Only allow writes from backend (Cloud Functions / admin SDK)
+      allow read, write: if false;
+    }
+
+    // Aggregated statistics collection (e.g., siteStats)
+    match /stats/{statId} {
+      // Only allow reads for authenticated admins (for dashboard)
+      allow read: if isAdminUser();
+
+      // Writes only from backend (Cloud Functions / admin SDK)
+      allow write: if false;
+    }
+
+    // Content collection - articles and blog posts
+    match /content/{contentId} {
+      // READ RULES (Option B):
+      // - Public can read (get + list/query) ONLY published articles (status == 'published')
+      // - Draft/unpublished content is NOT readable by the public
+      // - Admins can read any content (published or draft)
+      // Note: For list queries, each document in the result is checked against this rule
+      // So public users will only see published documents, admins see all
+      allow read: if resource.data.status == 'published' || isAdminUser();
+
+      // WRITE RULES (admin-only):
+      // Allow admins to create content
+      allow create: if isAdminUser() &&
+        request.resource.data.authorId == request.auth.uid &&
+        request.resource.data.status in ['draft', 'published'];
+
+      // Allow admins to update content
+      allow update: if isAdminUser() &&
+        request.resource.data.authorId == resource.data.authorId &&
+        request.resource.data.status in ['draft', 'published'];
+
+      // Allow admins to delete content
+      allow delete: if isAdminUser();
+    }
+
+    // Deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

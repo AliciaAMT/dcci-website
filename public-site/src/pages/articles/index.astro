@@ -1,0 +1,55 @@
+---
+import { getPublishedArticles } from '../../lib/firestore';
+import { generateMetaTags, generateJSONLD, absoluteUrl } from '../../lib/seo';
+
+const canonicalUrl = absoluteUrl('/articles/');
+
+// Fetch all published articles at build time
+const articles = await getPublishedArticles();
+
+const seoData = {
+  title: 'Articles - DCCI Ministries',
+  description: 'Read articles and insights from DCCI Ministries on Christianity, Islam, and interfaith dialogue.',
+  canonicalUrl,
+  type: 'website' as const
+};
+
+const metaTags = generateMetaTags(seoData);
+const jsonLd = generateJSONLD(seoData);
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="generator" content={Astro.generator} />
+		{@html metaTags}
+		{@html jsonLd}
+	</head>
+	<body>
+		<main>
+			<h1>Articles</h1>
+			{articles.length > 0 ? (
+				<ul>
+					{articles.map((article) => (
+						<li>
+							<a href={`/articles/${article.slug}/`}>
+								<h2>{article.title}</h2>
+							</a>
+							{article.excerpt && <p>{article.excerpt}</p>}
+							{article.publishedAt && (
+								<time datetime={article.publishedAt.toISOString()}>
+									{article.publishedAt.toLocaleDateString()}
+								</time>
+							)}
+						</li>
+					))}
+				</ul>
+			) : (
+				<p>No articles published yet.</p>
+			)}
+		</main>
+	</body>
+</html>
+
