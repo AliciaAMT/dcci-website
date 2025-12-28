@@ -1,9 +1,8 @@
 ---
 import { getPublishedArticles } from '../../lib/firestore';
-import { generateMetaTags, generateJSONLD } from '../../lib/seo';
+import { generateMetaTags, generateJSONLD, absoluteUrl } from '../../lib/seo';
 
-const siteUrl = 'https://dcci-ministries.firebaseapp.com'; // Update with your actual domain
-const canonicalUrl = `${siteUrl}/articles/`;
+const canonicalUrl = absoluteUrl('/articles/');
 
 // Fetch all published articles at build time
 const articles = await getPublishedArticles();

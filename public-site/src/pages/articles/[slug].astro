@@ -1,8 +1,6 @@
 ---
 import { getArticleBySlug, getPublishedArticles } from '../../lib/firestore';
-import { generateMetaTags, generateJSONLD } from '../../lib/seo';
-
-const siteUrl = 'https://dcci-ministries.firebaseapp.com'; // Update with your actual domain
+import { generateMetaTags, generateJSONLD, absoluteUrl } from '../../lib/seo';
 
 // Generate static paths for all articles at build time
 export async function getStaticPaths() {
@@ -33,7 +31,7 @@ if (article.oldSlugs && article.oldSlugs.includes(slug) && article.slug !== slug
   return Astro.redirect(`/articles/${article.slug}/`, 301);
 }
 
-const canonicalUrl = `${siteUrl}/articles/${article.slug}/`;
+const canonicalUrl = absoluteUrl(`/articles/${article.slug}/`);
 const description = article.excerpt || article.content.substring(0, 160).replace(/<[^>]*>/g, '') + '...';
 const image = article.featuredImage;
 

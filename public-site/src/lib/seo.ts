@@ -2,6 +2,26 @@
  * SEO utility functions for generating meta tags and JSON-LD
  */
 
+/**
+ * Get the canonical site URL from environment variables
+ * Defaults to https://dcciministries.com
+ */
+export function getSiteUrl(): string {
+  return import.meta.env.SITE_URL || import.meta.env.PUBLIC_SITE_URL || 'https://dcciministries.com';
+}
+
+/**
+ * Convert a relative URL to an absolute URL using the canonical site URL
+ */
+export function absoluteUrl(path: string): string {
+  const siteUrl = getSiteUrl();
+  // Remove trailing slash from siteUrl if present
+  const baseUrl = siteUrl.replace(/\/$/, '');
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${baseUrl}${normalizedPath}`;
+}
+
 export interface SEOData {
   title: string;
   description: string;
@@ -31,8 +51,9 @@ export function generateMetaTags(data: SEOData): string {
   } = data;
 
   const siteName = 'DCCI Ministries';
-  const siteUrl = 'https://dcci-ministries.firebaseapp.com'; // Update with your actual domain
-  const fullImageUrl = image ? (image.startsWith('http') ? image : `${siteUrl}${image}`) : undefined;
+  // Use canonical URL as-is (already normalized)
+  // For images, convert relative URLs to absolute using canonical base
+  const fullImageUrl = image ? (image.startsWith('http') ? image : absoluteUrl(image)) : undefined;
 
   let meta = `
     <title>${escapeHtml(title)}</title>
@@ -83,8 +104,8 @@ export function generateJSONLD(data: SEOData): string {
     tags
   } = data;
 
-  const siteUrl = 'https://dcci-ministries.firebaseapp.com'; // Update with your actual domain
-  const fullImageUrl = image ? (image.startsWith('http') ? image : `${siteUrl}${image}`) : undefined;
+  const siteUrl = getSiteUrl();
+  const fullImageUrl = image ? (image.startsWith('http') ? image : absoluteUrl(image)) : undefined;
 
   if (type === 'article') {
     const articleData: any = {
@@ -93,6 +114,10 @@ export function generateJSONLD(data: SEOData): string {
       headline: title,
       description: description,
       url: canonicalUrl,
+      mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': canonicalUrl
+      },
       datePublished: publishedTime,
       dateModified: modifiedTime || publishedTime,
       author: {

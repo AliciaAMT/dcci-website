@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
-
-const siteUrl = 'https://dcci-ministries.firebaseapp.com'; // Update with your actual domain
+import { absoluteUrl } from '../lib/seo';
 
 export const GET: APIRoute = () => {
   const robotsTxt = `User-agent: *
@@ -17,7 +16,7 @@ Disallow: /admin/*
 Disallow: /api/
 
 # Sitemap location
-Sitemap: ${siteUrl}/sitemap.xml
+Sitemap: ${absoluteUrl('/sitemap.xml')}
 `;
 
   return new Response(robotsTxt, {
