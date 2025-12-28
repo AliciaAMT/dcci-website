@@ -1,0 +1,63 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/admin/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Create New Content</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="content-form">
+    <h2>Create New Article</h2>
+    <p class="subtitle">Fill in the details below to create a new piece of content</p>
+
+    <ion-item>
+      <ion-label position="stacked">Title *</ion-label>
+      <ion-input
+        [(ngModel)]="title"
+        placeholder="Enter article title"
+        required
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Excerpt</ion-label>
+      <ion-textarea
+        [(ngModel)]="excerpt"
+        placeholder="Brief summary of the article (optional)"
+        rows="3"
+      ></ion-textarea>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Content *</ion-label>
+    </ion-item>
+    <div class="quill-editor-wrapper">
+      <quill-editor
+        [(ngModel)]="content"
+        [modules]="quillModules"
+        placeholder="Write your content here..."
+        [styles]="{ height: '400px' }"
+        (onEditorCreated)="onEditorCreated($event)"
+      ></quill-editor>
+    </div>
+
+    <div class="form-actions">
+      <ion-button fill="outline" (click)="cancel()">
+        <ion-icon name="close-outline" slot="start"></ion-icon>
+        Cancel
+      </ion-button>
+      <ion-button fill="outline" (click)="saveDraft()">
+        <ion-icon name="save-outline" slot="start"></ion-icon>
+        Save Draft
+      </ion-button>
+      <ion-button (click)="publish()">
+        <ion-icon name="checkmark-outline" slot="start"></ion-icon>
+        Publish
+      </ion-button>
+    </div>
+
+  </div>
+</ion-content>
+

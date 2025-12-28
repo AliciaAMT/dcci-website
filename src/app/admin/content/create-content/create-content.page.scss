@@ -1,0 +1,360 @@
+.content-form {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px 0;
+
+  h2 {
+    margin-bottom: 8px;
+    color: var(--ion-color-primary);
+  }
+
+  .subtitle {
+    color: var(--ion-color-medium);
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+
+  ion-item {
+    margin-bottom: 16px;
+    --padding-start: 0;
+    --inner-padding-end: 0;
+  }
+
+  .quill-editor-wrapper {
+    margin-bottom: 16px;
+    background: var(--ion-background-color, #ffffff);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--ion-border-color, #e0e0e0);
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+
+    ::ng-deep {
+      .ql-container {
+        min-height: 400px;
+        font-size: 16px;
+        background: var(--ion-background-color, #ffffff);
+        color: var(--ion-text-color, #000000);
+        overflow-x: hidden;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+
+      .ql-editor {
+        min-height: 400px;
+        color: var(--ion-text-color, #000000);
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+        
+        // Force text wrapping for long strings
+        white-space: pre-wrap;
+        word-break: break-word;
+        
+        // Limit image sizes to editor width
+        img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 16px auto;
+        }
+        
+        // Limit video/iframe sizes
+        iframe,
+        video {
+          max-width: 100%;
+          height: auto;
+        }
+        
+        // Prevent content elements from exceeding editor width (but not toolbar)
+        p, div, span, h1, h2, h3, h4, h5, h6, blockquote, ul, ol, li {
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        
+        // Handle long URLs or strings
+        a {
+          word-break: break-all;
+          overflow-wrap: break-word;
+        }
+        
+        // Prevent tables from breaking layout
+        table {
+          max-width: 100%;
+          table-layout: fixed;
+          word-wrap: break-word;
+        }
+        
+        // Prevent code blocks from breaking layout
+        pre,
+        code {
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          max-width: 100%;
+          overflow-x: auto;
+        }
+      }
+
+      // Font family styles for Quill
+      .ql-editor {
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      // Toolbar dark mode support
+      .ql-toolbar {
+        background: var(--ion-card-background, #ffffff);
+        border-bottom: 1px solid var(--ion-border-color, #e0e0e0);
+        position: relative;
+        z-index: 1;
+        
+        .ql-stroke {
+          stroke: var(--ion-text-color, #000000);
+        }
+        
+        .ql-fill {
+          fill: var(--ion-text-color, #000000);
+        }
+        
+        .ql-picker-label {
+          color: var(--ion-text-color, #000000);
+        }
+        
+        .ql-picker-item {
+          color: var(--ion-text-color, #000000);
+        }
+        
+        button:hover,
+        button:focus,
+        button.ql-active {
+          background: var(--ion-color-light, #f4f5f8);
+        }
+      }
+
+      // Fix all Quill dropdowns (font, size, color, etc.)
+      .ql-picker {
+        .ql-picker-options {
+          background: var(--ion-card-background, #ffffff);
+          border: 1px solid var(--ion-border-color, #e0e0e0);
+          box-shadow: var(--ion-box-shadow, 0 4px 16px rgba(0, 0, 0, 0.1));
+        }
+        
+        .ql-picker-item {
+          color: var(--ion-text-color, #000000);
+          
+          &:hover {
+            background: var(--ion-color-light, #f4f5f8);
+          }
+        }
+        
+        .ql-picker-label {
+          color: var(--ion-text-color, #000000);
+        }
+      }
+
+      // Make font dropdown scrollable and fix display
+      .ql-picker.ql-font {
+        .ql-picker-options {
+          max-height: 300px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          z-index: 1000;
+        }
+
+        .ql-picker-item {
+          padding: 5px 10px;
+          font-size: 14px;
+        }
+
+        // Show readable font names in dropdown (convert hyphenated to readable)
+        .ql-picker-item[data-value="arial"]::before { content: "Arial"; }
+        .ql-picker-item[data-value="helvetica"]::before { content: "Helvetica"; }
+        .ql-picker-item[data-value="times-new-roman"]::before { content: "Times New Roman"; }
+        .ql-picker-item[data-value="courier-new"]::before { content: "Courier New"; }
+        .ql-picker-item[data-value="georgia"]::before { content: "Georgia"; }
+        .ql-picker-item[data-value="verdana"]::before { content: "Verdana"; }
+        .ql-picker-item[data-value="trebuchet-ms"]::before { content: "Trebuchet MS"; }
+        .ql-picker-item[data-value="comic-sans-ms"]::before { content: "Comic Sans MS"; }
+        .ql-picker-item[data-value="impact"]::before { content: "Impact"; }
+        .ql-picker-item[data-value="lucida-console"]::before { content: "Lucida Console"; }
+        .ql-picker-item[data-value="tahoma"]::before { content: "Tahoma"; }
+        .ql-picker-item[data-value="palatino"]::before { content: "Palatino"; }
+        .ql-picker-item[data-value="garamond"]::before { content: "Garamond"; }
+        .ql-picker-item[data-value="bookman"]::before { content: "Bookman"; }
+        .ql-picker-item[data-value="roboto"]::before { content: "Roboto"; }
+        .ql-picker-item[data-value="open-sans"]::before { content: "Open Sans"; }
+        .ql-picker-item[data-value="lato"]::before { content: "Lato"; }
+        .ql-picker-item[data-value="montserrat"]::before { content: "Montserrat"; }
+        .ql-picker-item[data-value="raleway"]::before { content: "Raleway"; }
+        .ql-picker-item[data-value="merriweather"]::before { content: "Merriweather"; }
+        .ql-picker-item[data-value="playfair-display"]::before { content: "Playfair Display"; }
+        .ql-picker-item[data-value="source-sans-pro"]::before { content: "Source Sans Pro"; }
+        .ql-picker-item[data-value="poppins"]::before { content: "Poppins"; }
+        .ql-picker-item[data-value="oswald"]::before { content: "Oswald"; }
+        .ql-picker-item[data-value="ubuntu"]::before { content: "Ubuntu"; }
+        
+        // Also update the label when a font is selected
+        .ql-picker-label[data-value="arial"]::before { content: "Arial"; }
+        .ql-picker-label[data-value="helvetica"]::before { content: "Helvetica"; }
+        .ql-picker-label[data-value="times-new-roman"]::before { content: "Times New Roman"; }
+        .ql-picker-label[data-value="courier-new"]::before { content: "Courier New"; }
+        .ql-picker-label[data-value="georgia"]::before { content: "Georgia"; }
+        .ql-picker-label[data-value="verdana"]::before { content: "Verdana"; }
+        .ql-picker-label[data-value="trebuchet-ms"]::before { content: "Trebuchet MS"; }
+        .ql-picker-label[data-value="comic-sans-ms"]::before { content: "Comic Sans MS"; }
+        .ql-picker-label[data-value="impact"]::before { content: "Impact"; }
+        .ql-picker-label[data-value="lucida-console"]::before { content: "Lucida Console"; }
+        .ql-picker-label[data-value="tahoma"]::before { content: "Tahoma"; }
+        .ql-picker-label[data-value="palatino"]::before { content: "Palatino"; }
+        .ql-picker-label[data-value="garamond"]::before { content: "Garamond"; }
+        .ql-picker-label[data-value="bookman"]::before { content: "Bookman"; }
+        .ql-picker-label[data-value="roboto"]::before { content: "Roboto"; }
+        .ql-picker-label[data-value="open-sans"]::before { content: "Open Sans"; }
+        .ql-picker-label[data-value="lato"]::before { content: "Lato"; }
+        .ql-picker-label[data-value="montserrat"]::before { content: "Montserrat"; }
+        .ql-picker-label[data-value="raleway"]::before { content: "Raleway"; }
+        .ql-picker-label[data-value="merriweather"]::before { content: "Merriweather"; }
+        .ql-picker-label[data-value="playfair-display"]::before { content: "Playfair Display"; }
+        .ql-picker-label[data-value="source-sans-pro"]::before { content: "Source Sans Pro"; }
+        .ql-picker-label[data-value="poppins"]::before { content: "Poppins"; }
+        .ql-picker-label[data-value="oswald"]::before { content: "Oswald"; }
+        .ql-picker-label[data-value="ubuntu"]::before { content: "Ubuntu"; }
+      }
+
+      // Apply fonts when selected in editor
+      // Quill converts font names to lowercase and replaces spaces with hyphens for CSS classes
+      .ql-font-arial { font-family: Arial, Helvetica, sans-serif !important; }
+      .ql-font-helvetica { font-family: Helvetica, Arial, sans-serif !important; }
+      .ql-font-times-new-roman { font-family: 'Times New Roman', Times, serif !important; }
+      .ql-font-courier-new { font-family: 'Courier New', Courier, monospace !important; }
+      .ql-font-georgia { font-family: Georgia, serif !important; }
+      .ql-font-verdana { font-family: Verdana, Geneva, sans-serif !important; }
+      .ql-font-trebuchet-ms { font-family: 'Trebuchet MS', Helvetica, sans-serif !important; }
+      .ql-font-comic-sans-ms { font-family: 'Comic Sans MS', cursive !important; }
+      .ql-font-impact { font-family: Impact, Charcoal, sans-serif !important; }
+      .ql-font-lucida-console { font-family: 'Lucida Console', Monaco, monospace !important; }
+      .ql-font-tahoma { font-family: Tahoma, Geneva, sans-serif !important; }
+      .ql-font-palatino { font-family: Palatino, 'Palatino Linotype', serif !important; }
+      .ql-font-garamond { font-family: Garamond, serif !important; }
+      .ql-font-bookman { font-family: Bookman, 'Bookman Old Style', serif !important; }
+      .ql-font-roboto { font-family: 'Roboto', sans-serif !important; }
+      .ql-font-open-sans { font-family: 'Open Sans', sans-serif !important; }
+      .ql-font-lato { font-family: 'Lato', sans-serif !important; }
+      .ql-font-montserrat { font-family: 'Montserrat', sans-serif !important; }
+      .ql-font-raleway { font-family: 'Raleway', sans-serif !important; }
+      .ql-font-merriweather { font-family: 'Merriweather', serif !important; }
+      .ql-font-playfair-display { font-family: 'Playfair Display', serif !important; }
+      .ql-font-source-sans-pro { font-family: 'Source Sans Pro', sans-serif !important; }
+      .ql-font-poppins { font-family: 'Poppins', sans-serif !important; }
+      .ql-font-oswald { font-family: 'Oswald', sans-serif !important; }
+      .ql-font-ubuntu { font-family: 'Ubuntu', sans-serif !important; }
+
+      .ql-video-wrapper {
+        margin: 16px 0;
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        height: 0;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #000;
+
+        iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+
+        video {
+          width: 100%;
+          height: auto;
+          display: block;
+        }
+      }
+
+      // Dark mode specific adjustments
+      @media (prefers-color-scheme: dark) {
+        .ql-snow {
+          .ql-toolbar {
+            background: var(--ion-card-background, #2d2d2d);
+            border-color: var(--ion-border-color, #404040);
+          }
+          
+          .ql-container {
+            background: var(--ion-card-background, #2d2d2d);
+            border-color: var(--ion-border-color, #404040);
+          }
+          
+          .ql-editor {
+            color: var(--ion-text-color, #ffffff);
+          }
+          
+          .ql-editor.ql-blank::before {
+            color: var(--ion-color-medium, #999999);
+          }
+          
+          // Fix dropdown menus in dark mode
+          .ql-picker {
+            .ql-picker-options {
+              background: var(--ion-card-background, #2d2d2d) !important;
+              border-color: var(--ion-border-color, #404040) !important;
+            }
+            
+            .ql-picker-item {
+              color: var(--ion-text-color, #ffffff) !important;
+              
+              &:hover {
+                background: var(--ion-color-light, #3a3a3a) !important;
+              }
+            }
+            
+            .ql-picker-label {
+              color: var(--ion-text-color, #ffffff) !important;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+
+    ion-button {
+      margin: 0;
+    }
+  }
+
+  .info-note {
+    margin-top: 32px;
+    padding: 16px;
+    background: var(--ion-color-light);
+    border-radius: 8px;
+    border-left: 4px solid var(--ion-color-primary);
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ion-color-dark);
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .content-form {
+    .form-actions {
+      flex-direction: column;
+
+      ion-button {
+        width: 100%;
+      }
+    }
+  }
+}
+

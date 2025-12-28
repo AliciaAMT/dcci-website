@@ -40,6 +40,11 @@ export const routes: Routes = [
     path: 'admin/verification-required',
     loadComponent: () => import('./admin/verification-required/verification-required.page').then( m => m.VerificationRequiredPage)
   },
+  {
+    path: 'admin/content/create',
+    loadComponent: () => import('./admin/content/create-content/create-content.page').then( m => m.CreateContentPage),
+    canActivate: [adminGuard]
+  },
 
 
 

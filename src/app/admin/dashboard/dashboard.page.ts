@@ -149,6 +149,10 @@ export class DashboardPage implements OnInit, OnDestroy {
     ];
   }
 
+  navigateToCreateContent() {
+    this.router.navigate(['/admin/content/create']);
+  }
+
   async logout() {
     try {
       await this.authService.signOut();
