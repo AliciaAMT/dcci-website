@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Injector, runInInjectionContext } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonContent,
@@ -64,7 +64,8 @@ export class DashboardPage implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private firestore: Firestore,
-    private http: HttpClient
+    private http: HttpClient,
+    private injector: Injector
   ) {}
 
   ngOnInit() {
@@ -91,14 +92,18 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   async loadDashboardData() {
     try {
-      const adminUsersRef = collection(this.firestore, 'adminUsers');
-      const adminQuery = query(adminUsersRef, where('isAdmin', '==', true));
-
+      // Ensure Firebase API calls are within injection context
       const [adminSnapshot, contactStats, storageStats, siteStatsSnap] = await Promise.all([
-        getDocs(adminQuery),
+        runInInjectionContext(this.injector, async () => {
+          const adminUsersRef = collection(this.firestore, 'adminUsers');
+          const adminQuery = query(adminUsersRef, where('isAdmin', '==', true));
+          return await getDocs(adminQuery);
+        }),
         firstValueFrom(this.http.get(environment.firebaseFunctionsUrl + '/getContactStats')),
         firstValueFrom(this.http.get(environment.firebaseFunctionsUrl + '/getStorageUsage')),
-        getDoc(doc(this.firestore, 'stats', 'siteStats'))
+        runInInjectionContext(this.injector, async () => {
+          return await getDoc(doc(this.firestore, 'stats', 'siteStats'));
+        })
       ]);
 
       const siteStatsData = siteStatsSnap.exists() ? (siteStatsSnap.data() as any) : null;

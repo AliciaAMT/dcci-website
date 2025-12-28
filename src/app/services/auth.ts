@@ -165,15 +165,17 @@ export class AuthService {
           const failedAttempts = await this.getFailedAttempts(sanitizedEmail);
           if (failedAttempts && failedAttempts.lockedUntil && failedAttempts.lockedUntil > new Date()) {
             const lockTimeRemaining = Math.ceil((failedAttempts.lockedUntil.getTime() - new Date().getTime()) / (1000 * 60));
-            return { 
-              success: false, 
+            return {
+              success: false,
               message: `🔒 Account locked for ${lockTimeRemaining} minutes due to 3 failed login attempts. For security, you must reset your password to regain access.`,
               isLocked: true
             };
           }
 
-          // Sign in with Firebase Auth
-          const userCredential = await signInWithEmailAndPassword(this.auth, sanitizedEmail, sanitizedPassword);
+          // Sign in with Firebase Auth - ensure it's within injection context
+          const userCredential = await runInInjectionContext(this.injector, async () => {
+            return await signInWithEmailAndPassword(this.auth, sanitizedEmail, sanitizedPassword);
+          });
           const user = userCredential.user;
 
           // Clear failed attempts on successful login
@@ -190,10 +192,12 @@ export class AuthService {
 
           if (userData && userData.isAdmin) {
             // Update last login time and email verification status
-            await setDoc(doc(this.firestore, 'adminUsers', user.uid), {
-              lastLoginAt: new Date(),
-              emailVerified: user.emailVerified
-            }, { merge: true });
+            await runInInjectionContext(this.injector, async () => {
+              await setDoc(doc(this.firestore, 'adminUsers', user.uid), {
+                lastLoginAt: new Date(),
+                emailVerified: user.emailVerified
+              }, { merge: true });
+            });
 
             return { success: true, message: 'Login successful!' };
           } else {
@@ -204,10 +208,10 @@ export class AuthService {
         } catch (error: any) {
           console.error('Sign in error (inner catch):', error);
           console.error('Error code:', error.code);
-          
+
           // Record failed attempt
           await this.recordFailedAttempt(email);
-          
+
           const errorMessage = this.getErrorMessage(error.code);
           console.log('Generated error message:', errorMessage);
           return { success: false, message: errorMessage };
@@ -244,7 +248,7 @@ export class AuthService {
 
           if (userDoc.exists()) {
             const userData = userDoc.data() as AdminUser;
-            
+
             // Convert Firestore Timestamps to JavaScript Dates
             if (userData.createdAt && (userData.createdAt as any).toDate) {
               userData.createdAt = (userData.createdAt as any).toDate();
@@ -252,7 +256,7 @@ export class AuthService {
             if (userData.lastLoginAt && (userData.lastLoginAt as any).toDate) {
               userData.lastLoginAt = (userData.lastLoginAt as any).toDate();
             }
-            
+
             this.currentUserSubject.next(userData);
             return userData;
           } else {
@@ -291,12 +295,12 @@ export class AuthService {
           return { success: true, message: 'Verification email sent! Please check your inbox.' };
         } catch (error: any) {
           console.error('Send verification error:', error);
-          
+
           // Handle specific error cases
           if (error.code === 'auth/too-many-requests') {
             return { success: false, message: 'Too many requests. Please wait a few minutes before requesting another verification email.' };
           }
-          
+
           return { success: false, message: this.getErrorMessage(error.code) };
         }
       });
@@ -313,7 +317,7 @@ export class AuthService {
     try {
       // Verify the action code
       await applyActionCode(this.auth, actionCode);
-      
+
       return { success: true, message: 'Email verified successfully! You can now log in.' };
     } catch (error: any) {
       console.error('Email verification error:', error);
@@ -439,20 +443,20 @@ export class AuthService {
       await runInInjectionContext(this.injector, async () => {
         const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
         const failedAttemptsDoc = await getDoc(failedAttemptsRef);
-        
+
         let attempts = 1;
         let lockedUntil: Date | undefined;
-        
+
         if (failedAttemptsDoc.exists()) {
           const data = failedAttemptsDoc.data() as FailedAttempt;
           attempts = data.attempts + 1;
-          
+
           // If this is the 3rd attempt, lock the account for 15 minutes
           if (attempts >= 3) {
             lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
           }
         }
-        
+
         await setDoc(failedAttemptsRef, {
           email,
           attempts,
@@ -474,7 +478,7 @@ export class AuthService {
       return await runInInjectionContext(this.injector, async () => {
         const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
         const failedAttemptsDoc = await getDoc(failedAttemptsRef);
-        
+
         if (failedAttemptsDoc.exists()) {
           const data = failedAttemptsDoc.data() as FailedAttempt;
           // Convert Firestore timestamps to Date objects
