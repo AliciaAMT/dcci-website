@@ -77,5 +77,7 @@ export function registerIonicons(): void {
     'document-text-outline': i.documentTextOutline,
     'pencil-outline': i.pencilOutline,
     'trash-outline': i.trashOutline,
+    // Comments icons
+    'chatbubbles-outline': i.chatbubblesOutline,
   });
 }
