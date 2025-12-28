@@ -27,6 +27,37 @@
 
 ---
 
+## 2025-12-XX (Recent Update)
+
+### Admin Dashboard UI Updates
+- **Quick Actions Button Reorganization**:
+  - Renamed "Site Settings" to "Youtube Settings" and replaced settings icon with YouTube icon (`logo-youtube`)
+  - Added new "Comments Settings" button with chat bubbles icon (`chatbubbles-outline`) for managing comment-related settings
+  - Renamed "Manage Users" to "User Management" for better consistency
+  - Renamed "Site Settings" (previously "View Messages" button) to "Site Management"
+- **Icons Registration**:
+  - Added `chatbubbles-outline` icon to `src/app/icons.ts` for the Comments Settings button
+- **UI Improvements**:
+  - Improved button labeling consistency (all use "Management" or "Settings" suffix pattern)
+  - Better icon alignment with functionality (YouTube icon for YouTube-related features)
+
+### Current Quick Actions Menu Structure
+1. Create Content
+2. Manage Content
+3. Youtube Settings (YouTube icon)
+4. Comments Settings (Chat bubbles icon)
+5. User Management
+6. Site Management
+
+### Next Steps / TODO
+- [ ] Implement routing/functionality for "Youtube Settings" button
+- [ ] Implement routing/functionality for "Comments Settings" button
+- [ ] Implement routing/functionality for "User Management" button (if not already implemented)
+- [ ] Implement routing/functionality for "Site Management" button (if not already implemented)
+- [ ] Continue with Content Creation System Implementation (see below)
+
+---
+
 ## Next Session: Content Creation System Implementation
 
 ### Overview
