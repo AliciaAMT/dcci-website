@@ -13,12 +13,16 @@ import {
   IonToolbar,
   IonTitle,
   IonBackButton,
-  IonButtons
+  IonButtons,
+  LoadingController,
+  ToastController
 } from '@ionic/angular/standalone';
 import { Router } from '@angular/router';
-import { AuthService } from '../../../services/auth';
+import { AuthService, AdminUser } from '../../../services/auth';
+import { ContentService } from '../../../services/content.service';
 import { QuillModule } from 'ngx-quill';
 import Quill from 'quill';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-create-content',
@@ -41,12 +45,17 @@ import Quill from 'quill';
     CommonModule,
     FormsModule,
     QuillModule
-  ]
+  ],
+  providers: [ContentService]
 })
 export class CreateContentPage implements OnInit {
   title: string = '';
   excerpt: string = '';
   content: string = '';
+  currentUser: AdminUser | null = null;
+  isSaving: boolean = false;
+  isPublishing: boolean = false;
+  savedContentId: string | null = null;
 
   // Quill editor configuration
   quillModules = {
@@ -97,7 +106,10 @@ export class CreateContentPage implements OnInit {
 
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private contentService: ContentService,
+    private loadingController: LoadingController,
+    private toastController: ToastController
   ) {
     // Configure Quill fonts
     this.configureQuillFonts();
@@ -183,23 +195,137 @@ export class CreateContentPage implements OnInit {
     }
   }
 
-  ngOnInit() {
-    // Verify user is admin
-    this.authService.currentUser$.subscribe(user => {
-      if (!user || !user.isAdmin || !user.emailVerified) {
-        this.router.navigate(['/admin/dashboard']);
-      }
+  async ngOnInit() {
+    // Verify user is admin and load user data
+    const user = await firstValueFrom(this.authService.currentUser$);
+    if (!user || !user.isAdmin || !user.emailVerified) {
+      this.router.navigate(['/admin/dashboard']);
+      return;
+    }
+    this.currentUser = user;
+  }
+
+  private async showToast(message: string, color: 'success' | 'danger' = 'success') {
+    const toast = await this.toastController.create({
+      message,
+      duration: 3000,
+      color,
+      position: 'top'
     });
+    await toast.present();
+  }
+
+  private validateForm(): boolean {
+    if (!this.title.trim()) {
+      this.showToast('Please enter a title', 'danger');
+      return false;
+    }
+    if (!this.content.trim()) {
+      this.showToast('Please enter content', 'danger');
+      return false;
+    }
+    return true;
   }
 
   async saveDraft() {
-    // TODO: Implement save as draft functionality
-    console.log('Saving draft...', { title: this.title, excerpt: this.excerpt, content: this.content });
+    if (!this.validateForm()) {
+      return;
+    }
+
+    if (!this.currentUser) {
+      this.showToast('User not authenticated', 'danger');
+      return;
+    }
+
+    // Debug: Check admin status
+    if (!this.currentUser.isAdmin) {
+      console.error('User is not an admin:', this.currentUser);
+      this.showToast('You do not have admin privileges', 'danger');
+      return;
+    }
+
+    console.log('Current user:', this.currentUser);
+    console.log('User is admin:', this.currentUser.isAdmin);
+
+    this.isSaving = true;
+    const loading = await this.loadingController.create({
+      message: 'Saving draft...'
+    });
+    await loading.present();
+
+    try {
+      if (this.savedContentId) {
+        // Update existing draft
+        await this.contentService.updateDraft(this.savedContentId, {
+          title: this.title.trim(),
+          excerpt: this.excerpt.trim(),
+          content: this.content.trim(),
+          status: 'draft',
+          authorId: this.currentUser.uid,
+          authorEmail: this.currentUser.email
+        });
+        await this.showToast('Draft updated successfully');
+      } else {
+        // Create new draft
+        this.savedContentId = await this.contentService.saveDraft({
+          title: this.title.trim(),
+          excerpt: this.excerpt.trim(),
+          content: this.content.trim(),
+          status: 'draft',
+          authorId: this.currentUser.uid,
+          authorEmail: this.currentUser.email
+        });
+        await this.showToast('Draft saved successfully');
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      await this.showToast('Failed to save draft. Please try again.', 'danger');
+    } finally {
+      this.isSaving = false;
+      await loading.dismiss();
+    }
   }
 
   async publish() {
-    // TODO: Implement publish functionality
-    console.log('Publishing...', { title: this.title, excerpt: this.excerpt, content: this.content });
+    if (!this.validateForm()) {
+      return;
+    }
+
+    if (!this.currentUser) {
+      this.showToast('User not authenticated', 'danger');
+      return;
+    }
+
+    this.isPublishing = true;
+    const loading = await this.loadingController.create({
+      message: 'Publishing content...'
+    });
+    await loading.present();
+
+    try {
+      const contentId = await this.contentService.publish({
+        title: this.title.trim(),
+        excerpt: this.excerpt.trim(),
+        content: this.content.trim(),
+        status: 'published',
+        authorId: this.currentUser.uid,
+        authorEmail: this.currentUser.email
+      }, this.savedContentId || undefined);
+
+      this.savedContentId = contentId;
+      await this.showToast('Content published successfully!');
+
+      // Navigate back to dashboard after a short delay
+      setTimeout(() => {
+        this.router.navigate(['/admin/dashboard']);
+      }, 1500);
+    } catch (error) {
+      console.error('Error publishing content:', error);
+      await this.showToast('Failed to publish content. Please try again.', 'danger');
+    } finally {
+      this.isPublishing = false;
+      await loading.dismiss();
+    }
   }
 
   cancel() {

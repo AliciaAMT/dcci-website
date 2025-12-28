@@ -44,17 +44,19 @@
     </div>
 
     <div class="form-actions">
-      <ion-button fill="outline" (click)="cancel()">
+      <ion-button fill="outline" (click)="cancel()" [disabled]="isSaving || isPublishing">
         <ion-icon name="close-outline" slot="start"></ion-icon>
         Cancel
       </ion-button>
-      <ion-button fill="outline" (click)="saveDraft()">
+      <ion-button fill="outline" (click)="saveDraft()" [disabled]="isSaving || isPublishing">
         <ion-icon name="save-outline" slot="start"></ion-icon>
-        Save Draft
+        <span *ngIf="!isSaving">{{ savedContentId ? 'Update Draft' : 'Save Draft' }}</span>
+        <span *ngIf="isSaving">Saving...</span>
       </ion-button>
-      <ion-button (click)="publish()">
+      <ion-button (click)="publish()" [disabled]="isSaving || isPublishing">
         <ion-icon name="checkmark-outline" slot="start"></ion-icon>
-        Publish
+        <span *ngIf="!isPublishing">Publish</span>
+        <span *ngIf="isPublishing">Publishing...</span>
       </ion-button>
     </div>
 
