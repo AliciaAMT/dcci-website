@@ -8,10 +8,19 @@ export function registerIonicons(): void {
 
   // Set asset path - use static path for production builds
   try {
-    // For production builds, always use root path to avoid base URL issues
-    setAssetPath('/');
+    // Use document.baseURI if available, otherwise fall back to root path
+    // This prevents "Invalid base URL" errors during icon loading
+    const basePath = (typeof document !== 'undefined' && document.baseURI) 
+      ? new URL(document.baseURI).pathname || '/' 
+      : '/';
+    setAssetPath(basePath);
   } catch (error) {
-    console.warn('Failed to set asset path:', error);
+    // Fallback to root path if baseURI fails
+    try {
+      setAssetPath('/');
+    } catch (fallbackError) {
+      console.warn('Failed to set asset path:', fallbackError);
+    }
   }
 
   addIcons({
@@ -63,5 +72,7 @@ export function registerIonicons(): void {
     'person-outline': i.personOutline,
     'checkmark-outline': i.checkmarkOutline,
     'close-circle': i.closeCircle,
+    // Content creation icons
+    'save-outline': i.saveOutline,
   });
 }
