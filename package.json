@@ -16,6 +16,8 @@
     "build:prod": "ng build --configuration production",
     "build:prod-test": "ng build --configuration prod-test",
     "watch": "ng build --watch --configuration development",
+    "dev:public": "cd public-site && npm run dev",
+    "build:public": "cd public-site && npm run build",
     "td": "node scripts/deploy.js staging",
     "ld": "node scripts/deploy.js production",
     "deploy:staging": "node scripts/deploy.js staging",

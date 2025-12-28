@@ -1,0 +1,35 @@
+---
+import { generateMetaTags, generateJSONLD } from '../../lib/seo';
+
+const siteUrl = 'https://dcci-ministries.firebaseapp.com'; // Update with your actual domain
+const canonicalUrl = `${siteUrl}/welcome/`;
+
+const seoData = {
+  title: 'DCCI Ministries - Defend Christ, Critique Islam',
+  description: 'DCCI Ministries - Building bridges through understanding and dialogue. Defend Christ, Critique Islam.',
+  canonicalUrl,
+  type: 'website' as const
+};
+
+const metaTags = generateMetaTags(seoData);
+const jsonLd = generateJSONLD(seoData);
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="generator" content={Astro.generator} />
+		{@html metaTags}
+		{@html jsonLd}
+	</head>
+	<body>
+		<main>
+			<h1>Welcome to DCCI Ministries</h1>
+			<p>Building bridges through understanding and dialogue.</p>
+			<p>Defend Christ, Critique Islam.</p>
+		</main>
+	</body>
+</html>
+

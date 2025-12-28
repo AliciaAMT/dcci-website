@@ -22,10 +22,12 @@ service cloud.firestore {
     }
 
     // Helper function to check if the current user is an admin
-    // Simplified to avoid circular dependencies
+    // Hardened with exists() check before get() to avoid errors
     function isAdminUser() {
-      let adminDoc = get(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
-      return request.auth != null && adminDoc != null && adminDoc.data.isAdmin == true;
+      return request.auth != null && 
+             request.auth.uid != null &&
+             exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true;
     }
 
     // Admin users collection - for CMS authentication
@@ -49,10 +51,10 @@ service cloud.firestore {
       // Allow anyone to create and update failed attempt records (for rate limiting)
       // This is necessary for tracking failed login attempts even for non-authenticated users
       allow create, update: if true;
-      
+
       // Allow reading for rate limiting checks (even without auth)
       allow read: if true;
-      
+
       // Deny delete operations
       allow delete: if false;
     }
@@ -74,29 +76,25 @@ service cloud.firestore {
 
     // Content collection - articles and blog posts
     match /content/{contentId} {
-      // Allow public read access for published content (get operation)
-      allow get: if resource.data.status == 'published' || isAdminUser();
-      
-      // Allow admins to list content (needed for queries like slug checking)
-      allow list: if isAdminUser();
-      
+      // READ RULES (Option B):
+      // - Public can read (get + list/query) ONLY published articles (status == 'published')
+      // - Draft/unpublished content is NOT readable by the public
+      // - Admins can read any content (published or draft)
+      // Note: For list queries, each document in the result is checked against this rule
+      // So public users will only see published documents, admins see all
+      allow read: if resource.data.status == 'published' || isAdminUser();
+
+      // WRITE RULES (admin-only):
       // Allow admins to create content
-      // Simplified check - verify user can read their own adminUsers doc first
-      allow create: if request.auth != null &&
-        request.auth.uid != null &&
-        // First verify the adminUsers document exists and user can read it
-        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true &&
-        // Then verify the data being written
+      allow create: if isAdminUser() &&
         request.resource.data.authorId == request.auth.uid &&
         request.resource.data.status in ['draft', 'published'];
-      
+
       // Allow admins to update content
-      allow update: if request.auth != null &&
-        request.auth.uid != null &&
-        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true &&
+      allow update: if isAdminUser() &&
         request.resource.data.authorId == resource.data.authorId &&
         request.resource.data.status in ['draft', 'published'];
-      
+
       // Allow admins to delete content
       allow delete: if isAdminUser();
     }

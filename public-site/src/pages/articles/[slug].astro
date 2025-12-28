@@ -1,0 +1,132 @@
+---
+import { getArticleBySlug, getPublishedArticles } from '../../lib/firestore';
+import { generateMetaTags, generateJSONLD } from '../../lib/seo';
+
+const siteUrl = 'https://dcci-ministries.firebaseapp.com'; // Update with your actual domain
+
+// Generate static paths for all articles at build time
+export async function getStaticPaths() {
+  const articles = await getPublishedArticles();
+  return articles.map((article) => ({
+    params: { slug: article.slug }
+  }));
+}
+
+// Get slug from URL params
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/articles/', 404);
+}
+
+// Fetch article at build time
+const article = await getArticleBySlug(slug);
+
+// If article not found, return 404
+if (!article) {
+  return Astro.redirect('/articles/', 404);
+}
+
+// Check if this is an old slug (redirect case)
+if (article.oldSlugs && article.oldSlugs.includes(slug) && article.slug !== slug) {
+  // Redirect to new slug (301 permanent redirect)
+  return Astro.redirect(`/articles/${article.slug}/`, 301);
+}
+
+const canonicalUrl = `${siteUrl}/articles/${article.slug}/`;
+const description = article.excerpt || article.content.substring(0, 160).replace(/<[^>]*>/g, '') + '...';
+const image = article.featuredImage;
+
+const seoData = {
+  title: `${article.title} - DCCI Ministries`,
+  description,
+  canonicalUrl,
+  image,
+  type: 'article' as const,
+  publishedTime: article.publishedAt?.toISOString(),
+  modifiedTime: article.updatedAt.toISOString(),
+  author: article.authorEmail,
+  tags: article.tags?.map(tag => tag.replace(/^#/, ''))
+};
+
+const metaTags = generateMetaTags(seoData);
+const jsonLd = generateJSONLD(seoData);
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="generator" content={Astro.generator} />
+		{@html metaTags}
+		{@html jsonLd}
+	</head>
+	<body>
+		<main>
+			<article>
+				<header>
+					<h1>{article.title}</h1>
+					{article.publishedAt && (
+						<time datetime={article.publishedAt.toISOString()}>
+							Published: {article.publishedAt.toLocaleDateString()}
+						</time>
+					)}
+					{article.tags && article.tags.length > 0 && (
+						<div>
+							{article.tags.map((tag) => (
+								<span>{tag}</span>
+							))}
+						</div>
+					)}
+				</header>
+				{article.excerpt && <p class="excerpt">{article.excerpt}</p>}
+				<div class="content" set:html={article.content} />
+			</article>
+		</main>
+	</body>
+</html>
+
+<style>
+	main {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 2rem;
+	}
+	
+	article header {
+		margin-bottom: 2rem;
+	}
+	
+	article h1 {
+		margin-bottom: 1rem;
+	}
+	
+	.excerpt {
+		font-size: 1.2em;
+		font-style: italic;
+		margin-bottom: 2rem;
+		color: #666;
+	}
+	
+	.content {
+		line-height: 1.6;
+	}
+	
+	.content :global(h1),
+	.content :global(h2),
+	.content :global(h3) {
+		margin-top: 2rem;
+		margin-bottom: 1rem;
+	}
+	
+	.content :global(p) {
+		margin-bottom: 1rem;
+	}
+	
+	.content :global(img) {
+		max-width: 100%;
+		height: auto;
+	}
+</style>
+
