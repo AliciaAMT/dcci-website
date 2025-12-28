@@ -56,6 +56,8 @@ export class CreateContentPage implements OnInit {
   content: string = '';
   tagsInput: string = '';
   tags: string[] = [];
+  slug: string = '';
+  showSlugField: boolean = false;
   currentUser: AdminUser | null = null;
   isSaving: boolean = false;
   isPublishing: boolean = false;
@@ -230,6 +232,8 @@ export class CreateContentPage implements OnInit {
         this.content = content.content;
         this.tags = content.tags || [];
         this.tagsInput = this.tags.map(tag => tag.replace(/^#/, '')).join(', ');
+        this.slug = content.slug || '';
+        this.showSlugField = true; // Show slug field when editing
       }
     } catch (error) {
       console.error('Error loading content for edit:', error);
@@ -311,7 +315,7 @@ export class CreateContentPage implements OnInit {
           authorId: this.currentUser.uid,
           authorEmail: this.currentUser.email,
           tags: this.tags.length > 0 ? this.tags : undefined
-        });
+        }, this.slug.trim() || undefined);
         await this.showToast('Draft updated successfully');
       } else {
         // Create new draft
@@ -323,7 +327,7 @@ export class CreateContentPage implements OnInit {
           authorId: this.currentUser.uid,
           authorEmail: this.currentUser.email,
           tags: this.tags.length > 0 ? this.tags : undefined
-        });
+        }, this.slug.trim() || undefined);
         await this.showToast('Draft saved successfully');
       }
     } catch (error) {
@@ -360,7 +364,7 @@ export class CreateContentPage implements OnInit {
         authorId: this.currentUser.uid,
         authorEmail: this.currentUser.email,
         tags: this.tags.length > 0 ? this.tags : undefined
-      }, this.savedContentId || undefined);
+      }, this.savedContentId || undefined, this.slug.trim() || undefined);
 
       this.savedContentId = contentId;
       await this.showToast('Content published successfully!');

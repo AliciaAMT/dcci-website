@@ -46,6 +46,25 @@
     </div>
 
     <ion-item>
+      <ion-label position="stacked">URL Slug (optional)</ion-label>
+      <ion-input
+        [(ngModel)]="slug"
+        placeholder="Auto-generated from title (or enter custom slug)"
+        [disabled]="!showSlugField && !isEditMode"
+      ></ion-input>
+    </ion-item>
+    <p class="tags-hint" *ngIf="!showSlugField && !isEditMode">
+      <ion-button fill="clear" size="small" (click)="showSlugField = true">
+        <ion-icon name="create-outline" slot="start"></ion-icon>
+        Customize URL slug
+      </ion-button>
+    </p>
+    <p class="tags-hint" *ngIf="showSlugField || isEditMode">
+      Customize the URL slug for this article. Leave empty to auto-generate from title. 
+      <strong>Note:</strong> Changing the slug of a published article will create a redirect from the old URL.
+    </p>
+
+    <ion-item>
       <ion-label position="stacked">Content *</ion-label>
     </ion-item>
     <div class="quill-editor-wrapper">
