@@ -10,8 +10,8 @@ export function registerIonicons(): void {
   try {
     // Use document.baseURI if available, otherwise fall back to root path
     // This prevents "Invalid base URL" errors during icon loading
-    const basePath = (typeof document !== 'undefined' && document.baseURI) 
-      ? new URL(document.baseURI).pathname || '/' 
+    const basePath = (typeof document !== 'undefined' && document.baseURI)
+      ? new URL(document.baseURI).pathname || '/'
       : '/';
     setAssetPath(basePath);
   } catch (error) {
@@ -74,5 +74,8 @@ export function registerIonicons(): void {
     'close-circle': i.closeCircle,
     // Content creation icons
     'save-outline': i.saveOutline,
+    'document-text-outline': i.documentTextOutline,
+    'pencil-outline': i.pencilOutline,
+    'trash-outline': i.trashOutline,
   });
 }

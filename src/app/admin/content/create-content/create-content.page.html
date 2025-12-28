@@ -9,8 +9,8 @@
 
 <ion-content class="ion-padding">
   <div class="content-form">
-    <h2>Create New Article</h2>
-    <p class="subtitle">Fill in the details below to create a new piece of content</p>
+    <h2>{{ isEditMode ? 'Edit Article' : 'Create New Article' }}</h2>
+    <p class="subtitle">{{ isEditMode ? 'Update the details below' : 'Fill in the details below to create a new piece of content' }}</p>
 
     <ion-item>
       <ion-label position="stacked">Title *</ion-label>
@@ -29,6 +29,21 @@
         rows="3"
       ></ion-textarea>
     </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Tags (optional)</ion-label>
+      <ion-input
+        [(ngModel)]="tagsInput"
+        placeholder="Enter tags separated by commas (e.g., #christianity #islam #theology)"
+        (ionInput)="onTagsInput()"
+      ></ion-input>
+    </ion-item>
+    <p class="tags-hint">Enter tags separated by commas. You can use hashtags (e.g., #christianity) or plain text (e.g., christianity).</p>
+    <div class="tags-preview" *ngIf="tags.length > 0">
+      <ion-chip *ngFor="let tag of tags" color="primary" size="small">
+        <ion-label>{{ tag }}</ion-label>
+      </ion-chip>
+    </div>
 
     <ion-item>
       <ion-label position="stacked">Content *</ion-label>

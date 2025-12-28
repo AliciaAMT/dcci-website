@@ -1,0 +1,249 @@
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import {
+  IonContent,
+  IonButton,
+  IonIcon,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonBackButton,
+  IonItem,
+  IonLabel,
+  IonInput,
+  IonSelect,
+  IonSelectOption,
+  IonSpinner,
+  IonChip,
+  LoadingController,
+  ToastController,
+  AlertController
+} from '@ionic/angular/standalone';
+import { Router } from '@angular/router';
+import { AuthService, AdminUser } from '../../../services/auth';
+import { ContentService, Content } from '../../../services/content.service';
+import { firstValueFrom } from 'rxjs';
+
+@Component({
+  selector: 'app-drafts',
+  templateUrl: './drafts.page.html',
+  styleUrls: ['./drafts.page.scss'],
+  standalone: true,
+  imports: [
+    IonContent,
+    IonButton,
+    IonIcon,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonBackButton,
+    IonItem,
+    IonLabel,
+    IonInput,
+    IonSelect,
+    IonSelectOption,
+    IonSpinner,
+    IonChip,
+    CommonModule,
+    FormsModule
+  ]
+})
+export class DraftsPage implements OnInit, OnDestroy {
+  currentUser: AdminUser | null = null;
+  drafts: Content[] = [];
+  filteredDrafts: Content[] = [];
+  isLoading = false;
+  searchTerm = '';
+  searchType: 'title' | 'content' | 'tags' | 'date' = 'title';
+  sortBy: 'date' | 'title' = 'date';
+
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+    private contentService: ContentService,
+    private loadingController: LoadingController,
+    private toastController: ToastController,
+    private alertController: AlertController
+  ) {}
+
+  async ngOnInit() {
+    const user = await firstValueFrom(this.authService.currentUser$);
+    if (!user || !user.isAdmin || !user.emailVerified) {
+      this.router.navigate(['/admin/dashboard']);
+      return;
+    }
+    this.currentUser = user;
+    await this.loadDrafts();
+  }
+
+  ngOnDestroy() {}
+
+  async loadDrafts() {
+    this.isLoading = true;
+    try {
+      this.drafts = await this.contentService.getDrafts();
+      this.applyFilters();
+    } catch (error) {
+      console.error('Error loading drafts:', error);
+      await this.showToast('Failed to load drafts', 'danger');
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  async onSearch() {
+    if (this.searchTerm.trim()) {
+      this.isLoading = true;
+      try {
+        this.filteredDrafts = await this.contentService.searchContent(
+          'draft',
+          this.searchTerm,
+          this.searchType,
+          this.sortBy,
+          this.drafts
+        );
+      } catch (error) {
+        console.error('Error searching drafts:', error);
+        await this.showToast('Search failed', 'danger');
+      } finally {
+        this.isLoading = false;
+      }
+    } else {
+      this.applyFilters();
+    }
+  }
+
+  applyFilters() {
+    this.filteredDrafts = [...this.drafts];
+
+    // Sort
+    if (this.sortBy === 'title') {
+      this.filteredDrafts.sort((a, b) => a.title.localeCompare(b.title));
+    } else {
+      this.filteredDrafts.sort((a, b) => {
+        const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : new Date(a.updatedAt as any).getTime();
+        const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : new Date(b.updatedAt as any).getTime();
+        return bTime - aTime;
+      });
+    }
+  }
+
+  onSortChange() {
+    this.applyFilters();
+  }
+
+  async editDraft(draft: Content) {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    this.router.navigate(['/admin/content/edit', draft.id]);
+  }
+
+  async publishDraft(draft: Content) {
+    const alert = await this.alertController.create({
+      header: 'Publish Draft',
+      message: `Are you sure you want to publish "${draft.title}"?`,
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Publish',
+          handler: async () => {
+            const loading = await this.loadingController.create({
+              message: 'Publishing...'
+            });
+            await loading.present();
+
+            try {
+              await this.contentService.publish({
+                title: draft.title,
+                excerpt: draft.excerpt,
+                content: draft.content,
+                status: 'published',
+                authorId: draft.authorId,
+                authorEmail: draft.authorEmail,
+                tags: draft.tags
+              }, draft.id);
+
+              await loading.dismiss();
+              await this.showToast('Content published successfully!');
+              await this.loadDrafts();
+            } catch (error) {
+              await loading.dismiss();
+              console.error('Error publishing draft:', error);
+              await this.showToast('Failed to publish content', 'danger');
+            }
+          }
+        }
+      ]
+    });
+
+    await alert.present();
+  }
+
+  async deleteDraft(draft: Content) {
+    const alert = await this.alertController.create({
+      header: 'Delete Draft',
+      message: `Are you sure you want to delete "${draft.title}"? This action cannot be undone.`,
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: async () => {
+            const loading = await this.loadingController.create({
+              message: 'Deleting...'
+            });
+            await loading.present();
+
+            try {
+              await this.contentService.deleteContent(draft.id!);
+              await loading.dismiss();
+              await this.showToast('Draft deleted successfully');
+              await this.loadDrafts();
+            } catch (error) {
+              await loading.dismiss();
+              console.error('Error deleting draft:', error);
+              await this.showToast('Failed to delete draft', 'danger');
+            }
+          }
+        }
+      ]
+    });
+
+    await alert.present();
+  }
+
+  viewDraft(draft: Content) {
+    // Navigate to view/edit page
+    this.router.navigate(['/admin/content/edit', draft.id]);
+  }
+
+  getDate(date: Date | any): Date {
+    if (!date) return new Date();
+    if (date instanceof Date) return date;
+    if (date && typeof date.toDate === 'function') {
+      return date.toDate();
+    }
+    return new Date(date);
+  }
+
+  private async showToast(message: string, color: 'success' | 'danger' = 'success') {
+    const toast = await this.toastController.create({
+      message,
+      duration: 3000,
+      color,
+      position: 'top'
+    });
+    await toast.present();
+  }
+}
+

@@ -45,6 +45,26 @@ export const routes: Routes = [
     loadComponent: () => import('./admin/content/create-content/create-content.page').then( m => m.CreateContentPage),
     canActivate: [adminGuard]
   },
+  {
+    path: 'admin/content/manage',
+    loadComponent: () => import('./admin/content/manage-content/manage-content.page').then( m => m.ManageContentPage),
+    canActivate: [adminGuard]
+  },
+  {
+    path: 'admin/content/drafts',
+    loadComponent: () => import('./admin/content/drafts/drafts.page').then( m => m.DraftsPage),
+    canActivate: [adminGuard]
+  },
+  {
+    path: 'admin/content/published',
+    loadComponent: () => import('./admin/content/published/published.page').then( m => m.PublishedPage),
+    canActivate: [adminGuard]
+  },
+  {
+    path: 'admin/content/edit/:id',
+    loadComponent: () => import('./admin/content/create-content/create-content.page').then( m => m.CreateContentPage),
+    canActivate: [adminGuard]
+  },
 
 
 

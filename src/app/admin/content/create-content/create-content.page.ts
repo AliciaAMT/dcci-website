@@ -14,6 +14,7 @@ import {
   IonTitle,
   IonBackButton,
   IonButtons,
+  IonChip,
   LoadingController,
   ToastController
 } from '@ionic/angular/standalone';
@@ -42,6 +43,7 @@ import { firstValueFrom } from 'rxjs';
     IonTitle,
     IonBackButton,
     IonButtons,
+    IonChip,
     CommonModule,
     FormsModule,
     QuillModule
@@ -52,10 +54,13 @@ export class CreateContentPage implements OnInit {
   title: string = '';
   excerpt: string = '';
   content: string = '';
+  tagsInput: string = '';
+  tags: string[] = [];
   currentUser: AdminUser | null = null;
   isSaving: boolean = false;
   isPublishing: boolean = false;
   savedContentId: string | null = null;
+  isEditMode: boolean = false;
 
   // Quill editor configuration
   quillModules = {
@@ -107,7 +112,7 @@ export class CreateContentPage implements OnInit {
   constructor(
     private router: Router,
     private authService: AuthService,
-    private contentService: ContentService,
+    public contentService: ContentService,
     private loadingController: LoadingController,
     private toastController: ToastController
   ) {
@@ -203,6 +208,48 @@ export class CreateContentPage implements OnInit {
       return;
     }
     this.currentUser = user;
+
+    // Check if we're editing an existing content
+    const url = this.router.url;
+    if (url.includes('/edit/')) {
+      const contentId = url.split('/edit/')[1];
+      if (contentId) {
+        await this.loadContentForEdit(contentId);
+      }
+    }
+  }
+
+  async loadContentForEdit(contentId: string) {
+    try {
+      const content = await this.contentService.getContent(contentId);
+      if (content) {
+        this.isEditMode = true;
+        this.savedContentId = content.id || null;
+        this.title = content.title;
+        this.excerpt = content.excerpt || '';
+        this.content = content.content;
+        this.tags = content.tags || [];
+        this.tagsInput = this.tags.map(tag => tag.replace(/^#/, '')).join(', ');
+      }
+    } catch (error) {
+      console.error('Error loading content for edit:', error);
+      await this.showToast('Failed to load content', 'danger');
+    }
+  }
+
+  onTagsInput() {
+    // Parse tags from input - split by comma and clean up
+    this.tags = this.tagsInput
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0)
+      .map(tag => {
+        // Add # if not present
+        if (tag.startsWith('#')) {
+          return tag;
+        }
+        return '#' + tag;
+      });
   }
 
   private async showToast(message: string, color: 'success' | 'danger' = 'success') {
@@ -262,7 +309,8 @@ export class CreateContentPage implements OnInit {
           content: this.content.trim(),
           status: 'draft',
           authorId: this.currentUser.uid,
-          authorEmail: this.currentUser.email
+          authorEmail: this.currentUser.email,
+          tags: this.tags.length > 0 ? this.tags : undefined
         });
         await this.showToast('Draft updated successfully');
       } else {
@@ -273,7 +321,8 @@ export class CreateContentPage implements OnInit {
           content: this.content.trim(),
           status: 'draft',
           authorId: this.currentUser.uid,
-          authorEmail: this.currentUser.email
+          authorEmail: this.currentUser.email,
+          tags: this.tags.length > 0 ? this.tags : undefined
         });
         await this.showToast('Draft saved successfully');
       }
@@ -309,7 +358,8 @@ export class CreateContentPage implements OnInit {
         content: this.content.trim(),
         status: 'published',
         authorId: this.currentUser.uid,
-        authorEmail: this.currentUser.email
+        authorEmail: this.currentUser.email,
+        tags: this.tags.length > 0 ? this.tags : undefined
       }, this.savedContentId || undefined);
 
       this.savedContentId = contentId;
