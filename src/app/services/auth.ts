@@ -1,4 +1,4 @@
-import { Injectable, NgZone } from '@angular/core';
+import { Injectable, NgZone, Injector, runInInjectionContext } from '@angular/core';
 import { Router } from '@angular/router';
 import { Firestore, collection, doc, getDoc, setDoc, query, where, getDocs } from '@angular/fire/firestore';
 import { Auth as FirebaseAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User, sendEmailVerification, applyActionCode, checkActionCode, confirmPasswordReset, sendPasswordResetEmail, verifyPasswordResetCode } from '@angular/fire/auth';
@@ -34,19 +34,20 @@ export class AuthService {
     private auth: FirebaseAuth,
     private router: Router,
     private sanitization: SanitizationService,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private injector: Injector
   ) {
     // Listen for auth state changes
     this.auth.onAuthStateChanged(async (user: User | null) => {
       if (user) {
         // Only load user data if user is verified (to avoid errors during signup)
         if (user.emailVerified) {
-          // Use setTimeout to defer the call to the next tick, ensuring proper Angular context
-          setTimeout(async () => {
-            await this.ngZone.run(async () => {
+          // Use runInInjectionContext to ensure Firebase APIs are called within injection context
+          await this.ngZone.run(async () => {
+            await runInInjectionContext(this.injector, async () => {
               await this.loadUserData(user.uid);
             });
-          }, 0);
+          });
         } else {
           // For unverified users, just set basic user info
           this.ngZone.run(() => {
@@ -236,8 +237,8 @@ export class AuthService {
    */
   private async loadUserData(uid: string): Promise<AdminUser | null> {
     try {
-      // Ensure we're in the proper Angular zone
-      return await this.ngZone.run(async () => {
+      // Ensure Firebase API calls are within injection context
+      return await runInInjectionContext(this.injector, async () => {
         try {
           const userDoc = await getDoc(doc(this.firestore, 'adminUsers', uid));
 
@@ -435,28 +436,30 @@ export class AuthService {
    */
   private async recordFailedAttempt(email: string): Promise<void> {
     try {
-      const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
-      const failedAttemptsDoc = await getDoc(failedAttemptsRef);
-      
-      let attempts = 1;
-      let lockedUntil: Date | undefined;
-      
-      if (failedAttemptsDoc.exists()) {
-        const data = failedAttemptsDoc.data() as FailedAttempt;
-        attempts = data.attempts + 1;
+      await runInInjectionContext(this.injector, async () => {
+        const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
+        const failedAttemptsDoc = await getDoc(failedAttemptsRef);
         
-        // If this is the 3rd attempt, lock the account for 15 minutes
-        if (attempts >= 3) {
-          lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+        let attempts = 1;
+        let lockedUntil: Date | undefined;
+        
+        if (failedAttemptsDoc.exists()) {
+          const data = failedAttemptsDoc.data() as FailedAttempt;
+          attempts = data.attempts + 1;
+          
+          // If this is the 3rd attempt, lock the account for 15 minutes
+          if (attempts >= 3) {
+            lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+          }
         }
-      }
-      
-      await setDoc(failedAttemptsRef, {
-        email,
-        attempts,
-        lastAttempt: new Date(),
-        lockedUntil,
-        ipAddress: await this.getClientIP()
+        
+        await setDoc(failedAttemptsRef, {
+          email,
+          attempts,
+          lastAttempt: new Date(),
+          lockedUntil,
+          ipAddress: await this.getClientIP()
+        });
       });
     } catch (error) {
       console.error('Error recording failed attempt:', error);
@@ -468,19 +471,21 @@ export class AuthService {
    */
   async getFailedAttempts(email: string): Promise<FailedAttempt | null> {
     try {
-      const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
-      const failedAttemptsDoc = await getDoc(failedAttemptsRef);
-      
-      if (failedAttemptsDoc.exists()) {
-        const data = failedAttemptsDoc.data() as FailedAttempt;
-        // Convert Firestore timestamps to Date objects
-        return {
-          ...data,
-          lastAttempt: data.lastAttempt instanceof Date ? data.lastAttempt : new Date(data.lastAttempt),
-          lockedUntil: data.lockedUntil ? (data.lockedUntil instanceof Date ? data.lockedUntil : new Date(data.lockedUntil)) : undefined
-        };
-      }
-      return null;
+      return await runInInjectionContext(this.injector, async () => {
+        const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
+        const failedAttemptsDoc = await getDoc(failedAttemptsRef);
+        
+        if (failedAttemptsDoc.exists()) {
+          const data = failedAttemptsDoc.data() as FailedAttempt;
+          // Convert Firestore timestamps to Date objects
+          return {
+            ...data,
+            lastAttempt: data.lastAttempt instanceof Date ? data.lastAttempt : new Date(data.lastAttempt),
+            lockedUntil: data.lockedUntil ? (data.lockedUntil instanceof Date ? data.lockedUntil : new Date(data.lockedUntil)) : undefined
+          };
+        }
+        return null;
+      });
     } catch (error) {
       console.error('Error getting failed attempts:', error);
       return null;
@@ -492,12 +497,14 @@ export class AuthService {
    */
   private async clearFailedAttempts(email: string): Promise<void> {
     try {
-      const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
-      await setDoc(failedAttemptsRef, {
-        email,
-        attempts: 0,
-        lastAttempt: new Date(),
-        lockedUntil: null
+      await runInInjectionContext(this.injector, async () => {
+        const failedAttemptsRef = doc(this.firestore, 'failedAttempts', email);
+        await setDoc(failedAttemptsRef, {
+          email,
+          attempts: 0,
+          lastAttempt: new Date(),
+          lockedUntil: null
+        });
       });
     } catch (error) {
       console.error('Error clearing failed attempts:', error);
