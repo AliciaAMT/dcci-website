@@ -13,7 +13,14 @@
       }
     ],
     "rewrites": [
-      { "source": "**", "destination": "/index.html" }
+      {
+        "source": "/",
+        "destination": "/welcome/"
+      },
+      {
+        "source": "/admin/**",
+        "destination": "/index.html"
+      }
     ]
   },
   "functions": {
