@@ -6,6 +6,17 @@ import * as nodemailer from "nodemailer";
 import * as https from "https";
 import { sanitizeContactForm, escapeHtmlForEmail, sanitizeNewsletterForm } from "./sanitization";
 
+// Load environment variables from .env file for local development
+// This only runs in local/emulator environment, not in production
+if (process.env.FUNCTIONS_EMULATOR || process.env.NODE_ENV !== 'production') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('dotenv').config();
+  } catch (e) {
+    // dotenv not installed, that's okay - will use Firebase config instead
+  }
+}
+
 // YouTube API response types
 interface YouTubePlaylistItem {
   snippet: {
