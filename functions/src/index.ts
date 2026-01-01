@@ -43,6 +43,8 @@ interface YouTubeVideoSnippet {
   title: string;
   description?: string;
   publishedAt: string;
+  channelId: string;
+  tags?: string[];
   thumbnails: {
     maxres?: { url: string };
     high?: { url: string };
@@ -610,6 +612,134 @@ function getThumbnailUrl(thumbnails: any): string {
 }
 
 /**
+ * Strip promotional boilerplate blocks from YouTube description
+ * Removes footer-style promotional content while preserving teaching content
+ */
+function stripBoilerplateFromDescription(description: string): string {
+  if (!description || description.trim().length === 0) {
+    return '';
+  }
+
+  // Boilerplate markers that indicate the start of promotional footer content
+  // These patterns are checked case-insensitively
+  const boilerplateMarkers = [
+    // Confessional slogans as footer
+    /^jesus is lord$/i,
+    /^jesus christ is lord$/i,
+
+    // Contact information
+    /contact.*?:/i,
+    /email.*?:/i,
+    /skype.*?:/i,
+    /reach.*?us/i,
+
+    // Donation links
+    /donate/i,
+    /paypal/i,
+    /cashapp/i,
+    /cash app/i,
+    /support.*?ministry/i,
+
+    // Social media follow links
+    /follow.*?us/i,
+    /follow.*?on/i,
+    /twitter.*?:/i,
+    /rumble.*?:/i,
+    /website.*?:/i,
+    /visit.*?website/i,
+
+    // Speaking invitations
+    /speaking.*?invitation/i,
+    /invite.*?speak/i,
+    /book.*?speaker/i,
+
+    // Copyright/disclaimers
+    /copyright/i,
+    /fair use/i,
+    /disclaimer/i,
+    /all rights reserved/i,
+
+    // Comment moderation
+    /no.*?weblinks/i,
+    /comment.*?policy/i,
+    /moderation/i,
+
+    // Repeated Scripture as footer (John 20:31 pattern when standalone)
+    /^john\s+20:31/i,
+    /^john\s+20:\s*31/i,
+  ];
+
+  const lines = description.split('\n');
+  let boilerplateStartIndex = -1;
+
+  // Scan from the end backwards to find the first boilerplate marker
+  // Only check the last portion of the description (last 10 lines) to avoid false positives
+  const linesToCheck = Math.min(10, lines.length);
+
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - linesToCheck); i--) {
+    const line = lines[i].trim();
+    if (line.length === 0) continue;
+
+    // Check if this line matches any boilerplate marker
+    const isBoilerplate = boilerplateMarkers.some(marker => {
+      // Check if marker matches the line or appears at the start of the line
+      return marker.test(line) || marker.test(line.split(/[:\-]/)[0]?.trim() || '');
+    });
+
+    if (isBoilerplate) {
+      boilerplateStartIndex = i;
+      // Continue checking backwards for multi-line boilerplate blocks
+      // Look for empty lines or continuation patterns
+      let j = i - 1;
+      while (j >= 0 && j >= Math.max(0, lines.length - linesToCheck - 5)) {
+        const prevLine = lines[j].trim();
+        if (prevLine.length === 0) {
+          // Found empty line, check if next non-empty line is also boilerplate
+          let k = j - 1;
+          while (k >= 0 && lines[k].trim().length === 0) k--;
+          if (k >= 0) {
+            const checkLine = lines[k].trim();
+            const isAlsoBoilerplate = boilerplateMarkers.some(marker =>
+              marker.test(checkLine) || marker.test(checkLine.split(/[:\-]/)[0]?.trim() || '')
+            );
+            if (isAlsoBoilerplate) {
+              boilerplateStartIndex = k;
+              j = k - 1;
+              continue;
+            }
+          }
+          break;
+        }
+        // Check if previous line is also boilerplate
+        const isAlsoBoilerplate = boilerplateMarkers.some(marker =>
+          marker.test(prevLine) || marker.test(prevLine.split(/[:\-]/)[0]?.trim() || '')
+        );
+        if (isAlsoBoilerplate) {
+          boilerplateStartIndex = j;
+          j--;
+        } else {
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  // If boilerplate found, remove everything from that point to the end
+  if (boilerplateStartIndex >= 0) {
+    lines.splice(boilerplateStartIndex);
+  }
+
+  // Clean up: remove trailing empty lines and whitespace
+  let cleaned = lines.join('\n')
+    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+    .replace(/\s+$/gm, '') // Trim trailing whitespace on each line
+    .trim();
+
+  return cleaned;
+}
+
+/**
  * Extract tags from YouTube description and remove tag block from description
  *
  * Extracts:
@@ -836,8 +966,8 @@ export const syncYouTubeUploads = functions.pubsub
         return null;
       }
 
-      // Step 4: Get video details from YouTube API
-      const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${newestVideoId}&key=${youtubeApiKey}`;
+      // Step 4: Get video details from YouTube API (include status to check if public)
+      const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${newestVideoId}&key=${youtubeApiKey}`;
 
       let videoData: YouTubeVideoResponse;
       try {
@@ -853,28 +983,62 @@ export const syncYouTubeUploads = functions.pubsub
         return null;
       }
 
+      // Check if video is public (ignore private/unlisted)
+      const videoStatus = (videoData.items[0] as any).status;
+      if (videoStatus?.privacyStatus !== 'public') {
+        console.log(`Video ${newestVideoId} is not public (${videoStatus?.privacyStatus}), skipping`);
+        return null;
+      }
+
       const snippet = videoData.items[0].snippet;
       const title = snippet.title;
       const rawDescription = snippet.description || '';
       const thumbnails = snippet.thumbnails;
+      const channelIdFromVideo = snippet.channelId;
+      const videoTags = snippet.tags || []; // YouTube video tags (preferred source)
 
-      // Extract tags from description and remove tag block
-      const { description, tags } = extractTagsFromDescription(rawDescription);
+      // Step 1: Strip boilerplate from description (before tag extraction)
+      const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
+
+      // Step 2: Extract tags from cleaned description (hashtags and comma-separated blocks)
+      const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
+
+      // Step 3: Use YouTube video tags if available, otherwise use extracted tags
+      // Normalize: lowercase, trim, remove leading '#', deduplicate
+      const allTags = new Set<string>();
+      if (videoTags && videoTags.length > 0) {
+        // Prefer YouTube video tags
+        videoTags.forEach(tag => {
+          const normalized = tag.toLowerCase().trim();
+          if (normalized.length > 0) {
+            allTags.add(normalized);
+          }
+        });
+      } else {
+        // Fallback to extracted tags from description
+        extractedTags.forEach(tag => {
+          const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
+          if (normalized.length > 0) {
+            allTags.add(normalized);
+          }
+        });
+      }
+      const finalTags = Array.from(allTags).slice(0, 50);
 
       // Generate slug
       const baseSlug = slugify(title);
       const uniqueSlug = await getUniqueSlug(baseSlug);
 
       // Generate excerpt (first 160 chars of cleaned description, plain text)
-      const excerpt = description
+      const excerpt = cleanedDescription
         .replace(/\n/g, ' ')
         .replace(/<[^>]*>/g, '')
         .trim()
         .substring(0, 160) || '';
 
-      // Generate content HTML from cleaned description (without tag block)
+      // Generate content HTML from cleaned description (without boilerplate and tag block)
       // Escape HTML and convert newlines to <br> within a single <p> tag
-      const escapedDescription = description
+      const escapedDescription = cleanedDescription
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -904,12 +1068,25 @@ export const syncYouTubeUploads = functions.pubsub
         type: 'youtube',
         youtubeVideoId: newestVideoId,
         youtubeUrl: `https://www.youtube.com/watch?v=${newestVideoId}`,
-        thumbnailUrl
+        thumbnailUrl,
+        // Source metadata
+        source: {
+          type: 'youtube',
+          videoId: newestVideoId,
+          channelId: channelIdFromVideo,
+          publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+          backfilled: false
+        },
+        // Store raw and cleaned descriptions for reference
+        youtube: {
+          descriptionRaw: rawDescription,
+          descriptionClean: cleanedDescription
+        }
       };
 
-      // Only include tags field if tags were extracted
-      if (tags.length > 0) {
-        contentData.tags = tags;
+      // Store tags at top level (only if tags exist)
+      if (finalTags.length > 0) {
+        contentData.tags = finalTags;
       }
 
       const docRef = await db.collection('content').add(contentData);
@@ -922,7 +1099,7 @@ export const syncYouTubeUploads = functions.pubsub
     }
   });
 
-// One-time backfill function to import older YouTube uploads
+// One-time backfill function to import YouTube uploads from last 30 days
 export const backfillYouTubeUploads = functions.https.onRequest(async (req, res) => {
   try {
     // Security: Check token
@@ -936,7 +1113,7 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
 
     // Get config
     const youtubeApiKey = functions.config().youtube?.api_key || process.env.YOUTUBE_API_KEY;
-    const playlistId = functions.config().youtube?.uploads_playlist_id || process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || 'UUf0MDB_oF7huA78BNADx9sQ';
+    const channelId = functions.config().youtube?.channel_id || process.env.YOUTUBE_CHANNEL_ID || 'UCf0MDB_oF7huA78BNADx9sQ';
     const authorEmail = functions.config().youtube?.author_email || process.env.YOUTUBE_AUTHOR_EMAIL || '';
     const authorId = functions.config().youtube?.author_id || process.env.YOUTUBE_AUTHOR_ID || '';
 
@@ -945,21 +1122,12 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
       return;
     }
 
-    // Parse days parameter (default 30, max 120)
-    const daysParam = req.query.days as string;
-    let days = 30;
-    if (daysParam) {
-      const parsedDays = parseInt(daysParam, 10);
-      if (!isNaN(parsedDays) && parsedDays >= 1 && parsedDays <= 120) {
-        days = parsedDays;
-      }
-    }
-
-    // Calculate cutoff date
+    // Fixed: Only import videos from last 30 days
+    const days = 30;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    const cutoffIso = cutoffDate.toISOString();
-    console.log(`Starting backfill for last ${days} days (cutoff: ${cutoffIso})`);
+    const publishedAfter = cutoffDate.toISOString();
+    console.log(`Starting backfill for last ${days} days (publishedAfter: ${publishedAfter})`);
 
     let createdCount = 0;
     let skippedCount = 0;
@@ -967,52 +1135,52 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
     let nextPageToken: string | undefined = undefined;
     const MAX_VIDEOS = 200; // Safety cap
 
-    // Paginate through playlist items
+    // Use YouTube Search API with publishedAfter filter instead of playlist items
+    // This allows us to filter by date and only get public videos
     while (processedCount < MAX_VIDEOS) {
-      // Build playlist URL with pagination
-      let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
+      // Build search URL with publishedAfter filter
+      let searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&order=date&publishedAfter=${publishedAfter}&maxResults=50&key=${youtubeApiKey}`;
       if (nextPageToken) {
-        playlistUrl += `&pageToken=${nextPageToken}`;
+        searchUrl += `&pageToken=${nextPageToken}`;
       }
 
-      let playlistData: YouTubePlaylistResponse;
+      let searchData: any;
       try {
-        const playlistResponseText = await httpsGet(playlistUrl);
-        playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
+        const searchResponseText = await httpsGet(searchUrl);
+        searchData = JSON.parse(searchResponseText);
       } catch (error: any) {
-        console.error('YouTube API playlistItems error:', error.message);
+        console.error('YouTube API search error:', error.message);
         res.status(500).json({ error: `YouTube API error: ${error.message}` });
         return;
       }
 
-      if (!playlistData.items || playlistData.items.length === 0) {
-        console.log('No more videos found in playlist');
+      if (!searchData.items || searchData.items.length === 0) {
+        console.log('No more videos found');
         break;
       }
 
       // Process each video in this page
-      let shouldStopPagination = false;
-      for (const item of playlistData.items) {
+      for (const item of searchData.items) {
         if (processedCount >= MAX_VIDEOS) {
           console.log(`Reached safety cap of ${MAX_VIDEOS} videos`);
           break;
         }
 
-        const videoId = item.snippet.resourceId.videoId;
+        const videoId = item.id.videoId;
         const publishedAtStr = item.snippet.publishedAt;
         const publishedAtDate = new Date(publishedAtStr);
 
-        // Stop if video is older than cutoff
+        // Double-check date (should already be filtered by API, but verify)
         if (publishedAtDate < cutoffDate) {
-          console.log(`Reached cutoff date. Stopping pagination.`);
-          shouldStopPagination = true;
-          break;
+          console.log(`Video ${videoId} is older than cutoff, skipping`);
+          continue;
         }
 
+        // Only process public videos (privacyStatus should be 'public' in full video data)
         processedCount++;
         console.log(`Processing video ${processedCount}: ${videoId} (published: ${publishedAtStr})`);
 
-        // Check if video already exists in Firestore
+        // Check if video already exists in Firestore (idempotent)
         const existingVideoQuery = await db.collection('content')
           .where('youtubeVideoId', '==', videoId)
           .limit(1)
@@ -1024,8 +1192,8 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
           continue;
         }
 
-        // Get video details (we need full snippet with thumbnails)
-        const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${youtubeApiKey}`;
+        // Get full video details (we need snippet with tags, thumbnails, and status)
+        const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${videoId}&key=${youtubeApiKey}`;
 
         let videoData: YouTubeVideoResponse;
         try {
@@ -1043,28 +1211,63 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
           continue;
         }
 
+        // Check if video is public (ignore private/unlisted)
+        const videoStatus = (videoData.items[0] as any).status;
+        if (videoStatus?.privacyStatus !== 'public') {
+          console.log(`Video ${videoId} is not public (${videoStatus?.privacyStatus}), skipping`);
+          skippedCount++;
+          continue;
+        }
+
         const snippet = videoData.items[0].snippet;
         const title = snippet.title;
         const rawDescription = snippet.description || '';
         const thumbnails = snippet.thumbnails;
-        const videoPublishedAtStr = snippet.publishedAt; // Use video's actual publishedAt
+        const videoPublishedAtStr = snippet.publishedAt;
+        const channelIdFromVideo = snippet.channelId;
+        const videoTags = snippet.tags || []; // YouTube video tags (preferred source)
 
-        // Extract tags from description and remove tag block
-        const { description, tags } = extractTagsFromDescription(rawDescription);
+        // Step 1: Strip boilerplate from description (before tag extraction)
+        const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
+
+        // Step 2: Extract tags from cleaned description (hashtags and comma-separated blocks)
+        const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
+
+        // Step 3: Use YouTube video tags if available, otherwise use extracted tags
+        // Normalize: lowercase, trim, remove leading '#', deduplicate
+        const allTags = new Set<string>();
+        if (videoTags && videoTags.length > 0) {
+          // Prefer YouTube video tags
+          videoTags.forEach(tag => {
+            const normalized = tag.toLowerCase().trim();
+            if (normalized.length > 0) {
+              allTags.add(normalized);
+            }
+          });
+        } else {
+          // Fallback to extracted tags from description
+          extractedTags.forEach(tag => {
+            const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
+            if (normalized.length > 0) {
+              allTags.add(normalized);
+            }
+          });
+        }
+        const finalTags = Array.from(allTags).slice(0, 50);
 
         // Generate slug
         const baseSlug = slugify(title);
         const uniqueSlug = await getUniqueSlug(baseSlug);
 
         // Generate excerpt (first 160 chars of cleaned description, plain text)
-        const excerpt = description
+        const excerpt = cleanedDescription
           .replace(/\n/g, ' ')
           .replace(/<[^>]*>/g, '')
           .trim()
           .substring(0, 160) || '';
 
-        // Generate content HTML from cleaned description (without tag block)
-        const escapedDescription = description
+        // Generate content HTML from cleaned description (without boilerplate and tag block)
+        const escapedDescription = cleanedDescription
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
@@ -1081,7 +1284,7 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
         const videoPublishedAtDate = new Date(videoPublishedAtStr);
         const publishedAtTimestamp = admin.firestore.Timestamp.fromDate(videoPublishedAtDate);
 
-        // Create Firestore document
+        // Create Firestore document with source metadata
         const contentData: any = {
           title,
           slug: uniqueSlug,
@@ -1096,12 +1299,25 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
           type: 'youtube',
           youtubeVideoId: videoId,
           youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
-          thumbnailUrl
+          thumbnailUrl,
+          // Source metadata
+          source: {
+            type: 'youtube',
+            videoId: videoId,
+            channelId: channelIdFromVideo,
+            publishedAt: publishedAtTimestamp,
+            backfilled: true
+          },
+          // Store raw and cleaned descriptions for reference
+          youtube: {
+            descriptionRaw: rawDescription,
+            descriptionClean: cleanedDescription
+          }
         };
 
-        // Only include tags field if tags were extracted
-        if (tags.length > 0) {
-          contentData.tags = tags;
+        // Store tags at top level (only if tags exist)
+        if (finalTags.length > 0) {
+          contentData.tags = finalTags;
         }
 
         await db.collection('content').add(contentData);
@@ -1109,22 +1325,17 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
         console.log(`Created new YouTube post for video: ${videoId}`);
       }
 
-      // Check if we should continue paginating
-      if (shouldStopPagination) {
-        break; // We hit the cutoff date, stop pagination
-      }
-
       // Check if there are more pages
-      if (playlistData.nextPageToken) {
-        nextPageToken = playlistData.nextPageToken;
+      if (searchData.nextPageToken) {
+        nextPageToken = searchData.nextPageToken;
       } else {
         break; // No more pages
       }
     }
 
     const summary = {
-      days,
-      cutoffIso,
+      days: 30,
+      publishedAfter,
       createdCount,
       skippedCount,
       processedCount
