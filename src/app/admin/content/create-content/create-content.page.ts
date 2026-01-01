@@ -24,6 +24,7 @@ import { ContentService } from '../../../services/content.service';
 import { QuillModule } from 'ngx-quill';
 import Quill from 'quill';
 import { firstValueFrom } from 'rxjs';
+import { filter, take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-create-content',
@@ -204,7 +205,13 @@ export class CreateContentPage implements OnInit {
 
   async ngOnInit() {
     // Verify user is admin and load user data
-    const user = await firstValueFrom(this.authService.currentUser$);
+    // Wait for non-null user (filter out null values to ensure auth is ready)
+    const user = await firstValueFrom(
+      this.authService.currentUser$.pipe(
+        filter(u => u !== null),
+        take(1)
+      )
+    );
     if (!user || !user.isAdmin || !user.emailVerified) {
       this.router.navigate(['/admin/dashboard']);
       return;
@@ -283,9 +290,20 @@ export class CreateContentPage implements OnInit {
       return;
     }
 
+    // Ensure auth is ready before writing
     if (!this.currentUser) {
-      this.showToast('User not authenticated', 'danger');
-      return;
+      // Wait for user to load if not ready
+      const user = await firstValueFrom(
+        this.authService.currentUser$.pipe(
+          filter(u => u !== null),
+          take(1)
+        )
+      );
+      if (!user || !user.isAdmin) {
+        this.showToast('User not authenticated or not an admin', 'danger');
+        return;
+      }
+      this.currentUser = user;
     }
 
     // Debug: Check admin status
@@ -344,9 +362,20 @@ export class CreateContentPage implements OnInit {
       return;
     }
 
+    // Ensure auth is ready before writing
     if (!this.currentUser) {
-      this.showToast('User not authenticated', 'danger');
-      return;
+      // Wait for user to load if not ready
+      const user = await firstValueFrom(
+        this.authService.currentUser$.pipe(
+          filter(u => u !== null),
+          take(1)
+        )
+      );
+      if (!user || !user.isAdmin) {
+        this.showToast('User not authenticated or not an admin', 'danger');
+        return;
+      }
+      this.currentUser = user;
     }
 
     this.isPublishing = true;

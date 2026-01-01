@@ -23,16 +23,26 @@ interface YouTubePlaylistItem {
     resourceId: {
       videoId: string;
     };
+    publishedAt: string;
+    title: string;
+    description?: string;
+    thumbnails: {
+      maxres?: { url: string };
+      high?: { url: string };
+      default?: { url: string };
+    };
   };
 }
 
 interface YouTubePlaylistResponse {
   items?: YouTubePlaylistItem[];
+  nextPageToken?: string;
 }
 
 interface YouTubeVideoSnippet {
   title: string;
   description?: string;
+  publishedAt: string;
   thumbnails: {
     maxres?: { url: string };
     high?: { url: string };
@@ -766,3 +776,212 @@ export const syncYouTubeUploads = functions.pubsub
       throw error;
     }
   });
+
+// One-time backfill function to import older YouTube uploads
+export const backfillYouTubeUploads = functions.https.onRequest(async (req, res) => {
+  try {
+    // Security: Check token
+    const providedToken = req.query.token as string;
+    const expectedToken = functions.config().youtube?.backfill_token || process.env.YOUTUBE_BACKFILL_TOKEN;
+
+    if (!expectedToken || providedToken !== expectedToken) {
+      res.status(403).json({ error: 'Unauthorized: Invalid or missing token' });
+      return;
+    }
+
+    // Get config
+    const youtubeApiKey = functions.config().youtube?.api_key || process.env.YOUTUBE_API_KEY;
+    const playlistId = functions.config().youtube?.uploads_playlist_id || process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || 'UUf0MDB_oF7huA78BNADx9sQ';
+    const authorEmail = functions.config().youtube?.author_email || process.env.YOUTUBE_AUTHOR_EMAIL || '';
+    const authorId = functions.config().youtube?.author_id || process.env.YOUTUBE_AUTHOR_ID || '';
+
+    if (!youtubeApiKey) {
+      res.status(500).json({ error: 'YouTube API key not configured' });
+      return;
+    }
+
+    // Parse days parameter (default 30, max 120)
+    const daysParam = req.query.days as string;
+    let days = 30;
+    if (daysParam) {
+      const parsedDays = parseInt(daysParam, 10);
+      if (!isNaN(parsedDays) && parsedDays >= 1 && parsedDays <= 120) {
+        days = parsedDays;
+      }
+    }
+
+    // Calculate cutoff date
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    const cutoffIso = cutoffDate.toISOString();
+    console.log(`Starting backfill for last ${days} days (cutoff: ${cutoffIso})`);
+
+    let createdCount = 0;
+    let skippedCount = 0;
+    let processedCount = 0;
+    let nextPageToken: string | undefined = undefined;
+    const MAX_VIDEOS = 200; // Safety cap
+
+    // Paginate through playlist items
+    while (processedCount < MAX_VIDEOS) {
+      // Build playlist URL with pagination
+      let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
+      if (nextPageToken) {
+        playlistUrl += `&pageToken=${nextPageToken}`;
+      }
+
+      let playlistData: YouTubePlaylistResponse;
+      try {
+        const playlistResponseText = await httpsGet(playlistUrl);
+        playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
+      } catch (error: any) {
+        console.error('YouTube API playlistItems error:', error.message);
+        res.status(500).json({ error: `YouTube API error: ${error.message}` });
+        return;
+      }
+
+      if (!playlistData.items || playlistData.items.length === 0) {
+        console.log('No more videos found in playlist');
+        break;
+      }
+
+      // Process each video in this page
+      let shouldStopPagination = false;
+      for (const item of playlistData.items) {
+        if (processedCount >= MAX_VIDEOS) {
+          console.log(`Reached safety cap of ${MAX_VIDEOS} videos`);
+          break;
+        }
+
+        const videoId = item.snippet.resourceId.videoId;
+        const publishedAtStr = item.snippet.publishedAt;
+        const publishedAtDate = new Date(publishedAtStr);
+
+        // Stop if video is older than cutoff
+        if (publishedAtDate < cutoffDate) {
+          console.log(`Reached cutoff date. Stopping pagination.`);
+          shouldStopPagination = true;
+          break;
+        }
+
+        processedCount++;
+        console.log(`Processing video ${processedCount}: ${videoId} (published: ${publishedAtStr})`);
+
+        // Check if video already exists in Firestore
+        const existingVideoQuery = await db.collection('content')
+          .where('youtubeVideoId', '==', videoId)
+          .limit(1)
+          .get();
+
+        if (!existingVideoQuery.empty) {
+          skippedCount++;
+          console.log(`Video ${videoId} already exists, skipping`);
+          continue;
+        }
+
+        // Get video details (we need full snippet with thumbnails)
+        const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${youtubeApiKey}`;
+
+        let videoData: YouTubeVideoResponse;
+        try {
+          const videoResponseText = await httpsGet(videoUrl);
+          videoData = JSON.parse(videoResponseText) as YouTubeVideoResponse;
+        } catch (error: any) {
+          console.error(`Error fetching video ${videoId}:`, error.message);
+          skippedCount++;
+          continue;
+        }
+
+        if (!videoData.items || videoData.items.length === 0) {
+          console.log(`Video ${videoId} not found in YouTube API`);
+          skippedCount++;
+          continue;
+        }
+
+        const snippet = videoData.items[0].snippet;
+        const title = snippet.title;
+        const description = snippet.description || '';
+        const thumbnails = snippet.thumbnails;
+        const videoPublishedAtStr = snippet.publishedAt; // Use video's actual publishedAt
+
+        // Generate slug
+        const baseSlug = slugify(title);
+        const uniqueSlug = await getUniqueSlug(baseSlug);
+
+        // Generate excerpt (first 160 chars of description, plain text)
+        const excerpt = description
+          .replace(/\n/g, ' ')
+          .replace(/<[^>]*>/g, '')
+          .trim()
+          .substring(0, 160) || '';
+
+        // Generate content HTML
+        const escapedDescription = description
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br>');
+
+        const descriptionHtml = `<p>${escapedDescription}</p>`;
+        const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        const content = `${descriptionHtml}\n\n${embedHtml}`;
+
+        // Get thumbnail URL
+        const thumbnailUrl = getThumbnailUrl(thumbnails);
+
+        // Convert YouTube publishedAt to Firestore Timestamp (use video's actual publishedAt)
+        const videoPublishedAtDate = new Date(videoPublishedAtStr);
+        const publishedAtTimestamp = admin.firestore.Timestamp.fromDate(videoPublishedAtDate);
+
+        // Create Firestore document
+        const contentData = {
+          title,
+          slug: uniqueSlug,
+          status: 'published',
+          content,
+          excerpt,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          publishedAt: publishedAtTimestamp, // Use video's actual published date
+          authorEmail: authorEmail || '',
+          authorId: authorId || '',
+          type: 'youtube',
+          youtubeVideoId: videoId,
+          youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          thumbnailUrl
+        };
+
+        await db.collection('content').add(contentData);
+        createdCount++;
+        console.log(`Created new YouTube post for video: ${videoId}`);
+      }
+
+      // Check if we should continue paginating
+      if (shouldStopPagination) {
+        break; // We hit the cutoff date, stop pagination
+      }
+
+      // Check if there are more pages
+      if (playlistData.nextPageToken) {
+        nextPageToken = playlistData.nextPageToken;
+      } else {
+        break; // No more pages
+      }
+    }
+
+    const summary = {
+      days,
+      cutoffIso,
+      createdCount,
+      skippedCount,
+      processedCount
+    };
+
+    console.log('Backfill complete:', summary);
+    res.status(200).json(summary);
+
+  } catch (error) {
+    console.error('Error in backfill:', error);
+    res.status(500).json({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});

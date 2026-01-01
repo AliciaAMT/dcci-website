@@ -24,10 +24,22 @@ service cloud.firestore {
     // Helper function to check if the current user is an admin
     // Hardened with exists() check before get() to avoid errors
     function isAdminUser() {
-      return request.auth != null && 
+      return request.auth != null &&
              request.auth.uid != null &&
              exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Helper function to validate content document fields
+    // Allows all fields used by CMS and YouTube importer (tags, type, youtubeVideoId, etc.)
+    function isValidContentFields(data) {
+      let allowedFields = [
+        'title', 'slug', 'content', 'excerpt', 'status', 'authorId', 'authorEmail',
+        'createdAt', 'updatedAt', 'publishedAt', 'oldSlugs', 'tags', 'featuredImage',
+        'type', 'youtubeVideoId', 'youtubeUrl', 'thumbnailUrl'
+      ];
+      // Check that all keys in data are in the allowed list (fields are optional)
+      return data.keys().hasOnly(allowedFields);
     }
 
     // Admin users collection - for CMS authentication
@@ -85,15 +97,20 @@ service cloud.firestore {
       allow read: if resource.data.status == 'published' || isAdminUser();
 
       // WRITE RULES (admin-only):
-      // Allow admins to create content
+      // Allow admins to create content with any authorId (for importing/creating content on behalf of others)
+      // Require authorId exists and is a non-empty string
       allow create: if isAdminUser() &&
-        request.resource.data.authorId == request.auth.uid &&
-        request.resource.data.status in ['draft', 'published'];
+        request.resource.data.authorId is string &&
+        request.resource.data.authorId.size() > 0 &&
+        request.resource.data.status in ['draft', 'published'] &&
+        isValidContentFields(request.resource.data);
 
-      // Allow admins to update content
+      // Allow admins to update content with validated fields (including tags and YouTube fields)
+      // Preserve authorId immutability - authorId cannot be changed on update
       allow update: if isAdminUser() &&
         request.resource.data.authorId == resource.data.authorId &&
-        request.resource.data.status in ['draft', 'published'];
+        request.resource.data.status in ['draft', 'published'] &&
+        isValidContentFields(request.resource.data);
 
       // Allow admins to delete content
       allow delete: if isAdminUser();
