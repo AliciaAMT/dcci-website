@@ -35,10 +35,6 @@
             {{ getDate(content.createdAt) | date:'mediumDate' }}
           </time>
         </div>
-
-        <div class="article-tags" *ngIf="content.tags && content.tags.length > 0">
-          <span class="tag" *ngFor="let tag of content.tags">{{ tag }}</span>
-        </div>
       </header>
 
       <div class="article-featured-image" *ngIf="getThumbnailUrl(content)">
@@ -50,6 +46,10 @@
       </div>
 
       <div class="article-content" [innerHTML]="sanitizedContent"></div>
+
+      <div class="article-tags" *ngIf="content.tags && content.tags.length > 0">
+        <span class="tag" *ngFor="let tag of content.tags">{{ tag }}</span>
+      </div>
     </article>
   </div>
 </ion-content>

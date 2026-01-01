@@ -80,5 +80,8 @@ export function registerIonicons(): void {
     'trash-outline': i.trashOutline,
     // Comments icons
     'chatbubbles-outline': i.chatbubblesOutline,
+    // Carousel icons
+    'chevron-back-outline': i.chevronBackOutline,
+    'chevron-forward-outline': i.chevronForwardOutline,
   });
 }
