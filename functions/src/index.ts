@@ -8,13 +8,17 @@ import { sanitizeContactForm, escapeHtmlForEmail, sanitizeNewsletterForm } from 
 
 // Load environment variables from .env file for local development
 // This only runs in local/emulator environment, not in production
-if (process.env.FUNCTIONS_EMULATOR || process.env.NODE_ENV !== 'production') {
-  try {
+// Use try-catch with immediate execution to avoid blocking
+try {
+  if ((process.env.FUNCTIONS_EMULATOR || process.env.NODE_ENV !== 'production') && typeof require !== 'undefined') {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('dotenv').config();
-  } catch (e) {
-    // dotenv not installed, that's okay - will use Firebase config instead
+    const dotenv = require('dotenv');
+    if (dotenv && dotenv.config) {
+      dotenv.config();
+    }
   }
+} catch (e) {
+  // dotenv not available or not needed - will use Firebase config instead
 }
 
 // YouTube API response types
@@ -621,113 +625,172 @@ function stripBoilerplateFromDescription(description: string): string {
   }
 
   // Boilerplate markers that indicate the start of promotional footer content
-  // These patterns are checked case-insensitively
+  // These patterns are checked case-insensitively and match anywhere in the line
   const boilerplateMarkers = [
-    // Confessional slogans as footer
-    /^jesus is lord$/i,
-    /^jesus christ is lord$/i,
+    // Confessional slogans as footer (standalone lines, with optional whitespace)
+    /^jesus\s+is\s+lord$/i,
+    /^jesus\s+christ\s+is\s+lord$/i,
+    /^jesus is lord/i, // Also match if not exact (might have trailing content)
 
-    // Contact information
-    /contact.*?:/i,
-    /email.*?:/i,
+    // John 20:31 as standalone footer (with or without verse text)
+    /^john\s+20:31/i,
+    /^john\s+20:\s*31/i,
+    /but these are written so that you may believe/i,
+    /john\s+20:31.*believe.*jesus.*christ/i, // Full verse pattern
+
+    // Contact information patterns
+    /^email\s+us:/i,
+    /^contact\s+us:/i,
+    /^email.*?:/i,
+    /^contact.*?:/i,
     /skype.*?:/i,
-    /reach.*?us/i,
+    /^reach.*?us/i,
+    /info@dcciministries/i,
 
-    // Donation links
-    /donate/i,
+    // Donation/support patterns
+    /^to support/i,
+    /^donate/i,
     /paypal/i,
     /cashapp/i,
-    /cash app/i,
-    /support.*?ministry/i,
+    /cash\s+app/i,
+    /^\$[a-zA-Z]/i, // CashApp handles like $HatunTashDCCI
 
     // Social media follow links
-    /follow.*?us/i,
-    /follow.*?on/i,
+    /^follow\s+us\s+on/i,
+    /^follow\s+us/i,
     /twitter.*?:/i,
     /rumble.*?:/i,
     /website.*?:/i,
-    /visit.*?website/i,
+    /^visit.*?website/i,
+    /dcciministries\.com/i,
+    /twitter\.com\/dcciministries/i,
+    /rumble\.com/i,
 
     // Speaking invitations
+    /^if you would like to invite/i,
     /speaking.*?invitation/i,
     /invite.*?speak/i,
     /book.*?speaker/i,
+    /church or university/i,
+
+    // DCCI mission statements (when at end, these are boilerplate)
+    /^dcci ministries seek to preach/i,
+    /^like the apostle paul/i,
+    /^we do not use deception/i,
+    /^we demolish arguments/i,
+    /^our motivation is love for muslims/i,
 
     // Copyright/disclaimers
-    /copyright/i,
-    /fair use/i,
-    /disclaimer/i,
+    /^copyright/i,
+    /^fair use/i,
+    /^disclaimer/i,
     /all rights reserved/i,
 
     // Comment moderation
     /no.*?weblinks/i,
     /comment.*?policy/i,
     /moderation/i,
-
-    // Repeated Scripture as footer (John 20:31 pattern when standalone)
-    /^john\s+20:31/i,
-    /^john\s+20:\s*31/i,
   ];
 
   const lines = description.split('\n');
   let boilerplateStartIndex = -1;
 
   // Scan from the end backwards to find the first boilerplate marker
-  // Only check the last portion of the description (last 10 lines) to avoid false positives
-  const linesToCheck = Math.min(10, lines.length);
+  // Check more lines (last 30 lines) to catch longer boilerplate blocks
+  const linesToCheck = Math.min(30, lines.length);
+
+  // Helper function to check if a line is boilerplate
+  // Only treats DCCI-specific URLs as boilerplate, not all URLs
+  const isLineBoilerplate = (line: string): boolean => {
+    if (!line || line.trim().length === 0) return false;
+    const trimmed = line.trim();
+    const matchesMarker = boilerplateMarkers.some(marker => marker.test(trimmed));
+    const isEmail = /@dcciministries/i.test(trimmed);
+
+    // Only treat DCCI-specific URLs as boilerplate (not all URLs)
+    const isDcciUrl = /^https?:\/\/(www\.)?dcciministries\.com/i.test(trimmed) ||
+                      /paypal\.me\/dcciministries/i.test(trimmed) ||
+                      /cash\.app\/\$[^\/]*dcci/i.test(trimmed) ||
+                      /twitter\.com\/dcciministries/i.test(trimmed) ||
+                      /rumble\.com\/user\/DCCIMinistries/i.test(trimmed);
+
+    return matchesMarker || isDcciUrl || isEmail;
+  };
 
   for (let i = lines.length - 1; i >= Math.max(0, lines.length - linesToCheck); i--) {
     const line = lines[i].trim();
     if (line.length === 0) continue;
 
-    // Check if this line matches any boilerplate marker
-    const isBoilerplate = boilerplateMarkers.some(marker => {
-      // Check if marker matches the line or appears at the start of the line
-      return marker.test(line) || marker.test(line.split(/[:\-]/)[0]?.trim() || '');
-    });
-
-    if (isBoilerplate) {
+    if (isLineBoilerplate(line)) {
       boilerplateStartIndex = i;
+      console.log(`[Boilerplate] Found marker at line ${i}: "${line.substring(0, 50)}..."`);
+
       // Continue checking backwards for multi-line boilerplate blocks
-      // Look for empty lines or continuation patterns
+      // More aggressive: continue backwards until we find non-boilerplate content
       let j = i - 1;
-      while (j >= 0 && j >= Math.max(0, lines.length - linesToCheck - 5)) {
+      let consecutiveBoilerplateCount = 0;
+      const maxBackwardScan = Math.max(0, lines.length - linesToCheck - 15);
+
+      while (j >= maxBackwardScan) {
         const prevLine = lines[j].trim();
+
         if (prevLine.length === 0) {
-          // Found empty line, check if next non-empty line is also boilerplate
-          let k = j - 1;
-          while (k >= 0 && lines[k].trim().length === 0) k--;
-          if (k >= 0) {
-            const checkLine = lines[k].trim();
-            const isAlsoBoilerplate = boilerplateMarkers.some(marker =>
-              marker.test(checkLine) || marker.test(checkLine.split(/[:\-]/)[0]?.trim() || '')
-            );
-            if (isAlsoBoilerplate) {
-              boilerplateStartIndex = k;
-              j = k - 1;
-              continue;
-            }
-          }
-          break;
+          // Empty line - skip it but continue scanning backwards
+          j--;
+          continue;
         }
-        // Check if previous line is also boilerplate
-        const isAlsoBoilerplate = boilerplateMarkers.some(marker =>
-          marker.test(prevLine) || marker.test(prevLine.split(/[:\-]/)[0]?.trim() || '')
-        );
-        if (isAlsoBoilerplate) {
+
+        if (isLineBoilerplate(prevLine)) {
+          // Found more boilerplate - extend the removal range
           boilerplateStartIndex = j;
+          consecutiveBoilerplateCount++;
           j--;
         } else {
-          break;
+          // Found non-boilerplate content
+          // If we've seen several boilerplate lines in a row, this is likely the start
+          // Otherwise, if we just found one marker, stop here
+          if (consecutiveBoilerplateCount >= 2) {
+            // We've confirmed a boilerplate block, stop here
+            break;
+          } else {
+            // Might be a false positive, but if we found URLs/emails, it's likely boilerplate
+            // Check if the original marker was a strong indicator (DCCI URL, email, or key phrases)
+            const isDcciUrl = /^https?:\/\/(www\.)?dcciministries\.com/i.test(line) ||
+                              /paypal\.me\/dcciministries/i.test(line) ||
+                              /cash\.app\/\$[^\/]*dcci/i.test(line) ||
+                              /twitter\.com\/dcciministries/i.test(line) ||
+                              /rumble\.com\/user\/DCCIMinistries/i.test(line);
+            const originalIsStrong = isDcciUrl ||
+                                     /@dcciministries/i.test(line) ||
+                                     /^email\s+us:/i.test(line) ||
+                                     /^contact\s+us:/i.test(line) ||
+                                     /^follow\s+us/i.test(line) ||
+                                     /^to support/i.test(line);
+            if (originalIsStrong) {
+              // Strong indicator - keep the removal point
+              break;
+            } else {
+              // Weak indicator - might be false positive, don't remove
+              boilerplateStartIndex = -1;
+              break;
+            }
+          }
         }
       }
-      break;
+
+      // If we found a valid boilerplate block, stop scanning
+      if (boilerplateStartIndex >= 0) {
+        break;
+      }
     }
   }
 
   // If boilerplate found, remove everything from that point to the end
   if (boilerplateStartIndex >= 0) {
+    console.log(`[Boilerplate] Removing lines ${boilerplateStartIndex} to ${lines.length - 1}`);
     lines.splice(boilerplateStartIndex);
+  } else {
+    console.log('[Boilerplate] No boilerplate markers found');
   }
 
   // Clean up: remove trailing empty lines and whitespace
@@ -1106,7 +1169,22 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
     const providedToken = req.query.token as string;
     const expectedToken = functions.config().youtube?.backfill_token || process.env.YOUTUBE_BACKFILL_TOKEN;
 
-    if (!expectedToken || providedToken !== expectedToken) {
+    // Debug logging (safe - doesn't expose full token)
+    console.log('Token check:', {
+      provided: providedToken ? `${providedToken.substring(0, 2)}...` : 'missing',
+      expected: expectedToken ? `${expectedToken.substring(0, 2)}...` : 'missing',
+      configExists: !!functions.config().youtube?.backfill_token,
+      envExists: !!process.env.YOUTUBE_BACKFILL_TOKEN
+    });
+
+    if (!expectedToken) {
+      console.error('Backfill token not configured in functions config or environment');
+      res.status(500).json({ error: 'Backfill token not configured' });
+      return;
+    }
+
+    if (!providedToken || providedToken !== expectedToken) {
+      console.warn('Token mismatch - access denied');
       res.status(403).json({ error: 'Unauthorized: Invalid or missing token' });
       return;
     }
