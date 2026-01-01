@@ -88,10 +88,10 @@ service cloud.firestore {
 
     // Content collection - articles and blog posts
     match /content/{contentId} {
-      // READ RULES (Option B):
+      // READ RULES:
       // - Public can read (get + list/query) ONLY published articles (status == 'published')
       // - Draft/unpublished content is NOT readable by the public
-      // - Admins can read any content (published or draft)
+      // - Admins can read any content (published or draft) - this allows slug uniqueness queries
       // Note: For list queries, each document in the result is checked against this rule
       // So public users will only see published documents, admins see all
       allow read: if resource.data.status == 'published' || isAdminUser();

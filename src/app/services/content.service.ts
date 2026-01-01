@@ -177,7 +177,8 @@ export class ContentService {
       return await runInInjectionContext(this.injector, async () => {
         const contentRef = collection(this.firestore, 'content');
 
-        // Check current slugs
+        // Check current slugs - use filtered query (admins can read all, public can only read published)
+        // For admins, this query will return both draft and published content
         const q = query(contentRef, where('slug', '==', slug));
         const snapshot = await getDocs(q);
 
@@ -190,17 +191,41 @@ export class ContentService {
         }
 
         // Also check oldSlugs arrays for redirects
-        // Note: Firestore doesn't support array-contains queries efficiently across all documents
-        // So we'll get all documents and check oldSlugs in memory
-        // For better performance with large datasets, consider creating a separate redirects collection
-        const allContentSnapshot = await getDocs(contentRef);
-        for (const docSnap of allContentSnapshot.docs) {
+        // Use a query to get documents that might have this slug in oldSlugs
+        // Note: Firestore doesn't support efficient array-contains queries for oldSlugs,
+        // so we'll query published content (which admins can read) and check in memory
+        // For drafts, we rely on the slug uniqueness check above
+        const publishedQuery = query(contentRef, where('status', '==', 'published'));
+        const publishedSnapshot = await getDocs(publishedQuery);
+        for (const docSnap of publishedSnapshot.docs) {
           if (excludeId && docSnap.id === excludeId) continue;
 
           const data = docSnap.data();
           const oldSlugs = data['oldSlugs'] || [];
           if (oldSlugs.includes(slug)) {
             return true;
+          }
+        }
+
+        // For drafts, check if we can read them (admin only)
+        // If we're an admin, also check draft content for oldSlugs
+        try {
+          const draftQuery = query(contentRef, where('status', '==', 'draft'));
+          const draftSnapshot = await getDocs(draftQuery);
+          for (const docSnap of draftSnapshot.docs) {
+            if (excludeId && docSnap.id === excludeId) continue;
+
+            const data = docSnap.data();
+            const oldSlugs = data['oldSlugs'] || [];
+            if (oldSlugs.includes(slug)) {
+              return true;
+            }
+          }
+        } catch (draftError: any) {
+          // If we can't read drafts (not an admin), that's okay - we've checked published content
+          // This is expected for non-admin users, but shouldn't happen for admins
+          if (draftError?.code === 'permission-denied') {
+            console.warn('Cannot read draft content for oldSlugs check (permission denied). Assuming slug is available.');
           }
         }
 
@@ -211,6 +236,7 @@ export class ContentService {
       console.error('Error checking slug existence:', error);
       console.error('Error code:', error?.code);
       console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
       // For permission errors, we should throw so the user knows
       if (error?.code === 'permission-denied') {
         throw new Error('Permission denied: Unable to check if slug exists. Please ensure you are logged in as an admin.');
@@ -294,10 +320,25 @@ export class ContentService {
           delete data.tags;
         }
 
-        console.log('Attempting to save draft with data:', { ...data, content: '[content hidden]' });
-        const docRef = await addDoc(contentRef, data);
-        console.log('Draft saved successfully with ID:', docRef.id);
-        return docRef.id;
+        // Debug logging
+        const dataKeys = Object.keys(data).filter(k => k !== 'content'); // Exclude content from log
+        console.log('[ContentService] Attempting to save draft');
+        console.log('[ContentService] Data keys:', dataKeys);
+        console.log('[ContentService] Author ID:', data.authorId);
+        console.log('[ContentService] Status:', data.status);
+        console.log('[ContentService] Document path: content/ (new document)');
+
+        try {
+          const docRef = await addDoc(contentRef, data);
+          console.log('[ContentService] Draft saved successfully with ID:', docRef.id);
+          return docRef.id;
+        } catch (error: any) {
+          console.error('[ContentService] Error saving draft:', error);
+          console.error('[ContentService] Error code:', error?.code);
+          console.error('[ContentService] Error message:', error?.message);
+          console.error('[ContentService] Error stack:', error?.stack);
+          throw error;
+        }
       });
     } catch (error: any) {
       console.error('Error in saveDraft:', error);
@@ -316,12 +357,23 @@ export class ContentService {
       // First, get the existing content to check if it's published
       const contentRef = doc(this.firestore, 'content', id);
       const existingDoc = await getDoc(contentRef);
-      const existingData = existingDoc.exists() ? existingDoc.data() : null;
+      if (!existingDoc.exists()) {
+        throw new Error('Document not found');
+      }
+      const existingData = existingDoc.data();
       const isPublished = existingData?.['status'] === 'published';
       const currentSlug = existingData?.['slug'];
 
+      // CRITICAL: Preserve authorId and authorEmail from existing document (immutable)
+      // Do NOT overwrite with values from contentData
+      const preservedAuthorId = existingData['authorId'];
+      const preservedAuthorEmail = existingData['authorEmail'];
+
       let updateData: any = {
         ...contentData,
+        // Override authorId/authorEmail to preserve immutability
+        authorId: preservedAuthorId,
+        authorEmail: preservedAuthorEmail,
         updatedAt: serverTimestamp()
       };
 
@@ -370,7 +422,28 @@ export class ContentService {
         delete updateData.tags;
       }
 
-      await setDoc(contentRef, updateData, { merge: true });
+      // Debug logging
+      const updateKeys = Object.keys(updateData).filter(k => k !== 'content'); // Exclude content from log
+      console.log('[ContentService] ===== UPDATE DRAFT =====');
+      console.log('[ContentService] Operation: UPDATE (existing document)');
+      console.log('[ContentService] Document ID:', id);
+      console.log('[ContentService] Document path: content/' + id);
+      console.log('[ContentService] Author ID (existing doc):', preservedAuthorId);
+      console.log('[ContentService] Author ID (preserved in update):', updateData.authorId);
+      console.log('[ContentService] Author ID match:', preservedAuthorId === updateData.authorId ? '✓ MATCH' : '✗ MISMATCH');
+      console.log('[ContentService] Update keys:', updateKeys);
+      console.log('[ContentService] Status:', updateData.status);
+
+      try {
+        await setDoc(contentRef, updateData, { merge: true });
+        console.log('[ContentService] Draft updated successfully');
+      } catch (error: any) {
+        console.error('[ContentService] Error updating draft:', error);
+        console.error('[ContentService] Error code:', error?.code);
+        console.error('[ContentService] Error message:', error?.message);
+        console.error('[ContentService] Error stack:', error?.stack);
+        throw error;
+      }
     });
   }
 
@@ -408,7 +481,28 @@ export class ContentService {
 
     // Then perform the Firestore write operation within injection context
     return await runInInjectionContext(this.injector, async () => {
-      // Prepare data object, removing undefined values
+      const isUpdate = !!existingId;
+      
+      // If updating, load existing document to preserve immutable fields
+      let existingData: any = null;
+      let preservedAuthorId: string | undefined;
+      let preservedAuthorEmail: string | undefined;
+      let preservedCreatedAt: any;
+
+      if (existingId) {
+        const existingRef = doc(this.firestore, 'content', existingId);
+        const existingDoc = await getDoc(existingRef);
+        if (!existingDoc.exists()) {
+          throw new Error('Document not found');
+        }
+        existingData = existingDoc.data();
+        // CRITICAL: Preserve immutable fields from existing document
+        preservedAuthorId = existingData['authorId'];
+        preservedAuthorEmail = existingData['authorEmail'];
+        preservedCreatedAt = existingData['createdAt'];
+      }
+
+      // Prepare data object
       const data: any = {
         ...contentData,
         slug,
@@ -416,26 +510,27 @@ export class ContentService {
         updatedAt: serverTimestamp()
       };
 
-      // Handle slug changes for published articles (store old slug for redirects)
-      if (existingId) {
-        const existingRef = doc(this.firestore, 'content', existingId);
-        const existingDoc = await getDoc(existingRef);
-        if (existingDoc.exists()) {
-          const existingData = existingDoc.data();
-          const oldSlug = existingData['slug'];
+      // For UPDATES: Preserve immutable fields (authorId, authorEmail, createdAt)
+      if (isUpdate && existingData) {
+        data.authorId = preservedAuthorId;
+        data.authorEmail = preservedAuthorEmail;
+        // createdAt should NOT be in update payload - merge: true will preserve existing createdAt
+        // Explicitly remove it if it was accidentally included
+        delete data.createdAt;
 
-          // If slug changed and article was already published, store old slug
-          if (oldSlug && slug !== oldSlug && existingData['status'] === 'published') {
-            const oldSlugs = existingData['oldSlugs'] || [];
-            if (!oldSlugs.includes(oldSlug)) {
-              data.oldSlugs = [...oldSlugs, oldSlug];
-            }
-          } else if (existingData['oldSlugs']) {
-            // Preserve existing oldSlugs
-            data.oldSlugs = existingData['oldSlugs'];
+        const oldSlug = existingData['slug'];
+        // If slug changed and article was already published, store old slug
+        if (oldSlug && slug !== oldSlug && existingData['status'] === 'published') {
+          const oldSlugs = existingData['oldSlugs'] || [];
+          if (!oldSlugs.includes(oldSlug)) {
+            data.oldSlugs = [...oldSlugs, oldSlug];
           }
+        } else if (existingData['oldSlugs']) {
+          // Preserve existing oldSlugs
+          data.oldSlugs = existingData['oldSlugs'];
         }
       }
+      // For CREATES: Use authorId from contentData (current user)
 
       // Remove undefined values (Firebase doesn't allow undefined)
       Object.keys(data).forEach(key => {
@@ -449,23 +544,49 @@ export class ContentService {
         delete data.tags;
       }
 
-      if (existingId) {
-        // Update existing content
-        const contentRef = doc(this.firestore, 'content', existingId);
-        await setDoc(contentRef, {
-          ...data,
-          publishedAt: serverTimestamp()
-        }, { merge: true });
-        return existingId;
+      // Debug logging
+      const dataKeys = Object.keys(data).filter(k => k !== 'content'); // Exclude content from log
+      console.log('[ContentService] ===== PUBLISH CONTENT =====');
+      console.log('[ContentService] Operation:', isUpdate ? 'UPDATE (existing document)' : 'CREATE (new document)');
+      console.log('[ContentService] Document ID:', existingId || '(new document)');
+      console.log('[ContentService] Document path:', existingId ? `content/${existingId}` : 'content/ (new document)');
+      if (isUpdate) {
+        console.log('[ContentService] Author ID (existing doc):', preservedAuthorId);
+        console.log('[ContentService] Author ID (preserved in update):', data.authorId);
+        console.log('[ContentService] Author ID match:', preservedAuthorId === data.authorId ? '✓ MATCH' : '✗ MISMATCH');
       } else {
-        // Create new published content
-        const contentRef = collection(this.firestore, 'content');
-        const docRef = await addDoc(contentRef, {
-          ...data,
-          createdAt: serverTimestamp(),
-          publishedAt: serverTimestamp()
-        });
-        return docRef.id;
+        console.log('[ContentService] Author ID (new doc, from current user):', data.authorId);
+      }
+      console.log('[ContentService] Data keys:', dataKeys);
+      console.log('[ContentService] Status:', data.status);
+
+      try {
+        if (existingId) {
+          // Update existing content
+          const contentRef = doc(this.firestore, 'content', existingId);
+          await setDoc(contentRef, {
+            ...data,
+            publishedAt: serverTimestamp()
+          }, { merge: true });
+          console.log('[ContentService] Content published successfully (updated)');
+          return existingId;
+        } else {
+          // Create new published content
+          const contentRef = collection(this.firestore, 'content');
+          const docRef = await addDoc(contentRef, {
+            ...data,
+            createdAt: serverTimestamp(),
+            publishedAt: serverTimestamp()
+          });
+          console.log('[ContentService] Content published successfully (created) with ID:', docRef.id);
+          return docRef.id;
+        }
+      } catch (error: any) {
+        console.error('[ContentService] Error publishing content:', error);
+        console.error('[ContentService] Error code:', error?.code);
+        console.error('[ContentService] Error message:', error?.message);
+        console.error('[ContentService] Error stack:', error?.stack);
+        throw error;
       }
     });
   }
