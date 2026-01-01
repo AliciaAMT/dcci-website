@@ -609,6 +609,143 @@ function getThumbnailUrl(thumbnails: any): string {
   return '';
 }
 
+/**
+ * Extract tags from YouTube description and remove tag block from description
+ *
+ * Extracts:
+ * 1. Hashtags (#tag format) from anywhere in description
+ * 2. Comma-separated tag block near the end (10+ tokens, mostly words)
+ *
+ * Test cases:
+ *
+ * Case 1: No tags
+ * Input: "This is a video about faith and hope. Watch and share!"
+ * Output: { description: "This is a video about faith and hope. Watch and share!", tags: [] }
+ *
+ * Case 2: Tags at bottom
+ * Input: "Video description here.\n\nfaith, hope, love, prayer, worship, bible, jesus, christian, god, holy spirit, salvation, grace, mercy, peace, joy"
+ * Output: { description: "Video description here.", tags: ["faith", "hope", "love", "prayer", "worship", "bible", "jesus", "christian", "god", "holy spirit", "salvation", "grace", "mercy", "peace", "joy"] }
+ *
+ * Case 3: Hashtags only
+ * Input: "Check out this video! #faith #hope #love #prayer"
+ * Output: { description: "Check out this video!", tags: ["faith", "hope", "love", "prayer"] }
+ */
+function extractTagsFromDescription(description: string): { description: string; tags: string[] } {
+  if (!description || description.trim().length === 0) {
+    return { description: '', tags: [] };
+  }
+
+  let cleanedDescription = description;
+  const extractedTags: Set<string> = new Set();
+  const MAX_TAGS = 50;
+
+  // Step 1: Extract hashtags (#tag format) from anywhere in description
+  const hashtagRegex = /#(\w+)/g;
+  let match;
+  // Reset regex lastIndex to ensure we start from beginning
+  hashtagRegex.lastIndex = 0;
+  while ((match = hashtagRegex.exec(description)) !== null) {
+    const tag = match[1].toLowerCase().trim();
+    if (tag.length > 0) {
+      extractedTags.add(tag);
+    }
+  }
+  // Remove hashtags from description (use a new regex instance to avoid lastIndex issues)
+  cleanedDescription = cleanedDescription.replace(/#\w+/g, '');
+
+  // Step 2: Detect and extract comma-separated tag block near the end
+  // Look for a pattern of 10+ comma-separated tokens in the last portion of description
+  const lines = cleanedDescription.split('\n');
+
+  // Check last few lines for tag block pattern
+  const linesToCheck = Math.min(5, lines.length); // Check last 5 lines
+  let tagBlockStartIndex = -1;
+  let tagBlockEndIndex = lines.length;
+
+  // Start from the end and work backwards
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - linesToCheck); i--) {
+    const line = lines[i].trim();
+    if (line.length === 0) continue;
+
+    // Count comma-separated tokens in this line
+    const tokens = line.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+    // Check if this looks like a tag block:
+    // - Has 10+ tokens, OR
+    // - Has 5+ tokens and previous line also had 5+ tokens (multi-line tag block)
+    const isTagBlock = tokens.length >= 10 ||
+                       (tokens.length >= 5 && i < lines.length - 1 &&
+                        lines[i + 1].split(',').map(t => t.trim()).filter(t => t.length > 0).length >= 5);
+
+    if (isTagBlock) {
+      tagBlockEndIndex = i + 1;
+      // Continue checking backwards for multi-line tag blocks
+      let j = i - 1;
+      while (j >= 0 && j >= Math.max(0, lines.length - linesToCheck)) {
+        const prevLine = lines[j].trim();
+        if (prevLine.length === 0) {
+          tagBlockStartIndex = j + 1;
+          break;
+        }
+        const prevTokens = prevLine.split(',').map(t => t.trim()).filter(t => t.length > 0);
+        if (prevTokens.length >= 5) {
+          j--;
+        } else {
+          tagBlockStartIndex = j + 1;
+          break;
+        }
+      }
+      if (tagBlockStartIndex === -1) {
+        tagBlockStartIndex = Math.max(0, j + 1);
+      }
+      break;
+    }
+  }
+
+  // Extract tags from the detected tag block
+  if (tagBlockStartIndex >= 0 && tagBlockStartIndex < tagBlockEndIndex) {
+    const tagBlockLines = lines.slice(tagBlockStartIndex, tagBlockEndIndex);
+    const tagBlockText = tagBlockLines.join(', ');
+
+    // Split on commas and extract tags
+    const commaTags = tagBlockText
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => {
+        // Filter out tokens that look like sentences (too long, contain periods, etc.)
+        if (t.length > 50) return false;
+        if (t.includes('. ') || t.includes('! ') || t.includes('? ')) return false;
+        // Must be mostly alphanumeric with some spaces/hyphens
+        return /^[a-zA-Z0-9\s\-']+$/.test(t);
+      })
+      .map(t => t.toLowerCase())
+      .filter(t => t.length > 0);
+
+    commaTags.forEach(tag => {
+      if (extractedTags.size < MAX_TAGS) {
+        extractedTags.add(tag);
+      }
+    });
+
+    // Remove tag block from description
+    lines.splice(tagBlockStartIndex, tagBlockEndIndex - tagBlockStartIndex);
+    cleanedDescription = lines.join('\n').trim();
+  }
+
+  // Clean up description: remove extra whitespace, empty lines at end
+  cleanedDescription = cleanedDescription
+    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+    .replace(/\s+$/gm, '') // Trim trailing whitespace on each line
+    .trim();
+
+  const tagsArray = Array.from(extractedTags).slice(0, MAX_TAGS);
+
+  return {
+    description: cleanedDescription,
+    tags: tagsArray
+  };
+}
+
 // Helper function to make HTTP GET requests using https module
 function httpsGet(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -718,21 +855,24 @@ export const syncYouTubeUploads = functions.pubsub
 
       const snippet = videoData.items[0].snippet;
       const title = snippet.title;
-      const description = snippet.description || '';
+      const rawDescription = snippet.description || '';
       const thumbnails = snippet.thumbnails;
+
+      // Extract tags from description and remove tag block
+      const { description, tags } = extractTagsFromDescription(rawDescription);
 
       // Generate slug
       const baseSlug = slugify(title);
       const uniqueSlug = await getUniqueSlug(baseSlug);
 
-      // Generate excerpt (first 160 chars of description, plain text)
+      // Generate excerpt (first 160 chars of cleaned description, plain text)
       const excerpt = description
         .replace(/\n/g, ' ')
         .replace(/<[^>]*>/g, '')
         .trim()
         .substring(0, 160) || '';
 
-      // Generate content HTML
+      // Generate content HTML from cleaned description (without tag block)
       // Escape HTML and convert newlines to <br> within a single <p> tag
       const escapedDescription = description
         .replace(/&/g, '&amp;')
@@ -750,7 +890,7 @@ export const syncYouTubeUploads = functions.pubsub
       const thumbnailUrl = getThumbnailUrl(thumbnails);
 
       // Create Firestore document
-      const contentData = {
+      const contentData: any = {
         title,
         slug: uniqueSlug,
         status: 'published',
@@ -766,6 +906,11 @@ export const syncYouTubeUploads = functions.pubsub
         youtubeUrl: `https://www.youtube.com/watch?v=${newestVideoId}`,
         thumbnailUrl
       };
+
+      // Only include tags field if tags were extracted
+      if (tags.length > 0) {
+        contentData.tags = tags;
+      }
 
       const docRef = await db.collection('content').add(contentData);
       console.log('Created new YouTube post:', docRef.id, 'for video:', newestVideoId);
@@ -900,22 +1045,25 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
 
         const snippet = videoData.items[0].snippet;
         const title = snippet.title;
-        const description = snippet.description || '';
+        const rawDescription = snippet.description || '';
         const thumbnails = snippet.thumbnails;
         const videoPublishedAtStr = snippet.publishedAt; // Use video's actual publishedAt
+
+        // Extract tags from description and remove tag block
+        const { description, tags } = extractTagsFromDescription(rawDescription);
 
         // Generate slug
         const baseSlug = slugify(title);
         const uniqueSlug = await getUniqueSlug(baseSlug);
 
-        // Generate excerpt (first 160 chars of description, plain text)
+        // Generate excerpt (first 160 chars of cleaned description, plain text)
         const excerpt = description
           .replace(/\n/g, ' ')
           .replace(/<[^>]*>/g, '')
           .trim()
           .substring(0, 160) || '';
 
-        // Generate content HTML
+        // Generate content HTML from cleaned description (without tag block)
         const escapedDescription = description
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
@@ -934,7 +1082,7 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
         const publishedAtTimestamp = admin.firestore.Timestamp.fromDate(videoPublishedAtDate);
 
         // Create Firestore document
-        const contentData = {
+        const contentData: any = {
           title,
           slug: uniqueSlug,
           status: 'published',
@@ -950,6 +1098,11 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
           youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
           thumbnailUrl
         };
+
+        // Only include tags field if tags were extracted
+        if (tags.length > 0) {
+          contentData.tags = tags;
+        }
 
         await db.collection('content').add(contentData);
         createdCount++;

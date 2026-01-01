@@ -406,7 +406,7 @@ export class CreateContentPage implements OnInit {
       } else {
         console.log('[CreateContent] Note: authorId will be set to current user (new document)');
       }
-      
+
       const contentId = await this.contentService.publish({
         title: this.title.trim(),
         excerpt: this.excerpt.trim(),
