@@ -1,8 +1,40 @@
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as corsLib from "cors";
 import * as nodemailer from "nodemailer";
 import { sanitizeContactForm, escapeHtmlForEmail, sanitizeNewsletterForm } from "./sanitization";
+
+// YouTube API response types
+interface YouTubePlaylistItem {
+  snippet: {
+    resourceId: {
+      videoId: string;
+    };
+  };
+}
+
+interface YouTubePlaylistResponse {
+  items?: YouTubePlaylistItem[];
+}
+
+interface YouTubeVideoSnippet {
+  title: string;
+  description?: string;
+  thumbnails: {
+    maxres?: { url: string };
+    high?: { url: string };
+    default?: { url: string };
+  };
+}
+
+interface YouTubeVideoItem {
+  snippet: YouTubeVideoSnippet;
+}
+
+interface YouTubeVideoResponse {
+  items?: YouTubeVideoItem[];
+}
 
 admin.initializeApp();
 const cors = corsLib({ origin: true });
@@ -593,7 +625,7 @@ export const syncYouTubeUploads = functions.pubsub
 
       // Step 2: Call YouTube Data API to get newest video from uploads playlist
       const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=1&order=date&key=${youtubeApiKey}`;
-      
+
       const playlistResponse = await fetch(playlistUrl);
       if (!playlistResponse.ok) {
         const errorText = await playlistResponse.text();
@@ -601,8 +633,8 @@ export const syncYouTubeUploads = functions.pubsub
         throw new Error(`YouTube API error: ${playlistResponse.status}`);
       }
 
-      const playlistData = await playlistResponse.json();
-      
+      const playlistData = await playlistResponse.json() as YouTubePlaylistResponse;
+
       if (!playlistData.items || playlistData.items.length === 0) {
         console.log('No videos found in uploads playlist');
         return null;
@@ -624,7 +656,7 @@ export const syncYouTubeUploads = functions.pubsub
 
       // Step 4: Get video details from YouTube API
       const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${newestVideoId}&key=${youtubeApiKey}`;
-      
+
       const videoResponse = await fetch(videoUrl);
       if (!videoResponse.ok) {
         const errorText = await videoResponse.text();
@@ -632,8 +664,8 @@ export const syncYouTubeUploads = functions.pubsub
         throw new Error(`YouTube API error: ${videoResponse.status}`);
       }
 
-      const videoData = await videoResponse.json();
-      
+      const videoData = await videoResponse.json() as YouTubeVideoResponse;
+
       if (!videoData.items || videoData.items.length === 0) {
         console.log('Video not found in YouTube API:', newestVideoId);
         return null;
@@ -662,7 +694,7 @@ export const syncYouTubeUploads = functions.pubsub
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>');
-      
+
       const descriptionHtml = `<p>${escapedDescription}</p>`;
 
       const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${newestVideoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
