@@ -488,3 +488,214 @@ export const getStorageUsage = functions.https.onRequest((req, res) => {
     }
   });
 });
+
+// Helper function to slugify a string
+function slugify(text: string): string {
+  if (!text) return 'untitled';
+
+  let slug = text
+    .trim()
+    .toLowerCase();
+
+  // Transliterate common diacritics
+  slug = slug
+    .replace(/[àáâãäå]/g, 'a')
+    .replace(/[èéêë]/g, 'e')
+    .replace(/[ìíîï]/g, 'i')
+    .replace(/[òóôõö]/g, 'o')
+    .replace(/[ùúûü]/g, 'u')
+    .replace(/[ñ]/g, 'n')
+    .replace(/[ç]/g, 'c');
+
+  // Replace spaces and underscores with hyphens
+  slug = slug.replace(/[\s_]+/g, '-');
+
+  // Remove all non-alphanumeric characters except hyphens
+  slug = slug.replace(/[^a-z0-9-]/g, '');
+
+  // Collapse multiple consecutive hyphens into a single hyphen
+  slug = slug.replace(/-+/g, '-');
+
+  // Remove leading and trailing hyphens
+  slug = slug.replace(/^-+|-+$/g, '');
+
+  // Ensure slug is not empty
+  if (!slug) {
+    slug = 'untitled';
+  }
+
+  return slug;
+}
+
+// Helper function to check if a slug exists and generate unique one
+async function getUniqueSlug(baseSlug: string): Promise<string> {
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const existing = await db.collection('content')
+      .where('slug', '==', slug)
+      .limit(1)
+      .get();
+
+    if (existing.empty) {
+      return slug;
+    }
+
+    counter++;
+    slug = `${baseSlug}-${counter}`;
+  }
+}
+
+// Helper function to get thumbnail URL (prefer maxres, else high, else default)
+function getThumbnailUrl(thumbnails: any): string {
+  if (thumbnails?.maxres?.url) return thumbnails.maxres.url;
+  if (thumbnails?.high?.url) return thumbnails.high.url;
+  if (thumbnails?.default?.url) return thumbnails.default.url;
+  return '';
+}
+
+// Scheduled function to sync YouTube uploads
+export const syncYouTubeUploads = functions.pubsub
+  .schedule('every 1 hours')
+  .timeZone('UTC')
+  .onRun(async (context) => {
+    try {
+      console.log('Starting YouTube sync...');
+
+      // Get config from functions config or environment variables
+      const youtubeApiKey = functions.config().youtube?.api_key || process.env.YOUTUBE_API_KEY;
+      const playlistId = functions.config().youtube?.uploads_playlist_id || process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || 'UUf0MDB_oF7huA78BNADx9sQ';
+      const authorEmail = functions.config().youtube?.author_email || process.env.YOUTUBE_AUTHOR_EMAIL || '';
+      const authorId = functions.config().youtube?.author_id || process.env.YOUTUBE_AUTHOR_ID || '';
+
+      if (!youtubeApiKey) {
+        console.error('YouTube API key not configured. Set youtube.api_key in functions config or YOUTUBE_API_KEY env var.');
+        // TODO: YouTube API key missing
+        return null;
+      }
+
+      // Step 1: Query Firestore for last known YouTube video
+      const lastKnownVideoQuery = await db.collection('content')
+        .where('type', '==', 'youtube')
+        .orderBy('publishedAt', 'desc')
+        .limit(1)
+        .get();
+
+      let lastKnownVideoId: string | null = null;
+      if (!lastKnownVideoQuery.empty) {
+        const lastDoc = lastKnownVideoQuery.docs[0].data();
+        lastKnownVideoId = lastDoc.youtubeVideoId || null;
+        console.log('Last known video ID:', lastKnownVideoId);
+      } else {
+        console.log('No existing YouTube videos found (first run)');
+      }
+
+      // Step 2: Call YouTube Data API to get newest video from uploads playlist
+      const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=1&order=date&key=${youtubeApiKey}`;
+      
+      const playlistResponse = await fetch(playlistUrl);
+      if (!playlistResponse.ok) {
+        const errorText = await playlistResponse.text();
+        console.error('YouTube API playlistItems error:', playlistResponse.status, errorText);
+        throw new Error(`YouTube API error: ${playlistResponse.status}`);
+      }
+
+      const playlistData = await playlistResponse.json();
+      
+      if (!playlistData.items || playlistData.items.length === 0) {
+        console.log('No videos found in uploads playlist');
+        return null;
+      }
+
+      const newestVideoId = playlistData.items[0].snippet.resourceId.videoId;
+      console.log('Newest video ID from playlist:', newestVideoId);
+
+      // Step 3: Check if this video already exists in Firestore
+      const existingVideoQuery = await db.collection('content')
+        .where('youtubeVideoId', '==', newestVideoId)
+        .limit(1)
+        .get();
+
+      if (!existingVideoQuery.empty) {
+        console.log('Video already exists in Firestore, skipping:', newestVideoId);
+        return null;
+      }
+
+      // Step 4: Get video details from YouTube API
+      const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${newestVideoId}&key=${youtubeApiKey}`;
+      
+      const videoResponse = await fetch(videoUrl);
+      if (!videoResponse.ok) {
+        const errorText = await videoResponse.text();
+        console.error('YouTube API videos error:', videoResponse.status, errorText);
+        throw new Error(`YouTube API error: ${videoResponse.status}`);
+      }
+
+      const videoData = await videoResponse.json();
+      
+      if (!videoData.items || videoData.items.length === 0) {
+        console.log('Video not found in YouTube API:', newestVideoId);
+        return null;
+      }
+
+      const snippet = videoData.items[0].snippet;
+      const title = snippet.title;
+      const description = snippet.description || '';
+      const thumbnails = snippet.thumbnails;
+
+      // Generate slug
+      const baseSlug = slugify(title);
+      const uniqueSlug = await getUniqueSlug(baseSlug);
+
+      // Generate excerpt (first 160 chars of description, plain text)
+      const excerpt = description
+        .replace(/\n/g, ' ')
+        .replace(/<[^>]*>/g, '')
+        .trim()
+        .substring(0, 160) || '';
+
+      // Generate content HTML
+      // Escape HTML and convert newlines to <br> within a single <p> tag
+      const escapedDescription = description
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+      
+      const descriptionHtml = `<p>${escapedDescription}</p>`;
+
+      const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${newestVideoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+
+      const content = `${descriptionHtml}\n\n${embedHtml}`;
+
+      // Get thumbnail URL
+      const thumbnailUrl = getThumbnailUrl(thumbnails);
+
+      // Create Firestore document
+      const contentData = {
+        title,
+        slug: uniqueSlug,
+        status: 'published',
+        content,
+        excerpt,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+        authorEmail: authorEmail || '',
+        authorId: authorId || '',
+        type: 'youtube',
+        youtubeVideoId: newestVideoId,
+        youtubeUrl: `https://www.youtube.com/watch?v=${newestVideoId}`,
+        thumbnailUrl
+      };
+
+      const docRef = await db.collection('content').add(contentData);
+      console.log('Created new YouTube post:', docRef.id, 'for video:', newestVideoId);
+
+      return null;
+    } catch (error) {
+      console.error('Error syncing YouTube uploads:', error);
+      throw error;
+    }
+  });
