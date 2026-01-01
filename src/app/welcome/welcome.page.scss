@@ -126,15 +126,19 @@
   background: var(--ion-color-light);
   border-radius: 20px;
   padding: 3rem 4rem;
-  text-align: center;
+  text-align: left;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+}
+
+.mission-icon-wrapper {
+  text-align: center;
+  margin-bottom: 2rem;
 }
 
 .mission-icon {
   font-size: 4rem;
   color: var(--ion-color-primary-tint);
-  margin-bottom: 2rem;
 }
 
 .mission-card h3 {
@@ -142,16 +146,19 @@
   font-weight: 700;
   color: var(--ion-color-dark);
   margin: 0 0 2rem 0;
+  text-align: center;
 }
 
 .mission-card p {
   font-size: 1.6rem;
   color: var(--ion-color-dark-shade);
   line-height: 1.6;
-  margin: 0;
+  margin: 0 0 1.5rem 0;
   max-width: 1000px;
-  margin-left: auto;
-  margin-right: auto;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 /* Features Section */
@@ -165,7 +172,17 @@
   font-weight: 700;
   color: var(--ion-color-light);
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.features-intro {
+  font-size: 1.6rem;
+  color: var(--ion-color-light);
+  text-align: center;
+  margin: 0 auto 3rem auto;
+  max-width: 800px;
+  line-height: 1.6;
+  font-weight: 400;
 }
 
 .features-grid {
@@ -282,6 +299,110 @@
   white-space: nowrap;
 }
 
+/* Support Section */
+.support-section {
+  margin-bottom: 4rem;
+  animation: fadeInUp 1s ease-out 0.85s both;
+}
+
+.support-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 3rem 4rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+}
+
+.support-icon {
+  font-size: 4rem;
+  color: var(--ion-color-primary-tint);
+  margin-bottom: 2rem;
+}
+
+.support-card h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ion-color-dark);
+  margin: 0 0 2rem 0;
+}
+
+.support-card p {
+  font-size: 1.6rem;
+  color: var(--ion-color-dark-shade);
+  line-height: 1.6;
+  margin-bottom: 3rem;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.support-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.support-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.25rem 2rem;
+  border-radius: 25px;
+  background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 100%);
+  color: var(--ion-color-light);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+  font-size: 1.4rem;
+}
+
+.support-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, var(--ion-color-primary-shade) 0%, var(--ion-color-primary-tint) 100%);
+}
+
+.support-label {
+  font-size: 1.3rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Testimony Section */
+.testimony-section {
+  margin-bottom: 4rem;
+  animation: fadeInUp 1s ease-out 0.9s both;
+}
+
+.testimony-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 3rem 4rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+}
+
+.testimony-statement {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+  margin: 0 0 2rem 0;
+  line-height: 1.2;
+}
+
+.testimony-verse {
+  font-size: 1.6rem;
+  color: var(--ion-color-dark-shade);
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+}
+
 /* Footer */
 .footer {
   text-align: center;
@@ -383,17 +504,24 @@
   }
 
   .mission-card,
-  .social-card {
+  .social-card,
+  .testimony-card {
     padding: 2rem 2rem;
   }
 
   .mission-card h3,
-  .social-card h3 {
+  .social-card h3,
+  .support-card h3 {
     font-size: 2rem;
   }
 
+  .testimony-statement {
+    font-size: 2.5rem;
+  }
+
   .mission-card p,
-  .social-card p {
+  .social-card p,
+  .testimony-verse {
     font-size: 1.3rem;
   }
 
@@ -463,17 +591,25 @@
   }
 
   .mission-card,
-  .social-card {
+  .social-card,
+  .support-card,
+  .testimony-card {
     padding: 1.5rem 1.5rem;
   }
 
   .mission-card h3,
-  .social-card h3 {
+  .social-card h3,
+  .support-card h3 {
     font-size: 1.8rem;
   }
 
+  .testimony-statement {
+    font-size: 2rem;
+  }
+
   .mission-card p,
-  .social-card p {
+  .social-card p,
+  .testimony-verse {
     font-size: 1.1rem;
   }
 
@@ -528,12 +664,14 @@
   .hero-content,
   .mission-card,
   .feature-card,
-  .social-card {
+  .social-card,
+  .support-card {
     background: #ffffff;
     border: 2px solid #000000;
   }
 
-  .social-link {
+  .social-link,
+  .support-link {
     background: #000000;
     color: #ffffff;
   }
@@ -552,7 +690,8 @@
   .hero-content,
   .mission-card,
   .feature-card,
-  .social-card {
+  .social-card,
+  .support-card {
     background: #ffffff;
     border: 1px solid #000000;
     box-shadow: none;

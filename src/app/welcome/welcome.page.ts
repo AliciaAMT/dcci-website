@@ -7,12 +7,13 @@ import { VersionService } from '../services/version.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { ContactFormComponent } from '../components/contact-form.component';
 import { NewsletterSignupComponent } from '../components/newsletter-signup.component';
+import { ContentCarouselComponent } from '../components/content-carousel.component';
 
 @Component({
   selector: 'app-welcome',
   templateUrl: './welcome.page.html',
   styleUrls: ['./welcome.page.scss'],
-  imports: [IonContent, IonIcon, ContactFormComponent, NewsletterSignupComponent],
+  imports: [IonContent, IonIcon, ContactFormComponent, NewsletterSignupComponent, ContentCarouselComponent],
   standalone: true
 })
 export class WelcomePage {

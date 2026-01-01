@@ -1,0 +1,56 @@
+<ion-content [fullscreen]="true" class="article-page">
+  <div class="article-container">
+    <!-- Loading State -->
+    <div class="loading-container" *ngIf="isLoading">
+      <ion-spinner></ion-spinner>
+      <p>Loading article...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-container" *ngIf="error && !isLoading">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+      <h2>Error</h2>
+      <p>{{ error }}</p>
+      <ion-button (click)="goBack()">
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        Go Back
+      </ion-button>
+    </div>
+
+    <!-- Article Content -->
+    <article *ngIf="content && !isLoading && !error">
+      <header class="article-header">
+        <ion-button fill="clear" (click)="goBack()" class="back-button">
+          <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+          Back
+        </ion-button>
+
+        <h1 class="article-title">{{ content.title }}</h1>
+
+        <div class="article-meta">
+          <time *ngIf="content.publishedAt" class="publish-date">
+            Published: {{ getDate(content.publishedAt) | date:'mediumDate' }}
+          </time>
+          <time *ngIf="!content.publishedAt" class="publish-date">
+            {{ getDate(content.createdAt) | date:'mediumDate' }}
+          </time>
+        </div>
+
+        <div class="article-tags" *ngIf="content.tags && content.tags.length > 0">
+          <span class="tag" *ngFor="let tag of content.tags">{{ tag }}</span>
+        </div>
+      </header>
+
+      <div class="article-featured-image" *ngIf="getThumbnailUrl(content)">
+        <img [src]="getThumbnailUrl(content)" [alt]="content.title">
+      </div>
+
+      <div class="article-excerpt" *ngIf="content.excerpt">
+        <p>{{ content.excerpt }}</p>
+      </div>
+
+      <div class="article-content" [innerHTML]="sanitizedContent"></div>
+    </article>
+  </div>
+</ion-content>
+

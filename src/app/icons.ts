@@ -38,6 +38,7 @@ export function registerIonicons(): void {
     'information-circle-outline': i.informationCircleOutline,
     'mail-outline': i.mailOutline,
     'logo-youtube': i.logoYoutube,
+    'play-circle-outline': i.playCircleOutline,
     'card-outline': i.cardOutline,
     'heart-outline': i.heartOutline,
     'close-outline': i.closeOutline,
