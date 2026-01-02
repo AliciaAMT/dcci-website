@@ -27,6 +27,11 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   margin-left: calc(-50vw + 50%);
   margin-right: calc(-50vw + 50%);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
 }
 
 .logo-area {
@@ -36,6 +41,37 @@
   gap: 1.5rem;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.menu-button {
+  --color: var(--ion-color-dark);
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+  
+  ion-icon {
+    font-size: 2.4rem;
+  }
+}
+
+/* Desktop: menu button on right side */
+@media (min-width: 768px) {
+  .header-section {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+  }
+  
+  .logo-area {
+    flex: 1;
+    justify-content: flex-start;
+  }
+  
+  .menu-button {
+    align-self: center;
+  }
 }
 
 .brand-logo {

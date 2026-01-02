@@ -83,5 +83,7 @@ export function registerIonicons(): void {
     // Carousel icons
     'chevron-back-outline': i.chevronBackOutline,
     'chevron-forward-outline': i.chevronForwardOutline,
+    // Menu icons
+    'menu-outline': i.menuOutline,
   });
 }

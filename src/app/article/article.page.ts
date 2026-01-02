@@ -4,13 +4,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent, IonIcon, IonButton, IonSpinner } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { PageHeaderComponent } from '../components/page-header.component';
 
 @Component({
   selector: 'app-article',
   templateUrl: './article.page.html',
   styleUrls: ['./article.page.scss'],
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonButton, IonSpinner]
+  imports: [CommonModule, IonContent, IonIcon, IonButton, IonSpinner, PageHeaderComponent]
 })
 export class ArticlePage implements OnInit {
   content: Content | null = null;

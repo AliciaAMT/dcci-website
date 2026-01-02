@@ -1,3 +1,5 @@
+<app-page-header [pageTitle]="content?.title || 'Article'"></app-page-header>
+
 <ion-content [fullscreen]="true" class="article-page">
   <div class="article-container">
     <!-- Loading State -->
@@ -20,11 +22,6 @@
     <!-- Article Content -->
     <article *ngIf="content && !isLoading && !error">
       <header class="article-header">
-        <ion-button fill="clear" (click)="goBack()" class="back-button">
-          <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
-          Back
-        </ion-button>
-
         <h1 class="article-title">{{ content.title }}</h1>
 
         <div class="article-meta">

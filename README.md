@@ -1,5 +1,13 @@
 # DCCI Website (Rebuild & Archive)
 
+This product is tested with BrowserStack.
+
+## License
+
+This project is open source and licensed under the MIT License.
+It exists to support accessibility-first web development and nonprofit ministry use.
+
+
 Open-source codebase for preserving and relaunching the DCCI Ministries website.
 - Tech: Angular/Ionic, Firebase Hosting
 - Accessibility-first, archival “Archives” section, plus remastered posts

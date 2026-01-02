@@ -1,0 +1,151 @@
+.archives-page {
+  --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.archives-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: calc(100vh - 56px); // Account for header
+}
+
+.wayback-section {
+  margin-bottom: 4rem;
+  animation: fadeInUp 1s ease-out 0.2s both;
+}
+
+.wayback-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 3rem 4rem;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+}
+
+.wayback-icon {
+  font-size: 4rem;
+  color: var(--ion-color-primary-tint);
+  margin-bottom: 2rem;
+}
+
+.wayback-card h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ion-color-dark);
+  margin: 0 0 2rem 0;
+}
+
+.wayback-card p {
+  font-size: 1.6rem;
+  color: var(--ion-color-dark-shade);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.wayback-links {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 3rem 0;
+}
+
+.wayback-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.5rem 3rem;
+  border-radius: 25px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.4rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+
+  ion-icon {
+    font-size: 1.8rem;
+  }
+
+  &.primary {
+    background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 100%);
+    color: var(--ion-color-light);
+  }
+
+  &.secondary {
+    background: var(--ion-color-light);
+    color: var(--ion-color-primary);
+    border: 2px solid var(--ion-color-primary);
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.wayback-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  font-size: 1.3rem;
+  color: var(--ion-color-medium);
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+
+  .wayback-icon {
+    font-size: 1.8rem;
+    margin: 0;
+    color: var(--ion-color-medium);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .archives-container {
+    padding: 1.5rem;
+  }
+
+  .wayback-card {
+    padding: 2rem 2rem;
+  }
+
+  .wayback-card h3 {
+    font-size: 2rem;
+  }
+
+  .wayback-card p {
+    font-size: 1.4rem;
+  }
+
+  .wayback-links {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .wayback-button {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+  }
+}
+
+

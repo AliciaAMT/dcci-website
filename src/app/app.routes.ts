@@ -69,5 +69,13 @@ export const routes: Routes = [
     path: 'article/:slug',
     loadComponent: () => import('./article/article.page').then( m => m.ArticlePage)
   },
+  {
+    path: 'articles',
+    loadComponent: () => import('./articles/articles.page').then( m => m.ArticlesPage)
+  },
+  {
+    path: 'archives',
+    loadComponent: () => import('./archives/archives.page').then( m => m.ArchivesPage)
+  },
 
 ];
