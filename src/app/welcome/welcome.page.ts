@@ -36,10 +36,10 @@ export class WelcomePage {
     try {
       // Ensure menu is enabled
       await this.menuController.enable(true, 'main-menu');
-      
+
       // Wait a bit for the menu to be ready
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Try to open the menu
       const isOpen = await this.menuController.isOpen('main-menu');
       if (!isOpen) {

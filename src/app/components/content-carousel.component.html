@@ -5,7 +5,7 @@
     </div>
 
     <div class="carousel-wrapper">
-      <button 
+      <button
         type="button"
         class="carousel-button carousel-button-prev"
         [disabled]="!hasPrevious"
@@ -17,12 +17,12 @@
 
       <div class="carousel-content" *ngIf="currentContent">
         <div class="content-card">
-          <a 
+          <a
             [href]="getContentLink(currentContent) || '#'"
             class="content-card-link">
             <div class="content-thumbnail" *ngIf="getThumbnailUrl(currentContent)">
-              <img 
-                [src]="getThumbnailUrl(currentContent)" 
+              <img
+                [src]="getThumbnailUrl(currentContent)"
                 [alt]="currentContent.title"
                 loading="lazy">
             </div>
@@ -35,7 +35,7 @@
               </div>
             </div>
           </a>
-          <a 
+          <a
             *ngIf="isExcerptTruncated(currentContent) && getContentLink(currentContent)"
             [href]="getContentLink(currentContent)"
             class="see-more-link">
@@ -44,7 +44,7 @@
         </div>
       </div>
 
-      <button 
+      <button
         type="button"
         class="carousel-button carousel-button-next"
         [disabled]="!hasNext"
