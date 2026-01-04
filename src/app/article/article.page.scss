@@ -172,7 +172,6 @@ article {
     height: 0;
     overflow: hidden; // Keep hidden for proper sizing
     border-radius: 8px;
-    pointer-events: none !important; // Allow clicks to pass through to iframe
 
     iframe {
       position: absolute !important;
@@ -185,8 +184,10 @@ article {
       pointer-events: auto !important; // Enable clicks on iframe
       cursor: pointer !important;
       z-index: 10 !important; // Ensure iframe is on top
+      touch-action: manipulation !important; // Better touch handling on mobile
     }
   }
+
 
   // Direct iframe (not wrapped) - fallback
   iframe[src*="youtube"],

@@ -21,6 +21,7 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
   sanitizedContent: SafeHtml = '';
   videoLoadError = false;
   showVideoError = false;
+  isMobile = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -30,6 +31,10 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
   ) {}
 
   async ngOnInit() {
+    // Detect mobile device
+    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                    (window.innerWidth <= 768);
+    
     const slug = this.route.snapshot.paramMap.get('slug');
     if (!slug) {
       this.error = 'Invalid article URL';
@@ -51,19 +56,44 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
         iframes.forEach((iframe: HTMLIFrameElement) => {
           // Ensure iframes have proper attributes for YouTube
           if (iframe.src.includes('youtube.com')) {
+            // Update URL to ensure mobile compatibility
+            let src = iframe.src;
+            if (src.includes('youtube.com/embed')) {
+              try {
+                const url = new URL(src);
+                // Add required mobile-friendly parameters
+                url.searchParams.set('playsinline', '1');
+                if (!url.searchParams.has('rel')) {
+                  url.searchParams.set('rel', '0');
+                }
+                if (!url.searchParams.has('modestbranding')) {
+                  url.searchParams.set('modestbranding', '1');
+                }
+                iframe.src = url.toString();
+              } catch (e) {
+                // If URL parsing fails, append parameters manually
+                const separator = src.includes('?') ? '&' : '?';
+                iframe.src = `${src}${separator}playsinline=1&rel=0&modestbranding=1`;
+              }
+            }
+            
+            // Ensure allowfullscreen is present
             iframe.setAttribute('allowfullscreen', '');
+            // Ensure allow attribute is set correctly
             iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
             iframe.setAttribute('frameborder', '0');
+            
+            // On mobile, add touch-specific styles
+            if (this.isMobile) {
+              iframe.style.touchAction = 'manipulation';
+              (iframe.style as any).webkitTouchCallout = 'none';
+              (iframe.style as any).webkitUserSelect = 'none';
+            }
             
             // Ensure iframe is clickable
             iframe.style.pointerEvents = 'auto';
             iframe.style.cursor = 'pointer';
             
-            // Remove any blocking styles from parent wrapper
-            const wrapper = iframe.closest('.responsive-video-wrapper');
-            if (wrapper) {
-              (wrapper as HTMLElement).style.pointerEvents = 'none';
-            }
 
             // Add error detection
             this.detectVideoErrors(iframe);
@@ -165,53 +195,82 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
       }
 
       this.content = loadedContent;
-      // Process content to make YouTube iframes responsive
+      // Process content to make YouTube iframes responsive and mobile-friendly using DOM parser
       let processedContent = this.content.content || '';
       
-      // Wrap bare iframes in a responsive container
-      // Make sure to preserve all iframe attributes including allowfullscreen
-      processedContent = processedContent.replace(
-        /<iframe([^>]*)>/gi,
-        (match, attrs) => {
-          // Remove any existing allow attribute to replace it with the correct one
-          attrs = attrs.replace(/\s+allow=["'][^"']*["']/gi, '');
-          
-          // Ensure proper attributes for YouTube embeds
-          if (/youtube/i.test(attrs)) {
-            // Add all required YouTube iframe attributes
-            if (!/allowfullscreen/i.test(attrs)) {
-              attrs += ' allowfullscreen';
+      // Parse HTML using DOMParser to avoid regex issues with malformed HTML
+      const doc = new DOMParser().parseFromString(processedContent, 'text/html');
+      const iframes = doc.querySelectorAll('iframe');
+      
+      iframes.forEach((iframe: HTMLIFrameElement) => {
+        // Remove width and height attributes
+        iframe.removeAttribute('width');
+        iframe.removeAttribute('height');
+        
+        // Ensure frameborder is set
+        iframe.setAttribute('frameborder', '0');
+        
+        // Process YouTube embeds
+        const src = iframe.getAttribute('src');
+        if (src && src.includes('youtube.com/embed')) {
+          try {
+            const url = new URL(src);
+            // Add required parameters if missing
+            if (!url.searchParams.has('playsinline')) {
+              url.searchParams.set('playsinline', '1');
             }
-            // Add comprehensive allow attribute for YouTube
-            attrs += ' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"';
-            // Add referrerpolicy for better security
-            if (!/referrerpolicy/i.test(attrs)) {
-              attrs += ' referrerpolicy="strict-origin-when-cross-origin"';
+            if (!url.searchParams.has('rel')) {
+              url.searchParams.set('rel', '0');
             }
-            // Ensure frameborder is set
-            if (!/frameborder/i.test(attrs)) {
-              attrs += ' frameborder="0"';
+            if (!url.searchParams.has('enablejsapi')) {
+              url.searchParams.set('enablejsapi', '1');
             }
-          } else {
-            // For non-YouTube iframes, ensure allowfullscreen if not present
-            if (!/allowfullscreen/i.test(attrs)) {
-              attrs += ' allowfullscreen';
+            if (!url.searchParams.has('origin')) {
+              url.searchParams.set('origin', window.location.origin);
             }
+            iframe.setAttribute('src', url.toString());
+          } catch (e) {
+            // If URL parsing fails, append parameters manually
+            const separator = src.includes('?') ? '&' : '?';
+            const newSrc = `${src}${separator}playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+            iframe.setAttribute('src', newSrc);
           }
           
-          return `<div class="responsive-video-wrapper"><iframe${attrs}></iframe></div>`;
+          // Ensure allowfullscreen is present
+          iframe.setAttribute('allowfullscreen', '');
+          
+          // Set allow attribute
+          iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
+          
+          // Add referrerpolicy if missing
+          if (!iframe.hasAttribute('referrerpolicy')) {
+            iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+          }
+        } else {
+          // For non-YouTube iframes, ensure allowfullscreen if not present
+          if (!iframe.hasAttribute('allowfullscreen')) {
+            iframe.setAttribute('allowfullscreen', '');
+          }
         }
-      );
+        
+        // Wrap iframe in responsive wrapper if not already wrapped
+        const parent = iframe.parentElement;
+        if (!parent || !parent.classList.contains('responsive-video-wrapper')) {
+          const wrapper = doc.createElement('div');
+          wrapper.className = 'responsive-video-wrapper';
+          
+          // Insert wrapper before iframe
+          if (iframe.parentNode) {
+            iframe.parentNode.insertBefore(wrapper, iframe);
+          }
+          
+          // Move iframe into wrapper
+          wrapper.appendChild(iframe);
+        }
+      });
       
-      // Remove fixed width/height from iframes and make them responsive
-      processedContent = processedContent.replace(
-        /<iframe([^>]*)\s+width=["']\d+["']([^>]*)>/gi,
-        '<iframe$1$2>'
-      );
-      processedContent = processedContent.replace(
-        /<iframe([^>]*)\s+height=["']\d+["']([^>]*)>/gi,
-        '<iframe$1$2>'
-      );
+      // Serialize back to HTML string
+      processedContent = doc.body.innerHTML;
       
       // Sanitize the HTML content for safety (content is from our own database but we sanitize to be safe)
       // Using bypassSecurityTrustHtml since content is from our trusted database
@@ -242,6 +301,7 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
   goBack() {
     this.router.navigate(['/welcome']);
   }
+
 
   ngOnDestroy() {
     // Clean up any event listeners if needed
