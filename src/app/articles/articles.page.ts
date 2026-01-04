@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { IonContent, IonIcon, IonInput, IonSpinner, IonChip, IonLabel } from '@ionic/angular/standalone';
+import { IonContent, IonIcon, IonInput, IonSpinner } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
 import { PageHeaderComponent } from '../components/page-header.component';
 
@@ -18,8 +18,6 @@ import { PageHeaderComponent } from '../components/page-header.component';
     IonIcon,
     IonInput,
     IonSpinner,
-    IonChip,
-    IonLabel,
     PageHeaderComponent
   ]
 })

@@ -57,11 +57,6 @@
           <p class="article-excerpt" *ngIf="article.excerpt">
             {{ article.excerpt }}
           </p>
-          <div class="article-tags" *ngIf="article.tags && article.tags.length > 0">
-            <ion-chip *ngFor="let tag of article.tags" color="primary" size="small">
-              <ion-label>{{ tag }}</ion-label>
-            </ion-chip>
-          </div>
         </div>
       </div>
     </div>

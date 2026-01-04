@@ -8,6 +8,9 @@
   margin: 0 auto;
   padding: 2rem;
   min-height: 100vh;
+  overflow-x: hidden; // Prevent horizontal scroll
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .loading-container,
@@ -44,6 +47,9 @@ article {
   border-radius: 12px;
   padding: 3rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-x: hidden; // Prevent horizontal scroll
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .article-header {
@@ -155,22 +161,46 @@ article {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
-  // Video embeds
-  iframe,
+  // Video embeds - responsive wrapper
+  .responsive-video-wrapper,
   .ql-video-wrapper {
     position: relative;
-    width: 100%;
-    max-width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 2rem auto;
+    padding-bottom: 56.25%; // 16:9 aspect ratio
+    height: 0;
+    overflow: hidden; // Keep hidden for proper sizing
     border-radius: 8px;
-    overflow: hidden;
+    pointer-events: none !important; // Allow clicks to pass through to iframe
 
     iframe {
-      width: 100%;
-      height: auto;
-      aspect-ratio: 16 / 9;
-      border: none;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      border: none !important;
+      pointer-events: auto !important; // Enable clicks on iframe
+      cursor: pointer !important;
+      z-index: 10 !important; // Ensure iframe is on top
     }
+  }
+
+  // Direct iframe (not wrapped) - fallback
+  iframe[src*="youtube"],
+  iframe[src*="vimeo"],
+  iframe {
+    position: relative;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9;
+    margin: 2rem auto;
+    border-radius: 8px;
+    border: none !important;
+    display: block;
   }
 
   // Lists
@@ -263,14 +293,89 @@ article {
   }
 }
 
+.video-error-message {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(var(--ion-color-warning-rgb), 0.1);
+  border: 2px solid var(--ion-color-warning);
+  border-radius: 8px;
+  animation: slideIn 0.3s ease-out;
+
+  .error-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    position: relative;
+
+    .error-icon {
+      font-size: 2.4rem;
+      color: var(--ion-color-warning);
+      flex-shrink: 0;
+      margin-top: 0.2rem;
+    }
+
+    .error-text {
+      flex: 1;
+
+      h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.6rem;
+        color: var(--ion-color-dark);
+        font-weight: 600;
+      }
+
+      p {
+        margin: 0.5rem 0;
+        font-size: 1.4rem;
+        color: var(--ion-color-dark-shade);
+        line-height: 1.5;
+      }
+
+      .error-solution {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(var(--ion-color-warning-rgb), 0.05);
+        border-left: 3px solid var(--ion-color-warning);
+        border-radius: 4px;
+
+        strong {
+          color: var(--ion-color-dark);
+        }
+      }
+    }
+
+    .dismiss-button {
+      --color: var(--ion-color-medium);
+      --padding-start: 0.5rem;
+      --padding-end: 0.5rem;
+      flex-shrink: 0;
+      margin-top: -0.5rem;
+      margin-right: -0.5rem;
+    }
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 // Responsive Design
 @media (max-width: 768px) {
   .article-container {
     padding: 1.5rem;
+    overflow-x: hidden; // Prevent horizontal scroll
   }
 
   article {
     padding: 2rem;
+    overflow-x: hidden; // Prevent horizontal scroll
   }
 
   .article-header {
@@ -294,6 +399,7 @@ article {
 
   .article-content {
     font-size: 1.4rem;
+    overflow-x: hidden; // Prevent horizontal scroll
 
     h1 { font-size: 2.4rem; }
     h2 { font-size: 2rem; }
@@ -301,16 +407,49 @@ article {
     h4 { font-size: 1.6rem; }
     h5 { font-size: 1.4rem; }
     h6 { font-size: 1.3rem; }
+
+    // Video embeds on tablet/mobile
+    .responsive-video-wrapper,
+    .ql-video-wrapper {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 1.5rem 0;
+      padding-bottom: 56.25% !important;
+      height: 0 !important;
+
+      iframe {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+      }
+    }
+
+    // Direct iframes
+    iframe[src*="youtube"],
+    iframe[src*="vimeo"],
+    iframe {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      min-height: 0 !important;
+      display: block !important;
+    }
   }
 }
 
 @media (max-width: 480px) {
   .article-container {
     padding: 1rem;
+    overflow-x: hidden; // Prevent horizontal scroll
   }
 
   article {
     padding: 1.5rem;
+    overflow-x: hidden; // Prevent horizontal scroll
   }
 
   .article-header {
@@ -321,6 +460,38 @@ article {
 
   .article-content {
     font-size: 1.3rem;
+    overflow-x: hidden; // Prevent horizontal scroll
+
+    // Video embeds on mobile
+    .responsive-video-wrapper,
+    .ql-video-wrapper {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 1.5rem 0;
+      padding-bottom: 56.25% !important; // 16:9 aspect ratio
+      height: 0 !important;
+
+      iframe {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+      }
+    }
+
+    // Direct iframes
+    iframe[src*="youtube"],
+    iframe[src*="vimeo"],
+    iframe {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      min-height: 0 !important;
+      display: block !important;
+    }
   }
 }
 
