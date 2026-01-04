@@ -1,0 +1,70 @@
+<app-page-header [pageTitle]="content?.title || 'Article'"></app-page-header>
+
+<ion-content [fullscreen]="true" class="article-page">
+  <div class="article-container">
+    <!-- Loading State -->
+    <div class="loading-container" *ngIf="isLoading">
+      <ion-spinner></ion-spinner>
+      <p>Loading article...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-container" *ngIf="error && !isLoading">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+      <h2>Error</h2>
+      <p>{{ error }}</p>
+      <ion-button (click)="goBack()">
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        Go Back
+      </ion-button>
+    </div>
+
+    <!-- Article Content -->
+    <article *ngIf="content && !isLoading && !error">
+      <header class="article-header">
+        <h1 class="article-title">{{ content.title }}</h1>
+
+        <div class="article-meta">
+          <time *ngIf="content.publishedAt" class="publish-date">
+            Published: {{ getDate(content.publishedAt) | date:'mediumDate' }}
+          </time>
+          <time *ngIf="!content.publishedAt" class="publish-date">
+            {{ getDate(content.createdAt) | date:'mediumDate' }}
+          </time>
+        </div>
+      </header>
+
+      <div class="article-featured-image" *ngIf="getThumbnailUrl(content)">
+        <img [src]="getThumbnailUrl(content)" [alt]="content.title">
+      </div>
+
+      <div class="article-excerpt" *ngIf="content.excerpt">
+        <p>{{ content.excerpt }}</p>
+      </div>
+
+      <div class="article-content" #articleContent [innerHTML]="sanitizedContent"></div>
+
+      <!-- Video Error Message -->
+      <div class="video-error-message" *ngIf="showVideoError && videoLoadError">
+        <div class="error-content">
+          <ion-icon name="alert-circle-outline" class="error-icon"></ion-icon>
+          <div class="error-text">
+            <h3>Video Playback Issue</h3>
+            <p>The video may not be playing due to browser extensions or security settings.</p>
+            <p class="error-solution">
+              <strong>Try this:</strong> Disable YouTube video download extensions or other extensions that may interfere with video playback, then refresh the page.
+            </p>
+          </div>
+          <ion-button fill="clear" (click)="dismissVideoError()" class="dismiss-button">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
+        </div>
+      </div>
+
+      <div class="article-tags" *ngIf="content.tags && content.tags.length > 0">
+        <span class="tag" *ngFor="let tag of content.tags">{{ tag }}</span>
+      </div>
+    </article>
+  </div>
+</ion-content>
+
