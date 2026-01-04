@@ -24,6 +24,7 @@ import { ContentService } from '../../../services/content.service';
 import { QuillModule } from 'ngx-quill';
 import Quill from 'quill';
 import { firstValueFrom } from 'rxjs';
+import { filter, take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-create-content',
@@ -204,7 +205,13 @@ export class CreateContentPage implements OnInit {
 
   async ngOnInit() {
     // Verify user is admin and load user data
-    const user = await firstValueFrom(this.authService.currentUser$);
+    // Wait for non-null user (filter out null values to ensure auth is ready)
+    const user = await firstValueFrom(
+      this.authService.currentUser$.pipe(
+        filter(u => u !== null),
+        take(1)
+      )
+    );
     if (!user || !user.isAdmin || !user.emailVerified) {
       this.router.navigate(['/admin/dashboard']);
       return;
@@ -283,20 +290,37 @@ export class CreateContentPage implements OnInit {
       return;
     }
 
+    // Ensure auth is ready before writing
     if (!this.currentUser) {
-      this.showToast('User not authenticated', 'danger');
-      return;
+      // Wait for user to load if not ready
+      const user = await firstValueFrom(
+        this.authService.currentUser$.pipe(
+          filter(u => u !== null),
+          take(1)
+        )
+      );
+      if (!user || !user.isAdmin) {
+        this.showToast('User not authenticated or not an admin', 'danger');
+        return;
+      }
+      this.currentUser = user;
     }
 
     // Debug: Check admin status
     if (!this.currentUser.isAdmin) {
-      console.error('User is not an admin:', this.currentUser);
+      console.error('[CreateContent] User is not an admin:', this.currentUser);
       this.showToast('You do not have admin privileges', 'danger');
       return;
     }
 
-    console.log('Current user:', this.currentUser);
-    console.log('User is admin:', this.currentUser.isAdmin);
+    // Debug logging
+    console.log('[CreateContent] Current user:', {
+      uid: this.currentUser.uid,
+      email: this.currentUser.email,
+      isAdmin: this.currentUser.isAdmin,
+      emailVerified: this.currentUser.emailVerified
+    });
+    console.log('[CreateContent] Admin check: User should have adminUsers/' + this.currentUser.uid + ' with isAdmin=true');
 
     this.isSaving = true;
     const loading = await this.loadingController.create({
@@ -307,11 +331,14 @@ export class CreateContentPage implements OnInit {
     try {
       if (this.savedContentId) {
         // Update existing draft
+        console.log('[CreateContent] Updating existing draft, ID:', this.savedContentId);
+        console.log('[CreateContent] Current user UID (will be preserved from existing doc):', this.currentUser.uid);
         await this.contentService.updateDraft(this.savedContentId, {
           title: this.title.trim(),
           excerpt: this.excerpt.trim(),
           content: this.content.trim(),
           status: 'draft',
+          // Note: authorId/authorEmail passed here will be overridden by service to preserve original values
           authorId: this.currentUser.uid,
           authorEmail: this.currentUser.email,
           tags: this.tags.length > 0 ? this.tags : undefined
@@ -319,6 +346,8 @@ export class CreateContentPage implements OnInit {
         await this.showToast('Draft updated successfully');
       } else {
         // Create new draft
+        console.log('[CreateContent] Creating new draft');
+        console.log('[CreateContent] Current user UID (will be used as authorId):', this.currentUser.uid);
         this.savedContentId = await this.contentService.saveDraft({
           title: this.title.trim(),
           excerpt: this.excerpt.trim(),
@@ -344,9 +373,20 @@ export class CreateContentPage implements OnInit {
       return;
     }
 
+    // Ensure auth is ready before writing
     if (!this.currentUser) {
-      this.showToast('User not authenticated', 'danger');
-      return;
+      // Wait for user to load if not ready
+      const user = await firstValueFrom(
+        this.authService.currentUser$.pipe(
+          filter(u => u !== null),
+          take(1)
+        )
+      );
+      if (!user || !user.isAdmin) {
+        this.showToast('User not authenticated or not an admin', 'danger');
+        return;
+      }
+      this.currentUser = user;
     }
 
     this.isPublishing = true;
@@ -356,11 +396,24 @@ export class CreateContentPage implements OnInit {
     await loading.present();
 
     try {
+      const isUpdate = !!this.savedContentId;
+      console.log('[CreateContent] Publishing content');
+      console.log('[CreateContent] Operation:', isUpdate ? 'UPDATE (existing document)' : 'CREATE (new document)');
+      console.log('[CreateContent] Document ID:', this.savedContentId || '(new document)');
+      console.log('[CreateContent] Current user UID:', this.currentUser.uid);
+      if (isUpdate) {
+        console.log('[CreateContent] Note: authorId will be preserved from existing document (immutable)');
+      } else {
+        console.log('[CreateContent] Note: authorId will be set to current user (new document)');
+      }
+
       const contentId = await this.contentService.publish({
         title: this.title.trim(),
         excerpt: this.excerpt.trim(),
         content: this.content.trim(),
         status: 'published',
+        // Note: For updates, authorId will be preserved from existing doc by service
+        // For creates, this authorId will be used
         authorId: this.currentUser.uid,
         authorEmail: this.currentUser.email,
         tags: this.tags.length > 0 ? this.tags : undefined

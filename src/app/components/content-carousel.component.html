@@ -1,0 +1,73 @@
+<div class="content-carousel-section" *ngIf="!isLoading && !error && contentItems.length > 0">
+  <div class="carousel-container">
+    <div class="carousel-header">
+      <h3>Latest Content</h3>
+    </div>
+
+    <div class="carousel-wrapper">
+      <button 
+        type="button"
+        class="carousel-button carousel-button-prev"
+        [disabled]="!hasPrevious"
+        (click)="previous()"
+        aria-label="Previous content"
+        [attr.aria-disabled]="!hasPrevious">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </button>
+
+      <div class="carousel-content" *ngIf="currentContent">
+        <div class="content-card">
+          <a 
+            [href]="getContentLink(currentContent) || '#'"
+            class="content-card-link">
+            <div class="content-thumbnail" *ngIf="getThumbnailUrl(currentContent)">
+              <img 
+                [src]="getThumbnailUrl(currentContent)" 
+                [alt]="currentContent.title"
+                loading="lazy">
+            </div>
+            <div class="content-info">
+              <h4 class="content-title">{{ currentContent.title }}</h4>
+              <div class="content-excerpt-wrapper" *ngIf="currentContent.excerpt">
+                <p class="content-excerpt">
+                  {{ currentContent.excerpt }}
+                </p>
+              </div>
+            </div>
+          </a>
+          <a 
+            *ngIf="isExcerptTruncated(currentContent) && getContentLink(currentContent)"
+            [href]="getContentLink(currentContent)"
+            class="see-more-link">
+            See more
+          </a>
+        </div>
+      </div>
+
+      <button 
+        type="button"
+        class="carousel-button carousel-button-next"
+        [disabled]="!hasNext"
+        (click)="next()"
+        aria-label="Next content"
+        [attr.aria-disabled]="!hasNext">
+        <ion-icon name="chevron-forward-outline"></ion-icon>
+      </button>
+    </div>
+
+    <div class="carousel-indicator" *ngIf="contentItems.length > 1">
+      <span class="indicator-text">
+        {{ currentIndex + 1 }} of {{ contentItems.length }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="carousel-error" *ngIf="error && !isLoading">
+  <p>{{ error }}</p>
+</div>
+
+<div class="carousel-loading" *ngIf="isLoading">
+  <p>Loading content...</p>
+</div>
+

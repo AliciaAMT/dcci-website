@@ -1,0 +1,71 @@
+<app-page-header pageTitle="Articles"></app-page-header>
+
+<ion-content [fullscreen]="true" class="articles-page">
+  <div class="articles-container">
+    <!-- Search Section -->
+    <div class="search-section">
+      <div class="search-box">
+        <ion-input
+          [(ngModel)]="searchTerm"
+          (ionInput)="onSearchChange()"
+          placeholder="Search articles..."
+          class="search-input">
+        </ion-input>
+        <ion-icon name="search-outline" class="search-icon"></ion-icon>
+      </div>
+      
+      <div class="search-filters">
+        <select [(ngModel)]="searchType" (change)="onSearchTypeChange()" class="filter-select">
+          <option value="all">All Fields</option>
+          <option value="title">Title</option>
+          <option value="content">Content</option>
+          <option value="tags">Tags</option>
+          <option value="date">Date</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-container" *ngIf="isLoading">
+      <ion-spinner></ion-spinner>
+      <p>Loading articles...</p>
+    </div>
+
+    <!-- Articles List -->
+    <div class="articles-list" *ngIf="!isLoading">
+      <div class="results-count" *ngIf="filteredArticles.length > 0">
+        Showing {{ filteredArticles.length }} of {{ articles.length }} articles
+      </div>
+
+      <div class="empty-state" *ngIf="filteredArticles.length === 0 && !isLoading">
+        <ion-icon name="newspaper-outline"></ion-icon>
+        <p *ngIf="searchTerm">No articles found matching "{{ searchTerm }}"</p>
+        <p *ngIf="!searchTerm">No articles available</p>
+      </div>
+
+      <div class="article-card" *ngFor="let article of filteredArticles" (click)="navigateToArticle(article.slug!)">
+        <div class="article-thumbnail" *ngIf="getThumbnailUrl(article)">
+          <img [src]="getThumbnailUrl(article)" [alt]="article.title">
+        </div>
+        <div class="article-info">
+          <h3 class="article-title">{{ article.title }}</h3>
+          <div class="article-meta">
+            <time class="article-date">
+              {{ getDateString(article.publishedAt || article.createdAt) }}
+            </time>
+          </div>
+          <p class="article-excerpt" *ngIf="article.excerpt">
+            {{ article.excerpt }}
+          </p>
+          <div class="article-tags" *ngIf="article.tags && article.tags.length > 0">
+            <ion-chip *ngFor="let tag of article.tags" color="primary" size="small">
+              <ion-label>{{ tag }}</ion-label>
+            </ion-chip>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</ion-content>
+
+

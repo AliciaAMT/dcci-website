@@ -38,6 +38,7 @@ export function registerIonicons(): void {
     'information-circle-outline': i.informationCircleOutline,
     'mail-outline': i.mailOutline,
     'logo-youtube': i.logoYoutube,
+    'play-circle-outline': i.playCircleOutline,
     'card-outline': i.cardOutline,
     'heart-outline': i.heartOutline,
     'close-outline': i.closeOutline,
@@ -79,5 +80,10 @@ export function registerIonicons(): void {
     'trash-outline': i.trashOutline,
     // Comments icons
     'chatbubbles-outline': i.chatbubblesOutline,
+    // Carousel icons
+    'chevron-back-outline': i.chevronBackOutline,
+    'chevron-forward-outline': i.chevronForwardOutline,
+    // Menu icons
+    'menu-outline': i.menuOutline,
   });
 }

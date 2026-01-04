@@ -65,8 +65,17 @@ export const routes: Routes = [
     loadComponent: () => import('./admin/content/create-content/create-content.page').then( m => m.CreateContentPage),
     canActivate: [adminGuard]
   },
-
-
-
+  {
+    path: 'article/:slug',
+    loadComponent: () => import('./article/article.page').then( m => m.ArticlePage)
+  },
+  {
+    path: 'articles',
+    loadComponent: () => import('./articles/articles.page').then( m => m.ArticlesPage)
+  },
+  {
+    path: 'archives',
+    loadComponent: () => import('./archives/archives.page').then( m => m.ArchivesPage)
+  },
 
 ];
