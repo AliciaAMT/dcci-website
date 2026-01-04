@@ -59,22 +59,22 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
             // Update URL to ensure mobile compatibility
             let src = iframe.src;
             if (src.includes('youtube.com/embed')) {
-              try {
-                const url = new URL(src);
-                // Add required mobile-friendly parameters
-                url.searchParams.set('playsinline', '1');
-                if (!url.searchParams.has('rel')) {
-                  url.searchParams.set('rel', '0');
-                }
-                if (!url.searchParams.has('modestbranding')) {
-                  url.searchParams.set('modestbranding', '1');
-                }
-                iframe.src = url.toString();
-              } catch (e) {
-                // If URL parsing fails, append parameters manually
-                const separator = src.includes('?') ? '&' : '?';
-                iframe.src = `${src}${separator}playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+              const url = new URL(src);
+              // Add required mobile-friendly parameters
+              url.searchParams.set('playsinline', '1');
+              if (!url.searchParams.has('rel')) {
+                url.searchParams.set('rel', '0');
               }
+              if (!url.searchParams.has('modestbranding')) {
+                url.searchParams.set('modestbranding', '1');
+              }
+              if (!url.searchParams.has('enablejsapi')) {
+                url.searchParams.set('enablejsapi', '1');
+              }
+              if (!url.searchParams.has('origin')) {
+                url.searchParams.set('origin', window.location.origin);
+              }
+              iframe.src = url.toString();
             }
             
             // Ensure allowfullscreen is present
@@ -157,22 +157,6 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
         this.showVideoError = true;
       }
     }, 5000);
-
-    // Also check for click events that don't result in playback
-    const wrapper = iframe.closest('.responsive-video-wrapper');
-    if (wrapper) {
-      wrapper.addEventListener('click', () => {
-        // If video doesn't start playing after click, show error after delay
-        setTimeout(() => {
-          // Check if video is actually playing (this is approximate)
-          // We'll show the error if user clicks but nothing happens
-          if (!hasLoaded) {
-            this.videoLoadError = true;
-            this.showVideoError = true;
-          }
-        }, 2000);
-      });
-    }
   }
 
   dismissVideoError() {
@@ -256,20 +240,14 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
           // If we found a video ID, normalize to embed URL
           if (videoId) {
             const embedBaseUrl = `https://www.youtube.com/embed/${videoId}`;
-            try {
-              const url = new URL(embedBaseUrl);
-              // Add required parameters
-              url.searchParams.set('playsinline', '1');
-              url.searchParams.set('rel', '0');
-              url.searchParams.set('modestbranding', '1');
-              url.searchParams.set('enablejsapi', '1');
-              url.searchParams.set('origin', window.location.origin);
-              iframe.setAttribute('src', url.toString());
-            } catch (e) {
-              // If URL parsing fails, append parameters manually
-              const newSrc = `${embedBaseUrl}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-              iframe.setAttribute('src', newSrc);
-            }
+            const url = new URL(embedBaseUrl);
+            // Add required parameters
+            url.searchParams.set('playsinline', '1');
+            url.searchParams.set('rel', '0');
+            url.searchParams.set('modestbranding', '1');
+            url.searchParams.set('enablejsapi', '1');
+            url.searchParams.set('origin', window.location.origin);
+            iframe.setAttribute('src', url.toString());
             
             // Set YouTube-specific attributes
             iframe.setAttribute('allowfullscreen', '');
