@@ -278,8 +278,8 @@ article {
 .article-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.8rem;
-  margin-top: 2rem;
+  gap: 1rem;
+  margin-top: 3rem;
   padding-top: 2rem;
   border-top: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
 
@@ -291,62 +291,59 @@ article {
     border-radius: 20px;
     font-size: 1.2rem;
     font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: var(--ion-color-primary);
+    }
   }
 }
 
 .video-error-message {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: rgba(var(--ion-color-warning-rgb), 0.1);
-  border: 2px solid var(--ion-color-warning);
+  margin: 2rem 0;
+  padding: 2rem;
+  background: var(--ion-color-warning-tint);
+  border: 1px solid var(--ion-color-warning);
   border-radius: 8px;
   animation: slideIn 0.3s ease-out;
 
   .error-content {
     display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    position: relative;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
 
     .error-icon {
-      font-size: 2.4rem;
+      font-size: 4rem;
       color: var(--ion-color-warning);
-      flex-shrink: 0;
-      margin-top: 0.2rem;
     }
 
     .error-text {
       flex: 1;
 
       h3 {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.6rem;
-        color: var(--ion-color-dark);
-        font-weight: 600;
+        font-size: 2rem;
+        color: var(--ion-color-warning-contrast);
+        margin: 0 0 1rem 0;
       }
 
       p {
-        margin: 0.5rem 0;
         font-size: 1.4rem;
-        color: var(--ion-color-dark-shade);
-        line-height: 1.5;
+        color: var(--ion-color-warning-contrast);
+        margin: 0.5rem 0;
+        line-height: 1.6;
       }
 
       .error-solution {
+        font-weight: 500;
         margin-top: 1rem;
-        padding: 1rem;
-        background: rgba(var(--ion-color-warning-rgb), 0.05);
-        border-left: 3px solid var(--ion-color-warning);
-        border-radius: 4px;
-
-        strong {
-          color: var(--ion-color-dark);
-        }
       }
     }
 
     .dismiss-button {
-      --color: var(--ion-color-medium);
+      --color: var(--ion-color-warning-contrast);
       --padding-start: 0.5rem;
       --padding-end: 0.5rem;
       flex-shrink: 0;
@@ -496,3 +493,21 @@ article {
   }
 }
 
+// iOS-specific fix for iframe touch events inside ion-content scroll container
+// Momentum scrolling (-webkit-overflow-scrolling: touch) can prevent iframe taps from working
+@supports (-webkit-touch-callout: none) {
+  // Disable momentum scrolling on ion-content scroll part (Ionic 6+)
+  .article-page::part(scroll) {
+    -webkit-overflow-scrolling: auto !important;
+  }
+  
+  // Fallback for older Ionic versions using .inner-scroll
+  .article-page .inner-scroll {
+    -webkit-overflow-scrolling: auto !important;
+  }
+  
+  // Ensure no transforms on ancestors (transforms can break iframe hit-testing on iOS)
+  .article-page, .article-page * {
+    transform: none !important;
+  }
+}

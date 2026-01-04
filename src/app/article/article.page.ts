@@ -73,15 +73,19 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
               } catch (e) {
                 // If URL parsing fails, append parameters manually
                 const separator = src.includes('?') ? '&' : '?';
-                iframe.src = `${src}${separator}playsinline=1&rel=0&modestbranding=1`;
+                iframe.src = `${src}${separator}playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
               }
             }
             
             // Ensure allowfullscreen is present
             iframe.setAttribute('allowfullscreen', '');
             // Ensure allow attribute is set correctly
-            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
             iframe.setAttribute('frameborder', '0');
+            // Add referrerpolicy if missing
+            if (!iframe.hasAttribute('referrerpolicy')) {
+              iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+            }
             
             // On mobile, add touch-specific styles
             if (this.isMobile) {
@@ -211,39 +215,65 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
         iframe.setAttribute('frameborder', '0');
         
         // Process YouTube embeds
-        const src = iframe.getAttribute('src');
-        if (src && src.includes('youtube.com/embed')) {
-          try {
-            const url = new URL(src);
-            // Add required parameters if missing
-            if (!url.searchParams.has('playsinline')) {
-              url.searchParams.set('playsinline', '1');
-            }
-            if (!url.searchParams.has('rel')) {
-              url.searchParams.set('rel', '0');
-            }
-            if (!url.searchParams.has('enablejsapi')) {
-              url.searchParams.set('enablejsapi', '1');
-            }
-            if (!url.searchParams.has('origin')) {
-              url.searchParams.set('origin', window.location.origin);
-            }
-            iframe.setAttribute('src', url.toString());
-          } catch (e) {
-            // If URL parsing fails, append parameters manually
-            const separator = src.includes('?') ? '&' : '?';
-            const newSrc = `${src}${separator}playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-            iframe.setAttribute('src', newSrc);
+        const rawSrc = iframe.getAttribute('src') || '';
+        let videoId: string | null = null;
+        let isYouTube = false;
+        
+        // Extract video ID from various YouTube URL patterns
+        if (rawSrc.includes('youtube.com') || rawSrc.includes('youtu.be')) {
+          isYouTube = true;
+          
+          // Pattern 1: youtube.com/watch?v=VIDEO_ID
+          const watchMatch = rawSrc.match(/(?:youtube\.com\/watch\?v=)([^&"'\s]+)/);
+          if (watchMatch) {
+            videoId = watchMatch[1];
           }
           
-          // Ensure allowfullscreen is present
-          iframe.setAttribute('allowfullscreen', '');
+          // Pattern 2: youtu.be/VIDEO_ID
+          if (!videoId) {
+            const shortMatch = rawSrc.match(/(?:youtu\.be\/)([^?"'\s]+)/);
+            if (shortMatch) {
+              videoId = shortMatch[1];
+            }
+          }
           
-          // Set allow attribute
-          iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
+          // Pattern 3: youtube.com/shorts/VIDEO_ID
+          if (!videoId) {
+            const shortsMatch = rawSrc.match(/(?:youtube\.com\/shorts\/)([^?"'\s]+)/);
+            if (shortsMatch) {
+              videoId = shortsMatch[1];
+            }
+          }
           
-          // Add referrerpolicy if missing
-          if (!iframe.hasAttribute('referrerpolicy')) {
+          // Pattern 4: youtube.com/embed/VIDEO_ID (already embed format)
+          if (!videoId) {
+            const embedMatch = rawSrc.match(/(?:youtube\.com\/embed\/)([^?"'\s]+)/);
+            if (embedMatch) {
+              videoId = embedMatch[1];
+            }
+          }
+          
+          // If we found a video ID, normalize to embed URL
+          if (videoId) {
+            const embedBaseUrl = `https://www.youtube.com/embed/${videoId}`;
+            try {
+              const url = new URL(embedBaseUrl);
+              // Add required parameters
+              url.searchParams.set('playsinline', '1');
+              url.searchParams.set('rel', '0');
+              url.searchParams.set('modestbranding', '1');
+              url.searchParams.set('enablejsapi', '1');
+              url.searchParams.set('origin', window.location.origin);
+              iframe.setAttribute('src', url.toString());
+            } catch (e) {
+              // If URL parsing fails, append parameters manually
+              const newSrc = `${embedBaseUrl}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+              iframe.setAttribute('src', newSrc);
+            }
+            
+            // Set YouTube-specific attributes
+            iframe.setAttribute('allowfullscreen', '');
+            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
             iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
           }
         } else {
