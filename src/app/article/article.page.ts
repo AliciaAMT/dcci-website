@@ -1,27 +1,23 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { IonContent, IonIcon, IonButton, IonSpinner } from '@ionic/angular/standalone';
+import { IonContent, IonSpinner } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { PageHeaderComponent } from '../components/page-header.component';
 
 @Component({
   selector: 'app-article',
   templateUrl: './article.page.html',
   styleUrls: ['./article.page.scss'],
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonButton, IonSpinner, PageHeaderComponent]
+  imports: [CommonModule, IonContent, IonSpinner]
 })
-export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
+export class ArticlePage implements OnInit, AfterViewInit {
   @ViewChild('articleContent', { static: false }) articleContent!: ElementRef;
   content: Content | null = null;
   isLoading = true;
   error: string | null = null;
   sanitizedContent: SafeHtml = '';
-  videoLoadError = false;
-  showVideoError = false;
-  isMobile = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -31,10 +27,6 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
   ) {}
 
   async ngOnInit() {
-    // Detect mobile device
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                    (window.innerWidth <= 768);
-    
     const slug = this.route.snapshot.paramMap.get('slug');
     if (!slug) {
       this.error = 'Invalid article URL';
@@ -46,170 +38,8 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit() {
-    // Set up error detection for YouTube videos
-    this.setupVideoErrorDetection();
-
-    // Re-enable iframes after view init to ensure they're properly loaded and clickable
-    setTimeout(() => {
-      if (this.articleContent) {
-        const iframes = this.articleContent.nativeElement.querySelectorAll('iframe');
-        iframes.forEach((iframe: HTMLIFrameElement) => {
-          // Ensure iframes have proper attributes for YouTube
-          if (iframe.src.includes('youtube.com')) {
-            // Update URL to ensure mobile compatibility
-            let src = iframe.src;
-            if (src.includes('youtube.com/embed')) {
-              const url = new URL(src);
-              // Add required mobile-friendly parameters
-              url.searchParams.set('playsinline', '1');
-              if (!url.searchParams.has('rel')) {
-                url.searchParams.set('rel', '0');
-              }
-              if (!url.searchParams.has('modestbranding')) {
-                url.searchParams.set('modestbranding', '1');
-              }
-              if (!url.searchParams.has('enablejsapi')) {
-                url.searchParams.set('enablejsapi', '1');
-              }
-              if (!url.searchParams.has('origin')) {
-                url.searchParams.set('origin', window.location.origin);
-              }
-              iframe.src = url.toString();
-            }
-            
-            // Ensure allowfullscreen is present
-            iframe.setAttribute('allowfullscreen', '');
-            // Ensure allow attribute is set correctly
-            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
-            iframe.setAttribute('frameborder', '0');
-            // Add referrerpolicy if missing
-            if (!iframe.hasAttribute('referrerpolicy')) {
-              iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-            }
-            
-            // On mobile, add touch-specific styles
-            if (this.isMobile) {
-              iframe.style.touchAction = 'manipulation';
-              (iframe.style as any).webkitTouchCallout = 'none';
-              (iframe.style as any).webkitUserSelect = 'none';
-            }
-            
-            // Ensure iframe is clickable
-            iframe.style.pointerEvents = 'auto';
-            iframe.style.cursor = 'pointer';
-            
-
-            // Add error detection
-            this.detectVideoErrors(iframe);
-          }
-        });
-      }
-    }, 100);
-    setTimeout(() => this.installMobileYoutubeTapFix(), 250);
-  }
-
-  private setupVideoErrorDetection() {
-    // Listen for cross-origin errors
-    const originalError = window.onerror;
-    window.onerror = (message, source, lineno, colno, error) => {
-      if (typeof message === 'string' && 
-          message.includes('Blocked a frame with origin') && 
-          message.includes('youtube.com')) {
-        this.videoLoadError = true;
-        this.showVideoError = true;
-        return true; // Suppress the error
-      }
-      if (originalError) {
-        return originalError(message, source, lineno, colno, error);
-      }
-      return false;
-    };
-
-    // Also listen for unhandled promise rejections
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event.reason && 
-          typeof event.reason === 'object' && 
-          event.reason.message &&
-          event.reason.message.includes('Blocked a frame with origin') &&
-          event.reason.message.includes('youtube.com')) {
-        this.videoLoadError = true;
-        this.showVideoError = true;
-        event.preventDefault();
-      }
-    });
-  }
-
-  private detectVideoErrors(iframe: HTMLIFrameElement) {
-    // Check if iframe loads successfully
-    let loadTimeout: any;
-    let hasLoaded = false;
-
-    iframe.addEventListener('load', () => {
-      hasLoaded = true;
-      if (loadTimeout) {
-        clearTimeout(loadTimeout);
-      }
-    });
-
-    // If iframe doesn't load within 5 seconds, show error
-    loadTimeout = setTimeout(() => {
-      if (!hasLoaded) {
-        this.videoLoadError = true;
-        this.showVideoError = true;
-      }
-    }, 5000);
-  }
-
-  dismissVideoError() {
-    this.showVideoError = false;
-  }
-
-  private installMobileYoutubeTapFix() {
-    if (!this.isMobile) return;
-    
-    const root = this.articleContent?.nativeElement;
-    if (!root) return;
-
-    const iframes = Array.from(root.querySelectorAll('iframe')) as HTMLIFrameElement[];
-    const ytIframes = iframes.filter(f => {
-      const src = f.src || f.getAttribute('src') || '';
-      return src.includes('youtube.com/embed');
-    });
-
-    ytIframes.forEach((iframe: HTMLIFrameElement) => {
-      const wrapper = iframe.closest('.responsive-video-wrapper') as HTMLElement || iframe.parentElement;
-      if (!wrapper) return;
-
-      if (wrapper.classList.contains('yt-tapfix-installed')) return;
-      wrapper.classList.add('yt-tapfix-installed');
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'yt-tap-overlay';
-      btn.setAttribute('aria-label', 'Play video');
-      btn.innerHTML = '<span class="yt-tap-icon" aria-hidden="true"></span>';
-
-      const handleTap = () => {
-        const src = iframe.getAttribute('src') || iframe.src || '';
-        if (!src) return;
-
-        try {
-          const url = new URL(src);
-          url.searchParams.set('autoplay', '1');
-          url.searchParams.set('playsinline', '1');
-          iframe.setAttribute('src', url.toString());
-          btn.remove();
-          wrapper.classList.add('yt-started');
-        } catch (e) {
-          console.warn('Failed to update YouTube iframe URL:', e);
-        }
-      };
-
-      btn.addEventListener('click', handleTap);
-      btn.addEventListener('touchend', handleTap);
-
-      wrapper.appendChild(btn);
-    });
+    // Make videos responsive after view init
+    setTimeout(() => this.makeVideosResponsive(), 100);
   }
 
   private async loadContent(slug: string) {
@@ -232,108 +62,62 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
       }
 
       this.content = loadedContent;
-      // Process content to make YouTube iframes responsive and mobile-friendly using DOM parser
+      
+      // Process content to make videos responsive
       let processedContent = this.content.content || '';
       
-      // Parse HTML using DOMParser to avoid regex issues with malformed HTML
+      // Parse HTML to find and wrap iframes
       const doc = new DOMParser().parseFromString(processedContent, 'text/html');
       const iframes = doc.querySelectorAll('iframe');
       
       iframes.forEach((iframe: HTMLIFrameElement) => {
-        // Remove width and height attributes
+        // Remove fixed width/height
         iframe.removeAttribute('width');
         iframe.removeAttribute('height');
         
-        // Ensure frameborder is set
+        // Ensure proper attributes for video embeds
         iframe.setAttribute('frameborder', '0');
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
         
-        // Process YouTube embeds
-        const rawSrc = iframe.getAttribute('src') || '';
-        let videoId: string | null = null;
-        let isYouTube = false;
-        
-        // Extract video ID from various YouTube URL patterns
-        if (rawSrc.includes('youtube.com') || rawSrc.includes('youtu.be')) {
-          isYouTube = true;
+        // Normalize YouTube URLs
+        const src = iframe.getAttribute('src') || '';
+        if (src.includes('youtube.com') || src.includes('youtu.be')) {
+          let videoId: string | null = null;
           
-          // Pattern 1: youtube.com/watch?v=VIDEO_ID
-          const watchMatch = rawSrc.match(/(?:youtube\.com\/watch\?v=)([^&"'\s]+)/);
-          if (watchMatch) {
-            videoId = watchMatch[1];
-          }
+          // Extract video ID from various YouTube URL patterns
+          const watchMatch = src.match(/(?:youtube\.com\/watch\?v=)([^&"'\s]+)/);
+          const shortMatch = src.match(/(?:youtu\.be\/)([^?"'\s]+)/);
+          const shortsMatch = src.match(/(?:youtube\.com\/shorts\/)([^?"'\s]+)/);
+          const embedMatch = src.match(/(?:youtube\.com\/embed\/)([^?"'\s]+)/);
           
-          // Pattern 2: youtu.be/VIDEO_ID
-          if (!videoId) {
-            const shortMatch = rawSrc.match(/(?:youtu\.be\/)([^?"'\s]+)/);
-            if (shortMatch) {
-              videoId = shortMatch[1];
-            }
-          }
+          videoId = watchMatch?.[1] || shortMatch?.[1] || shortsMatch?.[1] || embedMatch?.[1] || null;
           
-          // Pattern 3: youtube.com/shorts/VIDEO_ID
-          if (!videoId) {
-            const shortsMatch = rawSrc.match(/(?:youtube\.com\/shorts\/)([^?"'\s]+)/);
-            if (shortsMatch) {
-              videoId = shortsMatch[1];
-            }
-          }
-          
-          // Pattern 4: youtube.com/embed/VIDEO_ID (already embed format)
-          if (!videoId) {
-            const embedMatch = rawSrc.match(/(?:youtube\.com\/embed\/)([^?"'\s]+)/);
-            if (embedMatch) {
-              videoId = embedMatch[1];
-            }
-          }
-          
-          // If we found a video ID, normalize to embed URL
           if (videoId) {
-            const embedBaseUrl = `https://www.youtube.com/embed/${videoId}`;
-            const url = new URL(embedBaseUrl);
-            // Add required parameters
-            url.searchParams.set('playsinline', '1');
-            url.searchParams.set('rel', '0');
-            url.searchParams.set('modestbranding', '1');
-            url.searchParams.set('enablejsapi', '1');
-            url.searchParams.set('origin', window.location.origin);
-            iframe.setAttribute('src', url.toString());
-            
-            // Set YouTube-specific attributes
-            iframe.setAttribute('allowfullscreen', '');
-            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
-            iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-          }
-        } else {
-          // For non-YouTube iframes, ensure allowfullscreen if not present
-          if (!iframe.hasAttribute('allowfullscreen')) {
-            iframe.setAttribute('allowfullscreen', '');
+            const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
+            embedUrl.searchParams.set('playsinline', '1');
+            embedUrl.searchParams.set('rel', '0');
+            iframe.setAttribute('src', embedUrl.toString());
           }
         }
         
-        // Wrap iframe in responsive wrapper if not already wrapped
+        // Wrap iframe in responsive container if not already wrapped
         const parent = iframe.parentElement;
-        if (!parent || !parent.classList.contains('responsive-video-wrapper')) {
+        if (!parent || !parent.classList.contains('video-container')) {
           const wrapper = doc.createElement('div');
-          wrapper.className = 'responsive-video-wrapper';
-          
-          // Insert wrapper before iframe
+          wrapper.className = 'video-container';
           if (iframe.parentNode) {
             iframe.parentNode.insertBefore(wrapper, iframe);
+            wrapper.appendChild(iframe);
           }
-          
-          // Move iframe into wrapper
-          wrapper.appendChild(iframe);
         }
       });
       
-      // Serialize back to HTML string
+      // Serialize back to HTML
       processedContent = doc.body.innerHTML;
       
-      // Sanitize the HTML content for safety (content is from our own database but we sanitize to be safe)
-      // Using bypassSecurityTrustHtml since content is from our trusted database
-      // In production, you might want additional sanitization layers
+      // Sanitize the HTML content
       this.sanitizedContent = this.sanitizer.bypassSecurityTrustHtml(processedContent);
-      setTimeout(() => this.installMobileYoutubeTapFix(), 0);
     } catch (err) {
       console.error('Error loading content:', err);
       this.error = 'Failed to load article';
@@ -342,29 +126,24 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  getDate(date: Date | any): Date {
-    if (!date) return new Date();
-    if (date instanceof Date) return date;
-    if (date && typeof date.toDate === 'function') {
-      return date.toDate();
-    }
-    return new Date(date);
+  private makeVideosResponsive() {
+    if (!this.articleContent) return;
+    
+    const container = this.articleContent.nativeElement;
+    const iframes = container.querySelectorAll('iframe');
+    
+    iframes.forEach((iframe: HTMLIFrameElement) => {
+      // Ensure iframe is wrapped in video-container
+      if (!iframe.parentElement?.classList.contains('video-container')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'video-container';
+        iframe.parentNode?.insertBefore(wrapper, iframe);
+        wrapper.appendChild(iframe);
+      }
+    });
   }
 
-  getThumbnailUrl(content: Content): string | null {
-    const data = content as any;
-    return data.thumbnailUrl || content.featuredImage || null;
-  }
-
-  goBack() {
-    this.router.navigate(['/welcome']);
-  }
-
-
-  ngOnDestroy() {
-    // Clean up any event listeners if needed
-    this.showVideoError = false;
-    this.videoLoadError = false;
+  goHome() {
+    this.router.navigate(['/home']);
   }
 }
-
