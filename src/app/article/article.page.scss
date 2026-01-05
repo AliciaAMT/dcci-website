@@ -198,10 +198,20 @@
     iframe {
       position: absolute;
       inset: 0;
-      width: 100%;
-      height: 100%;
+      width: 100% !important;
+      height: 100% !important;
       border: 0;
     }
+  }
+  
+  // Explicit rule for wrapped iframes to ensure they fill their wrapper
+  .responsive-video-wrapper > iframe,
+  .ql-video-wrapper > iframe {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
   }
   
   // Fallback for browsers that don't support aspect-ratio
@@ -221,8 +231,8 @@
     }
   }
   
-  // If iframe is not wrapped, make it responsive
-  iframe {
+  // If iframe is NOT wrapped, make it responsive (but don't break wrapped YouTube embeds)
+  iframe:not([data-embed-wrapped="true"]) {
     width: 50%;
     min-width: 50%;
     max-width: 90%;

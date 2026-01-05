@@ -107,6 +107,9 @@ export class ArticlePage implements OnInit, AfterViewInit {
           iframe.style.width = '100%';
           iframe.style.height = '100%';
           
+          // Mark iframe as wrapped for CSS targeting
+          iframe.setAttribute('data-embed-wrapped', 'true');
+          
           // Wrap YouTube iframe in proper structure if not already wrapped
           const existingWrapper = iframe.closest('.video-embed--youtube');
           if (!existingWrapper) {
