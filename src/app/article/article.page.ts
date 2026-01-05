@@ -4,13 +4,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent, IonSpinner } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
 
 @Component({
   selector: 'app-article',
   templateUrl: './article.page.html',
   styleUrls: ['./article.page.scss'],
   standalone: true,
-  imports: [CommonModule, IonContent, IonSpinner]
+  imports: [CommonModule, IonContent, IonSpinner, PageHeaderWithMenuComponent]
 })
 export class ArticlePage implements OnInit, AfterViewInit {
   @ViewChild('articleContent', { static: false }) articleContent!: ElementRef;
