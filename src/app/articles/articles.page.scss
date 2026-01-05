@@ -49,6 +49,7 @@
   display: flex;
   gap: 1rem;
   align-items: center;
+  flex-wrap: wrap;
 
   .filter-select {
     padding: 0.8rem 1.2rem;
@@ -58,6 +59,24 @@
     background: var(--ion-color-light);
     color: var(--ion-color-dark);
     cursor: pointer;
+  }
+
+  .youtube-filter-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+
+    .youtube-checkbox {
+      --size: 20px;
+      margin: 0;
+    }
+
+    .youtube-filter-text {
+      font-size: 1.4rem;
+      color: var(--ion-color-dark);
+    }
   }
 }
 
@@ -292,6 +311,10 @@
   .search-filters {
     flex-direction: column;
     align-items: stretch;
+
+    .youtube-filter-label {
+      padding: 0.5rem 0;
+    }
   }
 }
 

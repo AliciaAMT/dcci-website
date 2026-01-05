@@ -21,6 +21,14 @@
           <option value="tags">Tags</option>
           <option value="date">Date</option>
         </select>
+        <label class="youtube-filter-label">
+          <ion-checkbox 
+            [(ngModel)]="showYouTubeArticles" 
+            (ionChange)="onYouTubeFilterChange()"
+            class="youtube-checkbox">
+          </ion-checkbox>
+          <span class="youtube-filter-text">Show YouTube videos</span>
+        </label>
       </div>
     </div>
 
@@ -39,7 +47,8 @@
       <div class="empty-state" *ngIf="filteredArticles.length === 0 && !isLoading">
         <ion-icon name="newspaper-outline"></ion-icon>
         <p *ngIf="searchTerm">No articles found matching "{{ searchTerm }}"</p>
-        <p *ngIf="!searchTerm">No articles available</p>
+        <p *ngIf="!searchTerm && !showYouTubeArticles">No written articles available</p>
+        <p *ngIf="!searchTerm && showYouTubeArticles">No articles available</p>
       </div>
 
       <div class="article-card" *ngFor="let article of filteredArticles" (click)="navigateToArticle(article.slug!)">
