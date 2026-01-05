@@ -67,19 +67,56 @@ export class ArticlePage implements OnInit, AfterViewInit {
       // Process content to make videos responsive
       let processedContent = this.content.content || '';
       
+      // Normalize YouTube iframes: remove width/height attributes and add marker
+      const temp = document.createElement('div');
+      temp.innerHTML = processedContent;
+      const ytIframes = temp.querySelectorAll<HTMLIFrameElement>('iframe[src*="youtube.com/embed"], iframe[src*="youtube-nocookie.com/embed"]');
+      
+      ytIframes.forEach((iframe) => {
+        // Remove fixed width/height attributes from Firestore data
+        iframe.removeAttribute('width');
+        iframe.removeAttribute('height');
+        
+        // Set responsive styles
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        
+        // Add marker for CSS targeting
+        iframe.setAttribute('data-yt-embed', 'true');
+        
+        // Add performance and security attributes
+        iframe.setAttribute('loading', 'lazy');
+        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+        
+        // Ensure allow attribute includes required permissions
+        const currentAllow = iframe.getAttribute('allow') || '';
+        const requiredPermissions = ['autoplay', 'picture-in-picture'];
+        const permissions = currentAllow.split(';').map(p => p.trim()).filter(p => p);
+        requiredPermissions.forEach(perm => {
+          if (!permissions.some(p => p.includes(perm))) {
+            permissions.push(perm);
+          }
+        });
+        if (!permissions.includes('accelerometer')) permissions.push('accelerometer');
+        if (!permissions.includes('encrypted-media')) permissions.push('encrypted-media');
+        if (!permissions.includes('gyroscope')) permissions.push('gyroscope');
+        iframe.setAttribute('allow', permissions.join('; '));
+      });
+      
+      processedContent = temp.innerHTML;
+      
       // Parse HTML to find and wrap iframes
       const doc = new DOMParser().parseFromString(processedContent, 'text/html');
       const iframes = doc.querySelectorAll('iframe');
       
       iframes.forEach((iframe: HTMLIFrameElement) => {
-        // Remove fixed width/height
+        // Remove fixed width/height (in case any remain)
         iframe.removeAttribute('width');
         iframe.removeAttribute('height');
         
         // Ensure proper attributes for video embeds
         iframe.setAttribute('frameborder', '0');
         iframe.setAttribute('allowfullscreen', '');
-        iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
         
         // Normalize YouTube URLs and wrap appropriately
         const src = iframe.getAttribute('src') || '';
@@ -109,6 +146,9 @@ export class ArticlePage implements OnInit, AfterViewInit {
           
           // Mark iframe as wrapped for CSS targeting
           iframe.setAttribute('data-embed-wrapped', 'true');
+          if (!iframe.hasAttribute('data-yt-embed')) {
+            iframe.setAttribute('data-yt-embed', 'true');
+          }
           
           // Wrap YouTube iframe in proper structure if not already wrapped
           const existingWrapper = iframe.closest('.video-embed--youtube');
