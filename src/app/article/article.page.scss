@@ -400,16 +400,37 @@
   }
   
   /* GUARANTEED FIX: Override any generic iframe rules for wrapped YouTube embeds */
+  /* Target all possible wrapper combinations */
   .article-page .article-content .responsive-video-wrapper iframe,
-  .article-page .article-content .ql-video-wrapper iframe {
+  .article-page .article-content .ql-video-wrapper iframe,
+  .article-page .article-content .video-embed--youtube .responsive-video-wrapper iframe,
+  .article-page .article-content .video-embed--youtube .ql-video-wrapper iframe,
+  .article-content .responsive-video-wrapper iframe,
+  .article-content .ql-video-wrapper iframe {
     width: 100% !important;
     height: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
+    min-height: 0 !important;
+    max-height: none !important;
     display: block !important;
     margin: 0 !important;
     position: absolute !important;
-    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    border: none !important;
+  }
+  
+  /* Ensure wrapper itself maintains aspect ratio on desktop */
+  .article-page .article-content .responsive-video-wrapper,
+  .article-page .article-content .ql-video-wrapper,
+  .article-page .article-content .video-embed--youtube .responsive-video-wrapper,
+  .article-page .article-content .video-embed--youtube .ql-video-wrapper {
+    aspect-ratio: 16 / 9 !important;
+    height: auto !important;
+    position: relative !important;
   }
 }
 
@@ -419,13 +440,6 @@
   .article-page .article-content .video-embed--youtube .ql-video-wrapper {
     width: 100% !important;
     max-width: 100% !important;
-  }
-}
-
-/* TEMP DEBUG: Remove after confirming CSS loads */
-@media (min-width: 769px) {
-  .article-page .article-content {
-    outline: 6px solid hotpink !important;
   }
 }
 
