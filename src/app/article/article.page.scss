@@ -494,16 +494,25 @@ article {
   }
 }
 
-// iOS-specific fix for iframe touch events inside ion-content scroll container
-// Momentum scrolling (-webkit-overflow-scrolling: touch) can prevent iframe taps from working
-@supports (-webkit-touch-callout: none) {
-  // Disable momentum scrolling on ion-content scroll part (Ionic 6+)
-  .article-page::part(scroll) {
-    -webkit-overflow-scrolling: auto !important;
-  }
-  
-  // Fallback for older Ionic versions using .inner-scroll
-  .article-page .inner-scroll {
-    -webkit-overflow-scrolling: auto !important;
-  }
+/* Ensure embedded video iframes receive taps (avoid invisible overlays / stacking issues) */
+.article-page .article-content .responsive-video-wrapper,
+.article-page .article-content .ql-video-wrapper {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.article-page .article-content .responsive-video-wrapper iframe,
+.article-page .article-content .ql-video-wrapper iframe {
+  position: absolute !important;
+  z-index: 2;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+.article-page .article-content .responsive-video-wrapper::before,
+.article-page .article-content .responsive-video-wrapper::after,
+.article-page .article-content .ql-video-wrapper::before,
+.article-page .article-content .ql-video-wrapper::after {
+  content: none !important; /* prevent tap-stealing pseudo overlays if any */
 }
