@@ -47,9 +47,9 @@ export class ArticlePage implements OnInit, AfterViewInit {
     try {
       this.isLoading = true;
       this.error = null;
-      
+
       const loadedContent = await this.contentService.getContentBySlug(slug);
-      
+
       if (!loadedContent) {
         this.error = 'Article not found';
         this.isLoading = false;
@@ -63,130 +63,12 @@ export class ArticlePage implements OnInit, AfterViewInit {
       }
 
       this.content = loadedContent;
-      
-      // Process content to make videos responsive
-      let processedContent = this.content.content || '';
-      
-      // Normalize YouTube iframes: remove width/height attributes and add marker
-      const temp = document.createElement('div');
-      temp.innerHTML = processedContent;
-      const ytIframes = temp.querySelectorAll<HTMLIFrameElement>('iframe[src*="youtube.com/embed"], iframe[src*="youtube-nocookie.com/embed"]');
-      
-      ytIframes.forEach((iframe) => {
-        // Remove fixed width/height attributes from Firestore data
-        iframe.removeAttribute('width');
-        iframe.removeAttribute('height');
-        
-        // Set responsive styles
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        
-        // Add marker for CSS targeting
-        iframe.setAttribute('data-yt-embed', 'true');
-        
-        // Add performance and security attributes
-        iframe.setAttribute('loading', 'lazy');
-        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-        
-        // Ensure allow attribute includes required permissions
-        const currentAllow = iframe.getAttribute('allow') || '';
-        const requiredPermissions = ['autoplay', 'picture-in-picture'];
-        const permissions = currentAllow.split(';').map(p => p.trim()).filter(p => p);
-        requiredPermissions.forEach(perm => {
-          if (!permissions.some(p => p.includes(perm))) {
-            permissions.push(perm);
-          }
-        });
-        if (!permissions.includes('accelerometer')) permissions.push('accelerometer');
-        if (!permissions.includes('encrypted-media')) permissions.push('encrypted-media');
-        if (!permissions.includes('gyroscope')) permissions.push('gyroscope');
-        iframe.setAttribute('allow', permissions.join('; '));
-      });
-      
-      processedContent = temp.innerHTML;
-      
-      // Parse HTML to find and wrap iframes
-      const doc = new DOMParser().parseFromString(processedContent, 'text/html');
-      const iframes = doc.querySelectorAll('iframe');
-      
-      iframes.forEach((iframe: HTMLIFrameElement) => {
-        // Remove fixed width/height (in case any remain)
-        iframe.removeAttribute('width');
-        iframe.removeAttribute('height');
-        
-        // Ensure proper attributes for video embeds
-        iframe.setAttribute('frameborder', '0');
-        iframe.setAttribute('allowfullscreen', '');
-        
-        // Normalize YouTube URLs and wrap appropriately
-        const src = iframe.getAttribute('src') || '';
-        const isYouTube = src.includes('youtube.com') || src.includes('youtu.be');
-        
-        if (isYouTube) {
-          let videoId: string | null = null;
-          
-          // Extract video ID from various YouTube URL patterns
-          const watchMatch = src.match(/(?:youtube\.com\/watch\?v=)([^&"'\s]+)/);
-          const shortMatch = src.match(/(?:youtu\.be\/)([^?"'\s]+)/);
-          const shortsMatch = src.match(/(?:youtube\.com\/shorts\/)([^?"'\s]+)/);
-          const embedMatch = src.match(/(?:youtube\.com\/embed\/)([^?"'\s]+)/);
-          
-          videoId = watchMatch?.[1] || shortMatch?.[1] || shortsMatch?.[1] || embedMatch?.[1] || null;
-          
-          if (videoId) {
-            const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
-            embedUrl.searchParams.set('playsinline', '1');
-            embedUrl.searchParams.set('rel', '0');
-            iframe.setAttribute('src', embedUrl.toString());
-          }
-          
-          // Ensure iframe has full width/height styles
-          iframe.style.width = '100%';
-          iframe.style.height = '100%';
-          
-          // Mark iframe as wrapped for CSS targeting
-          iframe.setAttribute('data-embed-wrapped', 'true');
-          if (!iframe.hasAttribute('data-yt-embed')) {
-            iframe.setAttribute('data-yt-embed', 'true');
-          }
-          
-          // Wrap YouTube iframe in proper structure if not already wrapped
-          const existingWrapper = iframe.closest('.video-embed--youtube');
-          if (!existingWrapper) {
-            // Create outer wrapper
-            const videoEmbed = doc.createElement('div');
-            videoEmbed.className = 'video-embed video-embed--youtube';
-            
-            // Create responsive wrapper
-            const responsiveWrapper = doc.createElement('div');
-            responsiveWrapper.className = 'responsive-video-wrapper';
-            
-            // Insert wrappers
-            if (iframe.parentNode) {
-              iframe.parentNode.insertBefore(videoEmbed, iframe);
-              videoEmbed.appendChild(responsiveWrapper);
-              responsiveWrapper.appendChild(iframe);
-            }
-          }
-        } else {
-          // For non-YouTube videos, use simple video-container wrapper
-          const parent = iframe.parentElement;
-          if (!parent || !parent.classList.contains('video-container')) {
-            const wrapper = doc.createElement('div');
-            wrapper.className = 'video-container';
-            if (iframe.parentNode) {
-              iframe.parentNode.insertBefore(wrapper, iframe);
-              wrapper.appendChild(iframe);
-            }
-          }
-        }
-      });
-      
-      // Serialize back to HTML
-      processedContent = doc.body.innerHTML;
-      
+
       // Sanitize the HTML content
-      this.sanitizedContent = this.sanitizer.bypassSecurityTrustHtml(processedContent);
+      this.sanitizedContent = this.sanitizer.bypassSecurityTrustHtml(this.content.content || '');
+
+      // Make videos responsive after content is set and DOM updates
+      setTimeout(() => this.makeVideosResponsive(), 0);
     } catch (err) {
       console.error('Error loading content:', err);
       this.error = 'Failed to load article';
@@ -197,17 +79,39 @@ export class ArticlePage implements OnInit, AfterViewInit {
 
   private makeVideosResponsive() {
     if (!this.articleContent) return;
-    
+
     const container = this.articleContent.nativeElement;
     const iframes = container.querySelectorAll('iframe');
-    
+
     iframes.forEach((iframe: HTMLIFrameElement) => {
-      // Ensure iframe is wrapped in video-container
-      if (!iframe.parentElement?.classList.contains('video-container')) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'video-container';
-        iframe.parentNode?.insertBefore(wrapper, iframe);
-        wrapper.appendChild(iframe);
+      const src = iframe.getAttribute('src') || '';
+
+      // Detect YouTube embeds
+      const isYouTube = src.includes('youtube.com/embed') ||
+                       src.includes('youtube-nocookie.com/embed') ||
+                       src.includes('youtu.be');
+
+      if (isYouTube) {
+        // Remove fixed width/height attributes
+        iframe.removeAttribute('width');
+        iframe.removeAttribute('height');
+
+        // Add class and data attribute
+        iframe.classList.add('responsive-video-iframe');
+        iframe.setAttribute('data-yt-embed', 'true');
+
+        // Set iframe styles
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+
+        // Wrap in responsive-video-wrapper if not already wrapped
+        const existingWrapper = iframe.closest('.responsive-video-wrapper');
+        if (!existingWrapper) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'responsive-video-wrapper';
+          iframe.parentNode?.insertBefore(wrapper, iframe);
+          wrapper.appendChild(iframe);
+        }
       }
     });
   }
