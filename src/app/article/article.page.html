@@ -16,6 +16,11 @@
 
     <!-- Article Content -->
     <article *ngIf="content && !isLoading && !error" class="article">
+      <!-- Thumbnail -->
+      <div class="article-thumbnail" *ngIf="getThumbnailUrl(content)">
+        <img [src]="getThumbnailUrl(content)" [alt]="content.title">
+      </div>
+      
       <!-- Title -->
       <h1 class="article-title">{{ content.title }}</h1>
 
