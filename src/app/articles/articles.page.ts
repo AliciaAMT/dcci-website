@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonContent, IonIcon, IonInput, IonSpinner } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
-import { PageHeaderComponent } from '../components/page-header.component';
+import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
 
 @Component({
   selector: 'app-articles',
@@ -18,7 +18,7 @@ import { PageHeaderComponent } from '../components/page-header.component';
     IonIcon,
     IonInput,
     IonSpinner,
-    PageHeaderComponent
+    PageHeaderWithMenuComponent
   ]
 })
 export class ArticlesPage implements OnInit, OnDestroy {
