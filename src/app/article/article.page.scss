@@ -165,10 +165,12 @@
   // Video container - responsive
   .video-container {
     position: relative;
-    width: 100%;
+    width: 50%;
+    min-width: 50%;
+    max-width: 90%;
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    margin: 2rem 0;
+    margin: 2rem auto;
     border-radius: 8px;
     background: var(--ion-color-dark);
     
@@ -182,6 +184,35 @@
     }
   }
   
+  // Responsive video wrapper for YouTube embeds
+  .responsive-video-wrapper,
+  .ql-video-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--ion-color-dark);
+    
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  }
+  
+  // Fallback for browsers that don't support aspect-ratio
+  @supports not (aspect-ratio: 16 / 9) {
+    .responsive-video-wrapper,
+    .ql-video-wrapper {
+      height: 0;
+      padding-bottom: 56.25%; // 16:9 aspect ratio
+    }
+  }
+  
   // Fallback for browsers that don't support aspect-ratio
   @supports not (aspect-ratio: 16 / 9) {
     .video-container {
@@ -192,10 +223,12 @@
   
   // If iframe is not wrapped, make it responsive
   iframe {
-    max-width: 100%;
+    width: 50%;
+    min-width: 50%;
+    max-width: 90%;
     height: auto;
     display: block;
-    margin: 2rem 0;
+    margin: 2rem auto;
   }
 }
 
@@ -262,6 +295,26 @@
   .article-content {
     font-size: 1rem;
     
+    .video-container {
+      margin: 1.5rem auto;
+      width: 100%; /* Full width on mobile */
+      min-width: 100%; /* Override desktop min-width on mobile */
+      max-width: 100%; /* Override desktop max-width on mobile */
+    }
+    
+    .responsive-video-wrapper,
+    .ql-video-wrapper {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    
+    iframe {
+      width: 100%; /* Full width on mobile */
+      min-width: 100%; /* Override desktop min-width on mobile */
+      max-width: 100%; /* Override desktop max-width on mobile */
+      margin: 1.5rem auto;
+    }
+    
     h2 {
       font-size: 1.75rem;
     }
@@ -269,10 +322,6 @@
     h3 {
       font-size: 1.25rem;
     }
-  }
-  
-  .video-container {
-    margin: 1.5rem 0;
   }
 }
 
@@ -308,6 +357,33 @@
     h3 {
       font-size: 1.2rem;
     }
+  }
+}
+
+/* Desktop-only: Center and size YouTube videos to ~50% of viewport */
+@media (min-width: 769px) {
+  .article-page .article-content .video-embed--youtube {
+    display: flex;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+
+  .article-page .article-content .video-embed--youtube .responsive-video-wrapper,
+  .article-page .article-content .video-embed--youtube .ql-video-wrapper {
+    width: clamp(420px, 50vw, 960px) !important;
+    height: auto !important; /* Ensure height scales with width via aspect-ratio */
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* Mobile: Keep YouTube videos full width */
+@media (max-width: 768px) {
+  .article-page .article-content .video-embed--youtube .responsive-video-wrapper,
+  .article-page .article-content .video-embed--youtube .ql-video-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 

@@ -81,9 +81,11 @@ export class ArticlePage implements OnInit, AfterViewInit {
         iframe.setAttribute('allowfullscreen', '');
         iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen');
         
-        // Normalize YouTube URLs
+        // Normalize YouTube URLs and wrap appropriately
         const src = iframe.getAttribute('src') || '';
-        if (src.includes('youtube.com') || src.includes('youtu.be')) {
+        const isYouTube = src.includes('youtube.com') || src.includes('youtu.be');
+        
+        if (isYouTube) {
           let videoId: string | null = null;
           
           // Extract video ID from various YouTube URL patterns
@@ -100,16 +102,39 @@ export class ArticlePage implements OnInit, AfterViewInit {
             embedUrl.searchParams.set('rel', '0');
             iframe.setAttribute('src', embedUrl.toString());
           }
-        }
-        
-        // Wrap iframe in responsive container if not already wrapped
-        const parent = iframe.parentElement;
-        if (!parent || !parent.classList.contains('video-container')) {
-          const wrapper = doc.createElement('div');
-          wrapper.className = 'video-container';
-          if (iframe.parentNode) {
-            iframe.parentNode.insertBefore(wrapper, iframe);
-            wrapper.appendChild(iframe);
+          
+          // Ensure iframe has full width/height styles
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          
+          // Wrap YouTube iframe in proper structure if not already wrapped
+          const existingWrapper = iframe.closest('.video-embed--youtube');
+          if (!existingWrapper) {
+            // Create outer wrapper
+            const videoEmbed = doc.createElement('div');
+            videoEmbed.className = 'video-embed video-embed--youtube';
+            
+            // Create responsive wrapper
+            const responsiveWrapper = doc.createElement('div');
+            responsiveWrapper.className = 'responsive-video-wrapper';
+            
+            // Insert wrappers
+            if (iframe.parentNode) {
+              iframe.parentNode.insertBefore(videoEmbed, iframe);
+              videoEmbed.appendChild(responsiveWrapper);
+              responsiveWrapper.appendChild(iframe);
+            }
+          }
+        } else {
+          // For non-YouTube videos, use simple video-container wrapper
+          const parent = iframe.parentElement;
+          if (!parent || !parent.classList.contains('video-container')) {
+            const wrapper = doc.createElement('div');
+            wrapper.className = 'video-container';
+            if (iframe.parentNode) {
+              iframe.parentNode.insertBefore(wrapper, iframe);
+              wrapper.appendChild(iframe);
+            }
           }
         }
       });
