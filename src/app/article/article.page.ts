@@ -105,6 +105,7 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
         });
       }
     }, 100);
+    setTimeout(() => this.installMobileYoutubeTapFix(), 250);
   }
 
   private setupVideoErrorDetection() {
@@ -161,6 +162,54 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
 
   dismissVideoError() {
     this.showVideoError = false;
+  }
+
+  private installMobileYoutubeTapFix() {
+    if (!this.isMobile) return;
+    
+    const root = this.articleContent?.nativeElement;
+    if (!root) return;
+
+    const iframes = Array.from(root.querySelectorAll('iframe')) as HTMLIFrameElement[];
+    const ytIframes = iframes.filter(f => {
+      const src = f.src || f.getAttribute('src') || '';
+      return src.includes('youtube.com/embed');
+    });
+
+    ytIframes.forEach((iframe: HTMLIFrameElement) => {
+      const wrapper = iframe.closest('.responsive-video-wrapper') as HTMLElement || iframe.parentElement;
+      if (!wrapper) return;
+
+      if (wrapper.classList.contains('yt-tapfix-installed')) return;
+      wrapper.classList.add('yt-tapfix-installed');
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'yt-tap-overlay';
+      btn.setAttribute('aria-label', 'Play video');
+      btn.innerHTML = '<span class="yt-tap-icon" aria-hidden="true"></span>';
+
+      const handleTap = () => {
+        const src = iframe.getAttribute('src') || iframe.src || '';
+        if (!src) return;
+
+        try {
+          const url = new URL(src);
+          url.searchParams.set('autoplay', '1');
+          url.searchParams.set('playsinline', '1');
+          iframe.setAttribute('src', url.toString());
+          btn.remove();
+          wrapper.classList.add('yt-started');
+        } catch (e) {
+          console.warn('Failed to update YouTube iframe URL:', e);
+        }
+      };
+
+      btn.addEventListener('click', handleTap);
+      btn.addEventListener('touchend', handleTap);
+
+      wrapper.appendChild(btn);
+    });
   }
 
   private async loadContent(slug: string) {
@@ -284,6 +333,7 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
       // Using bypassSecurityTrustHtml since content is from our trusted database
       // In production, you might want additional sanitization layers
       this.sanitizedContent = this.sanitizer.bypassSecurityTrustHtml(processedContent);
+      setTimeout(() => this.installMobileYoutubeTapFix(), 0);
     } catch (err) {
       console.error('Error loading content:', err);
       this.error = 'Failed to load article';

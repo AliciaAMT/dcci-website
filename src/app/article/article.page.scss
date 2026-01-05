@@ -516,3 +516,58 @@ article {
 .article-page .article-content .ql-video-wrapper::after {
   content: none !important; /* prevent tap-stealing pseudo overlays if any */
 }
+
+/* Mobile YouTube tap fix: overlay ensures user-gesture starts iframe playback when iframe won't receive taps in emulation */
+.article-page .article-content .responsive-video-wrapper.yt-tapfix-installed {
+  position: relative;
+}
+
+.article-page .article-content .yt-tap-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 50;            /* higher than iframe */
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.article-page .article-content .yt-tap-overlay:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
+/* Optional: show a subtle play indicator (still minimal). If you don't want visible UI, remove these 2 blocks. */
+.article-page .article-content .yt-tap-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(0,0,0,0.35);
+}
+
+.article-page .article-content .yt-tap-icon::before {
+  content: '';
+  position: absolute;
+  left: 54%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-left: 18px solid rgba(255,255,255,0.9);
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+}
+
+/* Once started, ensure overlay is gone (belt & suspenders) */
+.article-page .article-content .responsive-video-wrapper.yt-started .yt-tap-overlay {
+  display: none !important;
+}
