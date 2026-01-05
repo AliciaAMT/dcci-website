@@ -17,6 +17,7 @@ import {
   IonSelectOption,
   IonSpinner,
   IonChip,
+  IonCheckbox,
   LoadingController,
   ToastController,
   AlertController
@@ -47,6 +48,7 @@ import { firstValueFrom } from 'rxjs';
     IonSelectOption,
     IonSpinner,
     IonChip,
+    IonCheckbox,
     CommonModule,
     FormsModule
   ]
@@ -59,6 +61,7 @@ export class PublishedPage implements OnInit, OnDestroy {
   searchTerm = '';
   searchType: 'title' | 'content' | 'tags' | 'date' = 'title';
   sortBy: 'date' | 'title' = 'date';
+  showYouTubeArticles = true; // Default to showing YouTube articles
 
   constructor(
     private router: Router,
@@ -95,35 +98,51 @@ export class PublishedPage implements OnInit, OnDestroy {
   }
 
   async onSearch() {
-    if (this.searchTerm.trim()) {
-      this.isLoading = true;
-      try {
-        this.filteredPublished = await this.contentService.searchContent(
-          'published',
-          this.searchTerm,
-          this.searchType,
-          this.sortBy,
-          this.published
-        );
-      } catch (error) {
-        console.error('Error searching published content:', error);
-        await this.showToast('Search failed', 'danger');
-      } finally {
-        this.isLoading = false;
-      }
-    } else {
-      this.applyFilters();
-    }
+    // Use local filtering instead of service search to respect YouTube filter
+    this.applyFilters();
+  }
+
+  private isYouTubeArticle(article: Content): boolean {
+    const data = article as any;
+    return data.type === 'youtube' || !!data.youtubeVideoId || !!data.youtubeUrl;
   }
 
   applyFilters() {
-    this.filteredPublished = [...this.published];
+    let filtered = [...this.published];
+    
+    // Filter by YouTube status first
+    if (!this.showYouTubeArticles) {
+      filtered = filtered.filter(article => !this.isYouTubeArticle(article));
+    }
+    
+    // Apply search filter if search term exists
+    if (this.searchTerm.trim()) {
+      const searchLower = this.searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(article => {
+        switch (this.searchType) {
+          case 'title':
+            return article.title.toLowerCase().includes(searchLower);
+          case 'content':
+            const contentText = article.content?.replace(/<[^>]*>/g, '').toLowerCase() || '';
+            return contentText.includes(searchLower) || 
+                   (article.excerpt && article.excerpt.toLowerCase().includes(searchLower));
+          case 'tags':
+            if (!article.tags || article.tags.length === 0) return false;
+            return article.tags.some(tag => tag.toLowerCase().includes(searchLower));
+          case 'date':
+            const dateStr = this.getDate(article.publishedAt || article.createdAt).toLocaleDateString();
+            return dateStr.includes(searchLower);
+          default:
+            return true;
+        }
+      });
+    }
     
     // Sort
     if (this.sortBy === 'title') {
-      this.filteredPublished.sort((a, b) => a.title.localeCompare(b.title));
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
     } else {
-      this.filteredPublished.sort((a, b) => {
+      filtered.sort((a, b) => {
         const aDate = a.publishedAt || a.createdAt;
         const bDate = b.publishedAt || b.createdAt;
         const aTime = aDate instanceof Date ? aDate.getTime() : new Date(aDate as any).getTime();
@@ -131,9 +150,15 @@ export class PublishedPage implements OnInit, OnDestroy {
         return bTime - aTime;
       });
     }
+    
+    this.filteredPublished = filtered;
   }
 
   onSortChange() {
+    this.applyFilters();
+  }
+
+  onYouTubeFilterChange() {
     this.applyFilters();
   }
 
