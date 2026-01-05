@@ -1,0 +1,55 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is admin
+    // This checks the Firestore adminUsers collection
+    function isAdminUser() {
+      return request.auth != null &&
+             request.auth.uid != null &&
+             firestore.exists(/databases/(default)/documents/adminUsers/$(request.auth.uid)) &&
+             firestore.get(/databases/(default)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Thumbnails for content/articles
+    // Only authenticated admin users can upload
+    // Anyone can read (for displaying thumbnails)
+    match /thumbnails/{userId}/{fileName} {
+      // Allow read access to everyone (for displaying thumbnails)
+      allow read: if true;
+      
+      // Allow write (upload) only if:
+      // 1. User is authenticated
+      // 2. User is an admin
+      // 3. The userId in the path matches the authenticated user's UID
+      allow write: if request.auth != null &&
+                   request.auth.uid == userId &&
+                   isAdminUser() &&
+                   request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+                   request.resource.contentType.matches('image/.*');
+      
+      // Allow delete only for admins
+      allow delete: if request.auth != null &&
+                    isAdminUser() &&
+                    request.auth.uid == userId;
+    }
+    
+    // Content images (for articles content)
+    match /content/images/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+                   request.auth.uid == userId &&
+                   isAdminUser() &&
+                   request.resource.size < 10 * 1024 * 1024 && // Max 10MB
+                   request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null &&
+                    isAdminUser() &&
+                    request.auth.uid == userId;
+    }
+    
+    // Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
