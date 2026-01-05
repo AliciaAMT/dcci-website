@@ -187,6 +187,9 @@ export class ArticlePage implements OnInit, AfterViewInit {
       
       // Sanitize the HTML content
       this.sanitizedContent = this.sanitizer.bypassSecurityTrustHtml(processedContent);
+      
+      // Make videos responsive after DOM updates
+      setTimeout(() => this.makeVideosResponsive(), 0);
     } catch (err) {
       console.error('Error loading content:', err);
       this.error = 'Failed to load article';
@@ -199,15 +202,42 @@ export class ArticlePage implements OnInit, AfterViewInit {
     if (!this.articleContent) return;
     
     const container = this.articleContent.nativeElement;
-    const iframes = container.querySelectorAll('iframe');
+    
+    // Only target iframes inside .article-content
+    const iframes = container.querySelectorAll('iframe') as NodeListOf<HTMLIFrameElement>;
     
     iframes.forEach((iframe: HTMLIFrameElement) => {
-      // Ensure iframe is wrapped in video-container
-      if (!iframe.parentElement?.classList.contains('video-container')) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'video-container';
-        iframe.parentNode?.insertBefore(wrapper, iframe);
-        wrapper.appendChild(iframe);
+      const src = iframe.getAttribute('src') || '';
+      
+      // Detect YouTube embeds
+      const isYouTube = src.includes('youtube.com/embed') || 
+                       src.includes('youtube-nocookie.com/embed') ||
+                       src.includes('youtu.be');
+      
+      if (isYouTube) {
+        // Remove fixed width/height attributes
+        iframe.removeAttribute('width');
+        iframe.removeAttribute('height');
+        
+        // Add class and marker
+        iframe.classList.add('responsive-video-iframe');
+        iframe.setAttribute('data-yt-embed', 'true');
+        
+        // Set iframe to fill wrapper
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        
+        // Wrap iframe if not already wrapped
+        const existingWrapper = iframe.closest('.responsive-video-wrapper');
+        if (!existingWrapper) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'responsive-video-wrapper';
+          
+          if (iframe.parentNode) {
+            iframe.parentNode.insertBefore(wrapper, iframe);
+            wrapper.appendChild(iframe);
+          }
+        }
       }
     });
   }

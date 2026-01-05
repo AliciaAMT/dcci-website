@@ -443,34 +443,33 @@
   }
 }
 
-/* Core responsive box for embeds inside article content */
-.article-page .article-content .responsive-video-wrapper,
-.article-page .article-content .ql-video-wrapper {
+/* Use ::ng-deep to apply styles to [innerHTML] content */
+:host ::ng-deep .article-content .responsive-video-wrapper {
   position: relative;
   width: 100%;
+  max-width: 900px;
+  margin: 2rem auto;
   aspect-ratio: 16 / 9;
-  height: auto;
   overflow: hidden;
+  border-radius: 8px;
+  background: var(--ion-color-dark);
 }
 
-/* Ensure wrapped iframe fills its box */
-.article-page .article-content .responsive-video-wrapper iframe[data-yt-embed="true"],
-.article-page .article-content .ql-video-wrapper iframe[data-yt-embed="true"] {
+:host ::ng-deep .article-content .responsive-video-wrapper iframe,
+:host ::ng-deep .article-content iframe.responsive-video-iframe {
   position: absolute;
   inset: 0;
   width: 100% !important;
   height: 100% !important;
-  margin: 0 !important;
-  border: 0;
+  border: 0 !important;
+  display: block;
 }
 
-/* Desktop-only: center and size ~50% of viewport */
-@media (min-width: 769px) {
-  .article-page .article-content .responsive-video-wrapper,
-  .article-page .article-content .ql-video-wrapper {
-    width: clamp(520px, 50vw, 1100px) !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
+/* Fallback for browsers without aspect-ratio */
+@supports not (aspect-ratio: 16 / 9) {
+  :host ::ng-deep .article-content .responsive-video-wrapper {
+    height: 0;
+    padding-bottom: 56.25%;
   }
 }
 
