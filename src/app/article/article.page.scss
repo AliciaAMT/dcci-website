@@ -443,6 +443,34 @@
   }
 }
 
+/* Desktop: Size YouTube iframe directly with aspect-ratio */
+@media (min-width: 769px) {
+  /* Desktop: size the YouTube iframe itself so height scales with width */
+  .article-page .article-content iframe[src*="youtube.com/embed"],
+  .article-page .article-content iframe[src*="youtube-nocookie.com/embed"] {
+    display: block !important;
+    width: clamp(520px, 50vw, 1100px) !important;  /* ~50% of window */
+    max-width: 100% !important;
+    aspect-ratio: 16 / 9 !important;               /* KEY: makes height auto-scale */
+    height: auto !important;                        /* KEY */
+    margin: 2rem auto !important;                   /* center */
+    border: 0 !important;
+  }
+}
+
+/* Mobile: Keep YouTube videos unchanged */
+@media (max-width: 768px) {
+  /* Mobile unchanged: full width, standard responsive behavior */
+  .article-page .article-content iframe[src*="youtube.com/embed"],
+  .article-page .article-content iframe[src*="youtube-nocookie.com/embed"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: auto !important;   /* let existing mobile wrapper/rules win */
+    height: auto !important;
+    margin: 1rem 0 !important;
+  }
+}
+
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .article {
