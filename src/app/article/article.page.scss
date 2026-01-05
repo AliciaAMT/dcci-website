@@ -172,6 +172,7 @@ article {
     height: 0;
     overflow: hidden; // Keep hidden for proper sizing
     border-radius: 8px;
+    pointer-events: auto; // Ensure wrapper doesn't block iframe taps
 
     iframe {
       position: absolute !important;
@@ -504,10 +505,5 @@ article {
   // Fallback for older Ionic versions using .inner-scroll
   .article-page .inner-scroll {
     -webkit-overflow-scrolling: auto !important;
-  }
-  
-  // Ensure no transforms on ancestors (transforms can break iframe hit-testing on iOS)
-  .article-page, .article-page * {
-    transform: none !important;
   }
 }
