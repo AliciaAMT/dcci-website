@@ -161,36 +161,6 @@
     font-style: italic;
     color: var(--ion-color-medium);
   }
-
-  // Responsive video wrapper for YouTube embeds - using ::ng-deep to target innerHTML content
-  :host ::ng-deep .article-content .responsive-video-wrapper {
-    position: relative;
-    width: 100%;
-    max-width: 900px;
-    margin: 2rem auto;
-    aspect-ratio: 16 / 9;
-    overflow: hidden;
-    border-radius: 8px;
-    background: var(--ion-color-dark);
-  }
-
-  :host ::ng-deep .article-content .responsive-video-wrapper iframe,
-  :host ::ng-deep .article-content iframe.responsive-video-iframe {
-    position: absolute;
-    inset: 0;
-    width: 100% !important;
-    height: 100% !important;
-    border: 0 !important;
-    display: block;
-  }
-
-  // Fallback for browsers without aspect-ratio
-  @supports not (aspect-ratio: 16 / 9) {
-    :host ::ng-deep .article-content .responsive-video-wrapper {
-      height: 0;
-      padding-bottom: 56.25%;
-    }
-  }
 }
 
 .article-tags {
@@ -295,6 +265,60 @@
   }
 }
 
+/* ===== YouTube responsive embeds (MOBILE SAFE) ===== */
+/* IMPORTANT: Keep mobile iframes static to preserve tap-to-play in Ionic */
+:host ::ng-deep .article-content .responsive-video-wrapper {
+  width: 100%;
+  max-width: 100%;
+  margin: 1.5rem 0;
+}
+
+/* Mobile/default: iframe stays in normal flow and keeps its own tap behavior */
+:host ::ng-deep .article-content .responsive-video-wrapper > iframe,
+:host ::ng-deep .article-content iframe.responsive-video-iframe {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  border: 0 !important;
+  display: block !important;
+
+  /* keep taps working */
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+/* Desktop only: enforce 16:9 and centered ~half screen width */
+@media (min-width: 769px) {
+  :host ::ng-deep .article-content .responsive-video-wrapper {
+    position: relative;
+    width: min(50vw, 900px);
+    margin: 2rem auto;          /* centered */
+    aspect-ratio: 16 / 9;       /* height scales with width */
+    border-radius: 8px;
+    background: var(--ion-color-dark);
+
+    /* do NOT use overflow:hidden (it can break taps on mobile; desktop doesn't need it) */
+    overflow: visible;
+  }
+
+  :host ::ng-deep .article-content .responsive-video-wrapper > iframe,
+  :host ::ng-deep .article-content iframe.responsive-video-iframe {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 8px;
+    transform: translateZ(0);   /* helps some browsers render cleanly */
+  }
+
+  /* Fallback if aspect-ratio unsupported */
+  @supports not (aspect-ratio: 16 / 9) {
+    :host ::ng-deep .article-content .responsive-video-wrapper {
+      height: 0;
+      padding-bottom: 56.25%;
+    }
+  }
+}
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
