@@ -204,13 +204,27 @@
     }
   }
   
+  /* Ensure wrapper maintains aspect ratio - scoped to article page */
+  .article-page .article-content .responsive-video-wrapper,
+  .article-page .article-content .ql-video-wrapper {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    overflow: hidden;
+  }
+  
   // Explicit rule for wrapped iframes to ensure they fill their wrapper
+  // This MUST override any generic .article-content iframe rules
   .responsive-video-wrapper > iframe,
   .ql-video-wrapper > iframe {
     position: absolute !important;
     inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    display: block !important;
+    margin: 0 !important;
     border: none !important;
   }
   
@@ -381,10 +395,21 @@
   .article-page .article-content .video-embed--youtube .responsive-video-wrapper,
   .article-page .article-content .video-embed--youtube .ql-video-wrapper {
     width: clamp(420px, 50vw, 960px) !important;
-    height: auto !important; /* Ensure height scales with width via aspect-ratio */
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  
+  /* GUARANTEED FIX: Override any generic iframe rules for wrapped YouTube embeds */
+  .article-page .article-content .responsive-video-wrapper iframe,
+  .article-page .article-content .ql-video-wrapper iframe {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
     max-width: none !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    display: block !important;
+    margin: 0 !important;
+    position: absolute !important;
+    inset: 0 !important;
   }
 }
 
@@ -394,6 +419,13 @@
   .article-page .article-content .video-embed--youtube .ql-video-wrapper {
     width: 100% !important;
     max-width: 100% !important;
+  }
+}
+
+/* TEMP DEBUG: Remove after confirming CSS loads */
+@media (min-width: 769px) {
+  .article-page .article-content {
+    outline: 6px solid hotpink !important;
   }
 }
 
