@@ -21,6 +21,12 @@
           <option value="tags">Tags</option>
           <option value="date">Date</option>
         </select>
+        <select [(ngModel)]="sortOption" (change)="onSortChange()" class="filter-select sort-select">
+          <option value="date-desc">Date: Newest First</option>
+          <option value="date-asc">Date: Oldest First</option>
+          <option value="title-asc">Title: A-Z</option>
+          <option value="title-desc">Title: Z-A</option>
+        </select>
         <label class="youtube-filter-label">
           <ion-checkbox 
             [(ngModel)]="showYouTubeArticles" 

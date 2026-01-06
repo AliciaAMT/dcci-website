@@ -29,6 +29,7 @@ export class ArticlesPage implements OnInit, OnDestroy {
   searchTerm = '';
   searchType: 'all' | 'title' | 'content' | 'tags' | 'date' = 'all';
   showYouTubeArticles = true; // Default to showing YouTube articles
+  sortOption: 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc' = 'date-desc'; // Default: newest first
 
   constructor(
     private contentService: ContentService,
@@ -45,7 +46,7 @@ export class ArticlesPage implements OnInit, OnDestroy {
     try {
       this.isLoading = true;
       this.articles = await this.contentService.getPublishedContent();
-      this.filteredArticles = [...this.articles];
+      this.filterArticles(); // Apply filtering and sorting
     } catch (err) {
       console.error('Error loading articles:', err);
     } finally {
@@ -62,6 +63,10 @@ export class ArticlesPage implements OnInit, OnDestroy {
   }
 
   onYouTubeFilterChange() {
+    this.filterArticles();
+  }
+
+  onSortChange() {
     this.filterArticles();
   }
 
@@ -106,7 +111,41 @@ export class ArticlesPage implements OnInit, OnDestroy {
       });
     }
 
-    this.filteredArticles = filtered;
+    // Apply sorting
+    this.filteredArticles = this.sortArticles(filtered);
+  }
+
+  private sortArticles(articles: Content[]): Content[] {
+    const sorted = [...articles];
+
+    switch (this.sortOption) {
+      case 'date-desc': // Newest first
+        return sorted.sort((a, b) => {
+          const dateA = this.getDate(a.publishedAt || a.createdAt);
+          const dateB = this.getDate(b.publishedAt || b.createdAt);
+          return dateB.getTime() - dateA.getTime();
+        });
+
+      case 'date-asc': // Oldest first
+        return sorted.sort((a, b) => {
+          const dateA = this.getDate(a.publishedAt || a.createdAt);
+          const dateB = this.getDate(b.publishedAt || b.createdAt);
+          return dateA.getTime() - dateB.getTime();
+        });
+
+      case 'title-asc': // A-Z
+        return sorted.sort((a, b) => {
+          return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+        });
+
+      case 'title-desc': // Z-A
+        return sorted.sort((a, b) => {
+          return b.title.localeCompare(a.title, undefined, { sensitivity: 'base' });
+        });
+
+      default:
+        return sorted;
+    }
   }
 
   getDateString(date: Date | any): string {

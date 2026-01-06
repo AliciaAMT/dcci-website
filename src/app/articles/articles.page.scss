@@ -59,6 +59,11 @@
     background: var(--ion-color-light);
     color: var(--ion-color-dark);
     cursor: pointer;
+    min-width: 150px;
+
+    &.sort-select {
+      min-width: 180px;
+    }
   }
 
   .youtube-filter-label {
