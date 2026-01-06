@@ -66,6 +66,11 @@ export const routes: Routes = [
     canActivate: [adminGuard]
   },
   {
+    path: 'admin/youtube-settings',
+    loadComponent: () => import('./admin/youtube-settings/youtube-settings.page').then( m => m.YouTubeSettingsPage),
+    canActivate: [adminGuard]
+  },
+  {
     path: 'article/:slug',
     loadComponent: () => import('./article/article.page').then( m => m.ArticlePage)
   },

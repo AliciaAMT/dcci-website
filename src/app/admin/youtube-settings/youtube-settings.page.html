@@ -1,0 +1,67 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/admin/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>YouTube Settings</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="settings-container">
+    <div class="settings-header">
+      <h2>YouTube Integration Settings</h2>
+      <p class="subtitle">Manage automatic YouTube article creation</p>
+    </div>
+
+    <div class="settings-content" *ngIf="!isLoading">
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-info">
+            <h3>Automatic YouTube Articles</h3>
+            <p class="setting-description">
+              When enabled, new YouTube videos will automatically be converted to published articles on your website.
+              When disabled, the automatic sync function will not create new articles.
+            </p>
+          </div>
+        </div>
+
+        <ion-item class="setting-item">
+          <ion-label>
+            <h3>Enable Automatic Articles</h3>
+            <p>Turn automatic YouTube article creation on or off</p>
+          </ion-label>
+          <ion-toggle
+            [(ngModel)]="settings.automaticArticlesEnabled"
+            (ionChange)="onToggleChange()"
+            [disabled]="isSaving"
+          ></ion-toggle>
+        </ion-item>
+
+        <div class="setting-status" *ngIf="settings.updatedAt">
+          <p class="status-text">
+            Last updated: {{ settings.updatedAt | date:'short' }}
+            <span *ngIf="settings.updatedBy"> by {{ settings.updatedBy }}</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <ion-button
+          expand="block"
+          (click)="saveSettings()"
+          [disabled]="isSaving"
+        >
+          <ion-icon name="save-outline" slot="start"></ion-icon>
+          Save Settings
+        </ion-button>
+      </div>
+    </div>
+
+    <div *ngIf="isLoading" class="loading-container">
+      <ion-spinner></ion-spinner>
+      <p>Loading settings...</p>
+    </div>
+  </div>
+</ion-content>
+

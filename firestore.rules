@@ -86,6 +86,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Settings collection - for app configuration (e.g., YouTube settings)
+    match /settings/{settingId} {
+      // Allow admins to read settings
+      allow read: if isAdminUser();
+      
+      // Allow admins to create and update settings
+      allow create, update: if isAdminUser();
+      
+      // Deny delete operations
+      allow delete: if false;
+    }
+
     // Content collection - articles and blog posts
     match /content/{contentId} {
       // READ RULES:

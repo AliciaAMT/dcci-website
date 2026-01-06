@@ -1129,6 +1129,17 @@ export const syncYouTubeUploads = functions.pubsub
     try {
       console.log('Starting YouTube sync...');
 
+      // Check if automatic YouTube articles are enabled
+      const settingsDoc = await db.collection('settings').doc('youtubeSettings').get();
+      if (settingsDoc.exists()) {
+        const settings = settingsDoc.data();
+        if (settings && settings.automaticArticlesEnabled === false) {
+          console.log('Automatic YouTube articles are disabled. Skipping sync.');
+          return null;
+        }
+      }
+      // If settings don't exist, default to enabled (backward compatibility)
+
       // Get config from functions config or environment variables
       const youtubeApiKey = functions.config().youtube?.api_key || process.env.YOUTUBE_API_KEY;
       const playlistId = functions.config().youtube?.uploads_playlist_id || process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || 'UUf0MDB_oF7huA78BNADx9sQ';
