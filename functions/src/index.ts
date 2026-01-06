@@ -558,6 +558,51 @@ export const getStorageUsage = functions.https.onRequest((req, res) => {
 });
 
 // Helper function to slugify a string
+// Helper function to normalize YouTube video ID from various URL formats
+function normalizeYouTubeVideoId(videoIdOrUrl: string): string {
+  if (!videoIdOrUrl) return '';
+  
+  // If it's already just an ID (11 characters, alphanumeric), return as-is
+  if (/^[a-zA-Z0-9_-]{11}$/.test(videoIdOrUrl)) {
+    return videoIdOrUrl;
+  }
+  
+  // Extract from various YouTube URL formats
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/ // Direct ID
+  ];
+  
+  for (const pattern of patterns) {
+    const match = videoIdOrUrl.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  
+  // If no pattern matches, return original (will fail validation later)
+  return videoIdOrUrl;
+}
+
+// Helper function to clean title by removing emoji markers (🔵, etc.) and other common markers
+function cleanTitle(title: string): string {
+  if (!title) return '';
+  
+  // Remove common emoji markers that might have been added
+  // Remove blue circle and other common markers
+  const cleaned = title
+    .replace(/🔵\s*/g, '') // Blue circle emoji
+    .replace(/🟦\s*/g, '') // Blue square emoji
+    .replace(/📹\s*/g, '') // Video camera emoji
+    .replace(/▶️\s*/g, '') // Play button emoji
+    .replace(/\[SHORT\]/gi, '')
+    .replace(/\[LIVE\]/gi, '')
+    .replace(/\[VIDEO\]/gi, '')
+    .trim();
+  
+  return cleaned;
+}
+
 function slugify(text: string): string {
   if (!text) return 'untitled';
 
@@ -1026,10 +1071,18 @@ export const syncYouTubeUploads = functions.pubsub
             break;
           }
 
-          const videoId = item.snippet.resourceId.videoId;
-          console.log(`Processing video: ${videoId}`);
+          const rawVideoId = item.snippet.resourceId.videoId;
+          const videoId = normalizeYouTubeVideoId(rawVideoId);
+          
+          if (!videoId || videoId.length !== 11) {
+            console.error(`Invalid video ID extracted: ${rawVideoId} -> ${videoId}`);
+            skippedCount++;
+            continue;
+          }
+          
+          console.log(`Processing video: ${videoId} (normalized from: ${rawVideoId})`);
 
-          // Check if this video already exists in Firestore
+          // Check if this video already exists in Firestore (use normalized ID)
           const existingVideoQuery = await db.collection('content')
             .where('youtubeVideoId', '==', videoId)
             .limit(1)
@@ -1070,7 +1123,8 @@ export const syncYouTubeUploads = functions.pubsub
           }
 
           const snippet = videoData.items[0].snippet;
-          const title = snippet.title;
+          const rawTitle = snippet.title;
+          const title = cleanTitle(rawTitle); // Remove any emoji markers
           const rawDescription = snippet.description || '';
           const thumbnails = snippet.thumbnails;
           const videoPublishedAtStr = snippet.publishedAt;
@@ -1281,7 +1335,15 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
           break;
         }
 
-        const videoId = item.id.videoId;
+        const rawVideoId = item.id.videoId;
+        const videoId = normalizeYouTubeVideoId(rawVideoId);
+        
+        if (!videoId || videoId.length !== 11) {
+          console.error(`Invalid video ID extracted: ${rawVideoId} -> ${videoId}`);
+          skippedCount++;
+          continue;
+        }
+        
         const publishedAtStr = item.snippet.publishedAt;
         const publishedAtDate = new Date(publishedAtStr);
 
@@ -1293,9 +1355,9 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
 
         // Only process public videos (privacyStatus should be 'public' in full video data)
         processedCount++;
-        console.log(`Processing video ${processedCount}: ${videoId} (published: ${publishedAtStr})`);
+        console.log(`Processing video ${processedCount}: ${videoId} (normalized from: ${rawVideoId}, published: ${publishedAtStr})`);
 
-        // Check if video already exists in Firestore (idempotent)
+        // Check if video already exists in Firestore (idempotent, use normalized ID)
         const existingVideoQuery = await db.collection('content')
           .where('youtubeVideoId', '==', videoId)
           .limit(1)
@@ -1335,7 +1397,8 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
         }
 
         const snippet = videoData.items[0].snippet;
-        const title = snippet.title;
+        const rawTitle = snippet.title;
+        const title = cleanTitle(rawTitle); // Remove any emoji markers
         const rawDescription = snippet.description || '';
         const thumbnails = snippet.thumbnails;
         const videoPublishedAtStr = snippet.publishedAt;
@@ -1462,5 +1525,188 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
   } catch (error) {
     console.error('Error in backfill:', error);
     res.status(500).json({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
+// Cleanup function to find and merge/delete duplicate YouTube videos
+export const cleanupDuplicateYouTubeVideos = functions.https.onRequest(async (req, res) => {
+  try {
+    // Security: Check token
+    const providedToken = req.query.token as string;
+    const expectedToken = functions.config().youtube?.cleanup_token || process.env.YOUTUBE_CLEANUP_TOKEN;
+    const dryRun = req.query.dryRun !== 'false'; // Default to true (dry run)
+
+    if (!expectedToken) {
+      console.error('Cleanup token not configured');
+      res.status(500).json({ error: 'Cleanup token not configured' });
+      return;
+    }
+
+    if (!providedToken || providedToken !== expectedToken) {
+      console.warn('Token mismatch - access denied');
+      res.status(403).json({ error: 'Unauthorized: Invalid or missing token' });
+      return;
+    }
+
+    console.log(`Starting duplicate cleanup (dryRun: ${dryRun})...`);
+
+    // Get all published YouTube content
+    const allContent = await db.collection('content')
+      .where('status', '==', 'published')
+      .where('type', '==', 'youtube')
+      .get();
+
+    console.log(`Found ${allContent.size} YouTube content items`);
+
+    // Group by youtubeVideoId
+    const videoGroups = new Map<string, admin.firestore.QueryDocumentSnapshot[]>();
+    
+    for (const doc of allContent.docs) {
+      const data = doc.data();
+      const videoId = data.youtubeVideoId;
+      
+      if (!videoId) {
+        console.warn(`Document ${doc.id} has no youtubeVideoId, skipping`);
+        continue;
+      }
+      
+      const normalizedId = normalizeYouTubeVideoId(videoId);
+      if (!videoGroups.has(normalizedId)) {
+        videoGroups.set(normalizedId, []);
+      }
+      videoGroups.get(normalizedId)!.push(doc);
+    }
+
+    const duplicates: Array<{
+      videoId: string;
+      docs: Array<{ id: string; title: string; publishedAt: any; score: number }>;
+      keep: string;
+      delete: string[];
+    }> = [];
+
+    let totalDuplicates = 0;
+    let totalToDelete = 0;
+
+    // Find groups with duplicates
+    for (const [videoId, docs] of videoGroups.entries()) {
+      if (docs.length > 1) {
+        totalDuplicates += docs.length - 1;
+        
+        // Score each document for completeness
+        const scoredDocs = docs.map(doc => {
+          const data = doc.data();
+          let score = 0;
+          if (data.thumbnailUrl) score += 3;
+          if (data.tags && data.tags.length > 0) score += 2;
+          if (data.content && data.content.length > 50) score += 2;
+          if (data.excerpt) score += 1;
+          
+          return {
+            id: doc.id,
+            title: data.title || 'Untitled',
+            publishedAt: data.publishedAt,
+            score
+          };
+        });
+
+        // Sort by score (desc), then by publishedAt (desc)
+        scoredDocs.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          const aDate = a.publishedAt?.toMillis?.() || 0;
+          const bDate = b.publishedAt?.toMillis?.() || 0;
+          return bDate - aDate;
+        });
+
+        const keep = scoredDocs[0].id;
+        const toDelete = scoredDocs.slice(1).map(d => d.id);
+        totalToDelete += toDelete.length;
+
+        duplicates.push({
+          videoId,
+          docs: scoredDocs,
+          keep,
+          delete: toDelete
+        });
+      }
+    }
+
+    console.log(`Found ${duplicates.length} duplicate groups affecting ${totalDuplicates} documents`);
+    console.log(`Would delete ${totalToDelete} duplicate documents`);
+
+    const results: any[] = [];
+
+    // Process duplicates
+    for (const dup of duplicates) {
+      const keepDoc = allContent.docs.find(d => d.id === dup.keep);
+      if (!keepDoc) continue;
+
+      const keepData = keepDoc.data();
+      let titleUpdated = false;
+      let needsUpdate = false;
+
+      // Clean title if it has emojis
+      const cleanedTitle = cleanTitle(keepData.title || '');
+      if (cleanedTitle !== keepData.title) {
+        titleUpdated = true;
+        needsUpdate = true;
+      }
+
+      // Update the kept document if needed
+      if (needsUpdate && !dryRun) {
+        const updateData: any = {};
+        if (titleUpdated) {
+          updateData.title = cleanedTitle;
+        }
+        await keepDoc.ref.update(updateData);
+      }
+
+      // Delete duplicates
+      if (!dryRun) {
+        const batch = db.batch();
+        for (const deleteId of dup.delete) {
+          const deleteDoc = allContent.docs.find(d => d.id === deleteId);
+          if (deleteDoc) {
+            batch.delete(deleteDoc.ref);
+          }
+        }
+        await batch.commit();
+      }
+
+      results.push({
+        videoId: dup.videoId,
+        kept: {
+          id: dup.keep,
+          title: keepData.title,
+          titleUpdated
+        },
+        deleted: dup.delete.map(id => {
+          const doc = allContent.docs.find(d => d.id === id);
+          return {
+            id,
+            title: doc?.data()?.title || 'Unknown'
+          };
+        }),
+        action: dryRun ? 'would_delete' : 'deleted'
+      });
+    }
+
+    const summary = {
+      dryRun,
+      totalYouTubeContent: allContent.size,
+      duplicateGroups: duplicates.length,
+      totalDuplicates,
+      totalDeleted: dryRun ? 0 : totalToDelete,
+      results
+    };
+
+    console.log('Cleanup complete:', summary);
+    res.status(200).json(summary);
+
+  } catch (error) {
+    console.error('Error in cleanup:', error);
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
 });

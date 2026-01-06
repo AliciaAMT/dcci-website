@@ -758,7 +758,7 @@ export class ContentService {
         );
         const snapshot = await getDocs(q);
 
-        return snapshot.docs.map(doc => {
+        const allContent = snapshot.docs.map(doc => {
           const data = doc.data();
           return {
             id: doc.id,
@@ -768,6 +768,9 @@ export class ContentService {
             publishedAt: data['publishedAt']?.toDate()
           } as Content;
         });
+
+        // Deduplicate by youtubeVideoId (keep the newest/most complete)
+        return this.deduplicateYouTubeContent(allContent);
       } catch (error) {
         console.error('Error fetching published content:', error);
         // If index doesn't exist yet, try without orderBy
@@ -776,7 +779,7 @@ export class ContentService {
           const q = query(contentRef, where('status', '==', 'published'));
           const snapshot = await getDocs(q);
 
-          return snapshot.docs.map(doc => {
+          const allContent = snapshot.docs.map(doc => {
             const data = doc.data();
             const publishedAt = data['publishedAt']?.toDate();
             const createdAt = data['createdAt']?.toDate() || new Date();
@@ -794,12 +797,83 @@ export class ContentService {
             const bTime = this.getTime(bDate);
             return bTime - aTime;
           });
+
+          // Deduplicate by youtubeVideoId (keep the newest/most complete)
+          return this.deduplicateYouTubeContent(allContent);
         } catch (fallbackError) {
           console.error('Error in fallback query:', fallbackError);
           return [];
         }
       }
     });
+  }
+
+  /**
+   * Deduplicate YouTube content by youtubeVideoId
+   * Keeps the newest/most complete document
+   */
+  private deduplicateYouTubeContent(content: Content[]): Content[] {
+    const videoMap = new Map<string, Content>();
+    
+    for (const item of content) {
+      // Skip items without an ID
+      if (!item.id) {
+        console.warn('Content item missing ID, skipping:', item);
+        continue;
+      }
+      
+      const data = item as any;
+      const videoId = data.youtubeVideoId;
+      
+      // Only dedupe YouTube content
+      if (!videoId || data.type !== 'youtube') {
+        videoMap.set(item.id, item); // Keep non-YouTube content as-is
+        continue;
+      }
+      
+      const existing = videoMap.get(videoId);
+      
+      if (!existing) {
+        // First occurrence of this video ID
+        videoMap.set(videoId, item);
+      } else {
+        // Choose the better document:
+        // 1. Prefer one with more complete data (thumbnailUrl, tags, content)
+        // 2. Prefer newer one if completeness is equal
+        const existingData = existing as any;
+        const itemData = item as any;
+        
+        const existingScore = this.getContentCompletenessScore(existingData);
+        const itemScore = this.getContentCompletenessScore(itemData);
+        
+        if (itemScore > existingScore) {
+          videoMap.set(videoId, item);
+        } else if (itemScore === existingScore) {
+          // If scores equal, prefer newer
+          const existingDate = existing.publishedAt || existing.createdAt;
+          const itemDate = item.publishedAt || item.createdAt;
+          if (itemDate && existingDate && itemDate > existingDate) {
+            videoMap.set(videoId, item);
+          }
+        }
+        // Otherwise keep existing
+      }
+    }
+    
+    // Convert map values back to array
+    return Array.from(videoMap.values());
+  }
+
+  /**
+   * Calculate completeness score for content (higher = more complete)
+   */
+  private getContentCompletenessScore(data: any): number {
+    let score = 0;
+    if (data.thumbnailUrl) score += 3;
+    if (data.tags && data.tags.length > 0) score += 2;
+    if (data.content && data.content.length > 50) score += 2;
+    if (data.excerpt) score += 1;
+    return score;
   }
 
   /**
