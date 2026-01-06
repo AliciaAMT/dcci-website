@@ -17,6 +17,7 @@ import {
   IonSelectOption,
   IonSpinner,
   IonChip,
+  IonCheckbox,
   LoadingController,
   ToastController,
   AlertController
@@ -47,6 +48,7 @@ import { firstValueFrom } from 'rxjs';
     IonSelectOption,
     IonSpinner,
     IonChip,
+    IonCheckbox,
     CommonModule,
     FormsModule
   ]
@@ -59,6 +61,7 @@ export class DraftsPage implements OnInit, OnDestroy {
   searchTerm = '';
   searchType: 'title' | 'content' | 'tags' | 'date' = 'title';
   sortBy: 'date' | 'title' = 'date';
+  showYouTubeArticles = true; // Default to showing YouTube articles
 
   constructor(
     private router: Router,
@@ -95,43 +98,67 @@ export class DraftsPage implements OnInit, OnDestroy {
   }
 
   async onSearch() {
-    if (this.searchTerm.trim()) {
-      this.isLoading = true;
-      try {
-        this.filteredDrafts = await this.contentService.searchContent(
-          'draft',
-          this.searchTerm,
-          this.searchType,
-          this.sortBy,
-          this.drafts
-        );
-      } catch (error) {
-        console.error('Error searching drafts:', error);
-        await this.showToast('Search failed', 'danger');
-      } finally {
-        this.isLoading = false;
-      }
-    } else {
-      this.applyFilters();
-    }
+    // Use local filtering instead of service search to respect YouTube filter
+    this.applyFilters();
+  }
+
+  private isYouTubeArticle(article: Content): boolean {
+    const data = article as any;
+    return data.type === 'youtube' || !!data.youtubeVideoId || !!data.youtubeUrl;
   }
 
   applyFilters() {
-    this.filteredDrafts = [...this.drafts];
-
+    let filtered = [...this.drafts];
+    
+    // Filter by YouTube status first
+    if (!this.showYouTubeArticles) {
+      filtered = filtered.filter(article => !this.isYouTubeArticle(article));
+    }
+    
+    // Apply search filter if search term exists
+    if (this.searchTerm.trim()) {
+      const searchLower = this.searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(article => {
+        switch (this.searchType) {
+          case 'title':
+            return article.title.toLowerCase().includes(searchLower);
+          case 'content':
+            const contentText = article.content?.replace(/<[^>]*>/g, '').toLowerCase() || '';
+            return contentText.includes(searchLower) || 
+                   (article.excerpt && article.excerpt.toLowerCase().includes(searchLower));
+          case 'tags':
+            if (!article.tags || article.tags.length === 0) return false;
+            return article.tags.some(tag => tag.toLowerCase().includes(searchLower));
+          case 'date':
+            const dateStr = this.getDate(article.updatedAt || article.createdAt).toLocaleDateString();
+            return dateStr.includes(searchLower);
+          default:
+            return true;
+        }
+      });
+    }
+    
     // Sort
     if (this.sortBy === 'title') {
-      this.filteredDrafts.sort((a, b) => a.title.localeCompare(b.title));
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
     } else {
-      this.filteredDrafts.sort((a, b) => {
-        const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : new Date(a.updatedAt as any).getTime();
-        const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : new Date(b.updatedAt as any).getTime();
+      filtered.sort((a, b) => {
+        const aDate = a.updatedAt || a.createdAt;
+        const bDate = b.updatedAt || b.createdAt;
+        const aTime = aDate instanceof Date ? aDate.getTime() : new Date(aDate as any).getTime();
+        const bTime = bDate instanceof Date ? bDate.getTime() : new Date(bDate as any).getTime();
         return bTime - aTime;
       });
     }
+    
+    this.filteredDrafts = filtered;
   }
 
   onSortChange() {
+    this.applyFilters();
+  }
+
+  onYouTubeFilterChange() {
     this.applyFilters();
   }
 
