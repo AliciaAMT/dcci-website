@@ -4,7 +4,7 @@
     <div class="form-header">
       <ion-icon name="mail-outline" class="form-icon"></ion-icon>
       <h2 class="form-title">Contact Form</h2>
-      <p>Have a question or want to get in touch? Send us a message and we'll respond as soon as possible.</p>
+      <p *ngIf="!hideDescription">Have a question or want to get in touch? Send us a message and we'll respond as soon as possible.</p>
     </div>
 
     <!-- Success Message -->
@@ -86,7 +86,7 @@
       </div>
 
       <!-- Newsletter Subscription -->
-      <div class="form-field-group">
+      <div class="form-field-group" *ngIf="!hideNewsletter">
         <ion-checkbox
           id="newsletter"
           formControlName="newsletter"

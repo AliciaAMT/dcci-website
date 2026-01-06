@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox } from '@ionic/angular/standalone';
 import { ContactService } from 'src/app/services/contact.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-contact-form',
@@ -12,6 +13,9 @@ import { ContactService } from 'src/app/services/contact.service';
   imports: [CommonModule, FormsModule, ReactiveFormsModule, IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox]
 })
 export class ContactFormComponent implements OnInit {
+  @Input() prefillSubject: string = '';
+  @Input() hideDescription: boolean = false;
+  @Input() hideNewsletter: boolean = false;
   contactForm: FormGroup;
   isSubmitting = false;
   submitSuccess = false;
@@ -20,7 +24,8 @@ export class ContactFormComponent implements OnInit {
 
   constructor(
     private formBuilder: FormBuilder,
-    private contactService: ContactService
+    private contactService: ContactService,
+    private route: ActivatedRoute
   ) {
     // Record when the form was loaded (for bot detection)
     this.formLoadTime = Date.now();
@@ -36,7 +41,15 @@ export class ContactFormComponent implements OnInit {
     });
   }
 
-  ngOnInit() {}
+  ngOnInit() {
+    // Check for pre-filled subject from query params or input
+    const subjectParam = this.route.snapshot.queryParams['subject'];
+    const subjectToUse = this.prefillSubject || subjectParam || '';
+    
+    if (subjectToUse) {
+      this.contactForm.patchValue({ subject: subjectToUse });
+    }
+  }
 
   async onSubmit() {
     // Honeypot check - if website field is filled, it's likely a bot

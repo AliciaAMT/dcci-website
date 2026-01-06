@@ -71,7 +71,9 @@ Like the Apostle Paul, "we do not use deception, nor do we distort the Word of G
       <app-newsletter-signup></app-newsletter-signup>
 
       <!-- Contact Form Section -->
-      <app-contact-form></app-contact-form>
+      <div id="contact-form">
+        <app-contact-form></app-contact-form>
+      </div>
 
       <!-- Social Media Section -->
       <div class="social-section">
@@ -130,13 +132,7 @@ Like the Apostle Paul, "we do not use deception, nor do we distort the Word of G
       </div>
 
       <!-- Footer -->
-      <div class="footer">
-        <p>&copy; 2025 DCCI Ministries. All rights reserved.</p>
-        <p class="version-info">
-          <ion-icon name="information-circle-outline"></ion-icon>
-          Version: {{ version }}
-        </p>
-      </div>
+      <app-footer [version]="version"></app-footer>
     </main>
   </div>
 </ion-content>

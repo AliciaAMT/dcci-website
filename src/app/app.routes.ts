@@ -77,5 +77,9 @@ export const routes: Routes = [
     path: 'archives',
     loadComponent: () => import('./archives/archives.page').then( m => m.ArchivesPage)
   },
+  {
+    path: 'contact',
+    loadComponent: () => import('./contact/contact.page').then( m => m.ContactPage)
+  },
 
 ];

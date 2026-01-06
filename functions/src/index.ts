@@ -223,10 +223,16 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
         }
       }
 
+      // Determine recipient email - use admin@accessiblewebmedia.com for problem reports
+      const isProblemReport = sanitizedSubject.toLowerCase().includes('website problem') || 
+                              sanitizedSubject.toLowerCase().includes('problem report') ||
+                              sanitizedSubject.toLowerCase().includes('bug report');
+      const recipientEmail = isProblemReport ? 'admin@accessiblewebmedia.com' : to;
+
       // Send email notification (using sanitized data and escaped HTML)
       await tx.sendMail({
         from: `"DCCI Ministries Website" <${user}>`,
-        to,
+        to: recipientEmail,
         replyTo: `${sanitizedName} <${sanitizedEmail}>`,
         subject: `Contact Form: ${sanitizedSubject}`,
         text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nNewsletter: ${sanitizedNewsletter ? 'Yes' : 'No'}\nIP: ${clientIP}\n\n${sanitizedMessage}`,

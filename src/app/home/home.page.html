@@ -129,17 +129,7 @@
     </div>
 
     <!-- Footer -->
-    <div class="footer">
-      <p>&copy; 2025 DCCI Ministries. All rights reserved.</p>
-      <p class="construction-note">
-        <ion-icon name="time-outline"></ion-icon>
-        Expected completion: 2026
-      </p>
-      <p class="version-info">
-        <ion-icon name="information-circle-outline"></ion-icon>
-        Version: {{ version }}
-      </p>
-    </div>
+    <app-footer [version]="version"></app-footer>
     </main>
   </div>
 </ion-content>

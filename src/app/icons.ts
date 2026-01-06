@@ -49,6 +49,7 @@ export function registerIonicons(): void {
     'send-outline': i.sendOutline,
     'checkmark-circle-outline': i.checkmarkCircleOutline,
     'alert-circle-outline': i.alertCircleOutline,
+    'bug-outline': i.bugOutline,
     // Admin login icons
     'lock-closed-outline': i.lockClosedOutline,
     'eye-off-outline': i.eyeOffOutline,

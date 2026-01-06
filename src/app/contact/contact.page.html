@@ -1,0 +1,29 @@
+<ion-content [fullscreen]="true" class="contact-page">
+  <div class="contact-container">
+    <app-page-header-with-menu></app-page-header-with-menu>
+    
+    <div class="contact-page-content">
+      <h1 class="page-title">Report a Website Problem</h1>
+      
+      <div class="alert-box">
+        <ion-icon name="alert-circle-outline" class="alert-icon"></ion-icon>
+        <div class="alert-content">
+          <h2 class="alert-title">Website Problem Report</h2>
+          <p class="alert-message">
+            <strong>This form is for reporting website problems only</strong> (bugs, broken links, display issues, etc.).
+          </p>
+          <p class="alert-message">
+            For questions about content, apologetics, ministry inquiries, or general contact, please use the 
+            <a (click)="navigateToWelcomeContact()" class="welcome-link">contact form on the Welcome page</a>.
+          </p>
+        </div>
+      </div>
+      
+      <app-contact-form [hideDescription]="true" [hideNewsletter]="true"></app-contact-form>
+    </div>
+    
+    <!-- Footer -->
+    <app-footer [version]="version"></app-footer>
+  </div>
+</ion-content>
+

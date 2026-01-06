@@ -5,6 +5,8 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { IonContent, IonIcon, IonInput, IonSpinner, IonCheckbox } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
 import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
+import { FooterComponent } from '../components/footer.component';
+import { VersionService } from '../services/version.service';
 
 @Component({
   selector: 'app-articles',
@@ -19,7 +21,8 @@ import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu
     IonInput,
     IonSpinner,
     IonCheckbox,
-    PageHeaderWithMenuComponent
+    PageHeaderWithMenuComponent,
+    FooterComponent
   ]
 })
 export class ArticlesPage implements OnInit, OnDestroy {
@@ -31,12 +34,16 @@ export class ArticlesPage implements OnInit, OnDestroy {
   showYouTubeArticles = true; // Default to showing YouTube articles
   sortOption: 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc' = 'date-desc'; // Default: newest first
   activeTag: string | null = null;
+  version: string;
 
   constructor(
     private contentService: ContentService,
     private router: Router,
-    private route: ActivatedRoute
-  ) {}
+    private route: ActivatedRoute,
+    private versionService: VersionService
+  ) {
+    this.version = this.versionService.getVersion();
+  }
 
   async ngOnInit() {
     // Check for tag filter in query params (check snapshot first for initial load)
