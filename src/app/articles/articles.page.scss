@@ -85,6 +85,54 @@
   }
 }
 
+.active-tag-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: var(--ion-color-primary-tint);
+  border-radius: 12px;
+  margin-top: 1rem;
+  border: 1px solid var(--ion-color-primary);
+
+  .tag-label {
+    font-size: 1.4rem;
+    color: var(--ion-color-dark);
+    font-weight: 500;
+  }
+
+  .active-tag {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    background: var(--ion-color-primary);
+    color: var(--ion-color-primary-contrast);
+    border-radius: 20px;
+    font-size: 1.3rem;
+    font-weight: 600;
+  }
+
+  .clear-tag-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ion-color-dark);
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--ion-color-primary);
+    }
+
+    ion-icon {
+      font-size: 2rem;
+    }
+  }
+}
+
 .loading-container {
   display: flex;
   flex-direction: column;

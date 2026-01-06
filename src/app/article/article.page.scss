@@ -181,9 +181,17 @@
   font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, transform 0.2s ease;
+  cursor: pointer;
+  user-select: none;
 
   &:hover {
+    background: var(--ion-color-primary-tint);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
     background: var(--ion-color-primary-shade);
   }
 }

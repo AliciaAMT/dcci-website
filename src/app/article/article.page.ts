@@ -124,4 +124,8 @@ export class ArticlePage implements OnInit, AfterViewInit {
     const data = content as any;
     return data.thumbnailUrl || content.featuredImage || null;
   }
+
+  onTagClick(tag: string) {
+    this.router.navigate(['/articles'], { queryParams: { tag: tag } });
+  }
 }

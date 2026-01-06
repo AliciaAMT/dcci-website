@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { IonContent, IonIcon, IonInput, IonSpinner, IonCheckbox } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
 import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
@@ -30,13 +30,41 @@ export class ArticlesPage implements OnInit, OnDestroy {
   searchType: 'all' | 'title' | 'content' | 'tags' | 'date' = 'all';
   showYouTubeArticles = true; // Default to showing YouTube articles
   sortOption: 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc' = 'date-desc'; // Default: newest first
+  activeTag: string | null = null;
 
   constructor(
     private contentService: ContentService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   async ngOnInit() {
+    // Check for tag filter in query params (check snapshot first for initial load)
+    const tagParam = this.route.snapshot.queryParams['tag'];
+    if (tagParam) {
+      this.activeTag = tagParam;
+      this.searchTerm = tagParam;
+      this.searchType = 'tags';
+    }
+
+    // Subscribe to query param changes
+    this.route.queryParams.subscribe(params => {
+      if (params['tag']) {
+        this.activeTag = params['tag'];
+        this.searchTerm = params['tag'];
+        this.searchType = 'tags';
+      } else {
+        this.activeTag = null;
+        if (!this.searchTerm) {
+          this.searchType = 'all';
+        }
+      }
+      // Re-filter when query params change
+      if (this.articles.length > 0) {
+        this.filterArticles();
+      }
+    });
+    
     await this.loadArticles();
   }
 
@@ -83,8 +111,16 @@ export class ArticlesPage implements OnInit, OnDestroy {
       filtered = filtered.filter(article => !this.isYouTubeArticle(article));
     }
 
-    // Then filter by search term if provided
-    if (this.searchTerm.trim()) {
+    // Filter by tag if activeTag is set (exact match)
+    if (this.activeTag) {
+      const tagLower = this.activeTag.toLowerCase();
+      filtered = filtered.filter(article => {
+        return article.tags?.some(tag => tag.toLowerCase() === tagLower);
+      });
+    }
+
+    // Then filter by search term if provided (and no active tag)
+    if (this.searchTerm.trim() && !this.activeTag) {
       const searchLower = this.searchTerm.toLowerCase().trim();
 
       filtered = filtered.filter(article => {
@@ -113,6 +149,14 @@ export class ArticlesPage implements OnInit, OnDestroy {
 
     // Apply sorting
     this.filteredArticles = this.sortArticles(filtered);
+  }
+
+  clearTagFilter() {
+    this.activeTag = null;
+    this.searchTerm = '';
+    this.searchType = 'all';
+    this.router.navigate(['/articles'], { queryParams: {} });
+    this.filterArticles();
   }
 
   private sortArticles(articles: Content[]): Content[] {
