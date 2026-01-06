@@ -13,6 +13,150 @@
   margin: 0 auto;
 }
 
+.verified-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(var(--ion-color-success-rgb), 0.1);
+  border: 2px solid var(--ion-color-success);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  animation: slideDown 0.3s ease-out;
+
+  .banner-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+
+    ion-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .banner-text {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--ion-color-success-shade);
+      line-height: 1.4;
+    }
+  }
+
+  .banner-close {
+    --color: var(--ion-color-success-shade);
+    --padding-start: 0.5rem;
+    --padding-end: 0.5rem;
+    margin: 0;
+    flex-shrink: 0;
+
+    ion-icon {
+      font-size: 1.25rem;
+    }
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.verification-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--ion-color-success);
+  animation: slideDown 0.5s ease-out;
+
+  .verification-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+
+    .mail-icon {
+      font-size: 3rem;
+      color: var(--ion-color-success);
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--ion-color-dark);
+    }
+  }
+
+  .verification-content {
+    .main-message {
+      text-align: center;
+      font-size: 1rem;
+      color: var(--ion-color-dark-shade);
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+    }
+
+    .instructions-section {
+      background: rgba(var(--ion-color-success-rgb), 0.05);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid rgba(var(--ion-color-success-rgb), 0.2);
+
+      p {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: var(--ion-color-dark-shade);
+
+        strong {
+          color: var(--ion-color-dark);
+          font-weight: 600;
+        }
+      }
+
+      ol {
+        margin: 1rem 0;
+        padding-left: 1.5rem;
+        color: var(--ion-color-dark-shade);
+
+        li {
+          margin: 0.75rem 0;
+          font-size: 1rem;
+          line-height: 1.6;
+        }
+      }
+
+      .note {
+        margin-top: 1.5rem;
+        font-size: 0.9rem;
+        font-style: italic;
+        color: var(--ion-color-medium);
+        text-align: center;
+      }
+    }
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .login-card {
   background: var(--ion-color-light);
   border-radius: 20px;
@@ -164,6 +308,56 @@
 
       ion-icon {
         font-size: 1rem;
+      }
+    }
+  }
+
+  .verification-instructions {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(var(--ion-color-success-rgb), 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(var(--ion-color-success-rgb), 0.2);
+
+    .instructions-content {
+      text-align: left;
+
+      .mail-icon {
+        font-size: 2rem;
+        color: var(--ion-color-success);
+        margin-bottom: 12px;
+        display: block;
+      }
+
+      p {
+        margin: 8px 0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: var(--ion-color-dark-shade);
+
+        strong {
+          color: var(--ion-color-dark);
+          font-weight: 600;
+        }
+      }
+
+      ol {
+        margin: 12px 0;
+        padding-left: 20px;
+        color: var(--ion-color-dark-shade);
+
+        li {
+          margin: 8px 0;
+          font-size: 0.95rem;
+          line-height: 1.5;
+        }
+      }
+
+      .note {
+        margin-top: 16px;
+        font-size: 0.9rem;
+        font-style: italic;
+        color: var(--ion-color-medium);
       }
     }
   }

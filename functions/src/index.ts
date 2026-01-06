@@ -1626,3 +1626,74 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
     res.status(500).json({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
+
+/**
+ * Update emailVerified in Firestore after email verification
+ * This function is called from the client after applyActionCode succeeds
+ * It bypasses Firestore security rules to update the emailVerified field
+ * 
+ * Accepts: POST with { email: string } in body
+ * Returns: { success: boolean, message: string }
+ */
+export const updateEmailVerified = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  const cors = corsLib({ origin: true });
+  cors(req, res, async () => {
+    try {
+      // Only allow POST
+      if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method not allowed' });
+        return;
+      }
+
+      const { email } = req.body;
+
+      if (!email || typeof email !== 'string') {
+        res.status(400).json({ error: 'Email is required' });
+        return;
+      }
+
+      // Find user by email in Firestore
+      const db = admin.firestore();
+      const usersRef = db.collection('adminUsers');
+      const querySnapshot = await usersRef.where('email', '==', email).limit(1).get();
+
+      if (querySnapshot.empty) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const uid = userDoc.id;
+
+      // Verify that the email is actually verified in Firebase Auth
+      let userRecord;
+      try {
+        userRecord = await admin.auth().getUser(uid);
+      } catch (authError) {
+        // User might not exist in Auth yet, but we can still update Firestore
+        console.warn('User not found in Auth, but updating Firestore anyway:', uid);
+      }
+
+      if (userRecord && !userRecord.emailVerified) {
+        res.status(400).json({ error: 'Email is not verified in Firebase Auth' });
+        return;
+      }
+
+      // Update emailVerified in Firestore
+      await userDoc.ref.set({
+        emailVerified: true
+      }, { merge: true });
+
+      console.log(`Updated emailVerified for user ${uid} (${email})`);
+      
+      res.status(200).json({ success: true, message: 'Email verified status updated in Firestore' });
+    } catch (error) {
+      console.error('Error updating emailVerified:', error);
+      res.status(500).json({ 
+        error: 'Internal server error', 
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+});

@@ -44,12 +44,19 @@ service cloud.firestore {
 
     // Admin users collection - for CMS authentication
     match /adminUsers/{userId} {
-      // Allow authenticated users to create and update their own admin user document
-      allow create, update: if request.auth != null &&
+      // Allow authenticated users to create their own admin user document
+      allow create: if request.auth != null &&
         request.auth.uid == userId;
 
+      // Allow users to update their own document
+      // Allow admins to update any user document (for user management)
+      allow update: if (request.auth != null && request.auth.uid == userId) ||
+        isAdminUser();
+
       // CRITICAL: Allow users to read their own document (required for isAdminUser() to work)
-      allow get: if request.auth != null && request.auth.uid == userId;
+      // Allow admins to read all admin documents (for user management)
+      allow get: if (request.auth != null && request.auth.uid == userId) ||
+        isAdminUser();
 
       // Allow admins to list all admin documents (for dashboard)
       allow list: if isAdminUser();

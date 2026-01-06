@@ -1,5 +1,41 @@
 <ion-content [fullscreen]="true" class="admin-login-page">
   <div class="login-container">
+    <!-- Email Verified Banner -->
+    <div *ngIf="showVerifiedBanner" class="verified-banner" role="status" aria-live="polite">
+      <div class="banner-content">
+        <ion-icon name="checkmark-circle" color="success"></ion-icon>
+        <span class="banner-text">Email verified — you're ready to sign in.</span>
+      </div>
+      <ion-button 
+        fill="clear" 
+        size="small" 
+        (click)="dismissVerifiedBanner()" 
+        class="banner-close"
+        aria-label="Dismiss verification message">
+        <ion-icon name="close" slot="icon-only"></ion-icon>
+      </ion-button>
+    </div>
+
+    <!-- Verification Instructions Card (shown after successful signup) -->
+    <div *ngIf="statusMessage?.success && isSignUpMode" #verificationCard class="verification-card">
+      <div class="verification-header">
+        <ion-icon name="mail-outline" class="mail-icon"></ion-icon>
+        <h2>Account Created Successfully!</h2>
+      </div>
+      <div class="verification-content">
+        <p class="main-message">{{ statusMessage?.message }}</p>
+        <div class="instructions-section">
+          <p><strong>Next Steps:</strong></p>
+          <ol>
+            <li>Check your email inbox (and spam folder)</li>
+            <li>Click the verification link in the email</li>
+            <li>Return here to sign in once verified</li>
+          </ol>
+          <p class="note">You can close this page and return later to sign in after verifying your email.</p>
+        </div>
+      </div>
+    </div>
+
     <div class="login-card">
       <!-- Header -->
       <div class="login-header">
@@ -93,7 +129,7 @@
       </form>
 
       <!-- Status Message -->
-      <div *ngIf="statusMessage" class="status-message" [class.success]="statusMessage.success" [class.error]="!statusMessage.success">
+      <div *ngIf="statusMessage && !(statusMessage.success && isSignUpMode)" class="status-message" [class.success]="statusMessage.success" [class.error]="!statusMessage.success">
         <ion-icon [name]="statusMessage.success ? 'checkmark-circle-outline' : 'alert-circle-outline'"></ion-icon>
         <span>{{ statusMessage.message }}</span>
         

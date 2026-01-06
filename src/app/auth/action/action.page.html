@@ -1,0 +1,61 @@
+<ion-content [fullscreen]="true" class="action-page">
+  <div class="action-container">
+    <ion-card class="action-card">
+      <!-- Loading State -->
+      <div *ngIf="status === 'loading'" class="status-content">
+        <ion-spinner name="crescent"></ion-spinner>
+        <h2>Verifying your email...</h2>
+        <p>Please wait while we verify your email address.</p>
+      </div>
+
+      <!-- Success State -->
+      <ion-card-header *ngIf="status === 'success'">
+        <ion-card-title>
+          <ion-icon name="checkmark-circle" color="success"></ion-icon>
+          Email Verified!
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content *ngIf="status === 'success'">
+        <div class="status-content" role="status" aria-live="polite">
+          <p class="success-message">{{ message }}</p>
+          <ion-button expand="block" (click)="goToSignIn()" class="continue-button">
+            Continue to Sign In
+          </ion-button>
+        </div>
+      </ion-card-content>
+
+      <!-- Already Verified State -->
+      <ion-card-header *ngIf="status === 'already-verified'">
+        <ion-card-title>
+          <ion-icon name="checkmark-circle" color="success"></ion-icon>
+          Already Verified
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content *ngIf="status === 'already-verified'">
+        <div class="status-content" role="status" aria-live="polite">
+          <p class="success-message">{{ message }}</p>
+          <ion-button expand="block" (click)="goToSignIn()" class="continue-button">
+            Continue to Sign In
+          </ion-button>
+        </div>
+      </ion-card-content>
+
+      <!-- Error State -->
+      <ion-card-header *ngIf="status === 'error'">
+        <ion-card-title>
+          <ion-icon name="alert-circle" color="danger"></ion-icon>
+          Verification Failed
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content *ngIf="status === 'error'">
+        <div class="status-content" role="alert" aria-live="assertive">
+          <p class="error-message">{{ errorMessage }}</p>
+          <ion-button expand="block" fill="outline" (click)="goToSignIn()" class="continue-button">
+            Go to Sign In
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
+

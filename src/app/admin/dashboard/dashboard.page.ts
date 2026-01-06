@@ -178,6 +178,14 @@ export class DashboardPage implements OnInit, OnDestroy {
     this.router.navigate(['/admin/youtube-settings']);
   }
 
+  navigateToUserManagement() {
+    // Blur any active element to prevent aria-hidden warnings during navigation
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    this.router.navigate(['/admin/user-management']);
+  }
+
   async logout() {
     try {
       await this.authService.signOut();
