@@ -14,11 +14,13 @@ try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const dotenv = require('dotenv');
     if (dotenv && dotenv.config) {
-      dotenv.config();
+      // Use sync config with error handling to avoid blocking
+      dotenv.config({ silent: true });
     }
   }
 } catch (e) {
   // dotenv not available or not needed - will use Firebase config instead
+  // Silently ignore errors during deployment
 }
 
 // YouTube API response types
@@ -982,179 +984,208 @@ export const syncYouTubeUploads = functions.pubsub
         return null;
       }
 
-      // Step 1: Query Firestore for last known YouTube video
-      const lastKnownVideoQuery = await db.collection('content')
-        .where('type', '==', 'youtube')
-        .orderBy('publishedAt', 'desc')
-        .limit(1)
-        .get();
+      let createdCount = 0;
+      let skippedCount = 0;
+      let nextPageToken: string | undefined = undefined;
+      const MAX_VIDEOS_TO_CHECK = 50; // Check up to 50 videos per run (safety limit)
 
-      let lastKnownVideoId: string | null = null;
-      if (!lastKnownVideoQuery.empty) {
-        const lastDoc = lastKnownVideoQuery.docs[0].data();
-        lastKnownVideoId = lastDoc.youtubeVideoId || null;
-        console.log('Last known video ID:', lastKnownVideoId);
-      } else {
-        console.log('No existing YouTube videos found (first run)');
-      }
-
-      // Step 2: Call YouTube Data API to get newest video from uploads playlist
-      const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=1&order=date&key=${youtubeApiKey}`;
-
-      let playlistData: YouTubePlaylistResponse;
-      try {
-        const playlistResponseText = await httpsGet(playlistUrl);
-        playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
-      } catch (error: any) {
-        console.error('YouTube API playlistItems error:', error.message);
-        throw new Error(`YouTube API error: ${error.message}`);
-      }
-
-      if (!playlistData.items || playlistData.items.length === 0) {
-        console.log('No videos found in uploads playlist');
-        return null;
-      }
-
-      const newestVideoId = playlistData.items[0].snippet.resourceId.videoId;
-      console.log('Newest video ID from playlist:', newestVideoId);
-
-      // Step 3: Check if this video already exists in Firestore
-      const existingVideoQuery = await db.collection('content')
-        .where('youtubeVideoId', '==', newestVideoId)
-        .limit(1)
-        .get();
-
-      if (!existingVideoQuery.empty) {
-        console.log('Video already exists in Firestore, skipping:', newestVideoId);
-        return null;
-      }
-
-      // Step 4: Get video details from YouTube API (include status to check if public)
-      const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${newestVideoId}&key=${youtubeApiKey}`;
-
-      let videoData: YouTubeVideoResponse;
-      try {
-        const videoResponseText = await httpsGet(videoUrl);
-        videoData = JSON.parse(videoResponseText) as YouTubeVideoResponse;
-      } catch (error: any) {
-        console.error('YouTube API videos error:', error.message);
-        throw new Error(`YouTube API error: ${error.message}`);
-      }
-
-      if (!videoData.items || videoData.items.length === 0) {
-        console.log('Video not found in YouTube API:', newestVideoId);
-        return null;
-      }
-
-      // Check if video is public (ignore private/unlisted)
-      const videoStatus = (videoData.items[0] as any).status;
-      if (videoStatus?.privacyStatus !== 'public') {
-        console.log(`Video ${newestVideoId} is not public (${videoStatus?.privacyStatus}), skipping`);
-        return null;
-      }
-
-      const snippet = videoData.items[0].snippet;
-      const title = snippet.title;
-      const rawDescription = snippet.description || '';
-      const thumbnails = snippet.thumbnails;
-      const channelIdFromVideo = snippet.channelId;
-      const videoTags = snippet.tags || []; // YouTube video tags (preferred source)
-
-      // Step 1: Strip boilerplate from description (before tag extraction)
-      const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
-
-      // Step 2: Extract tags from cleaned description (hashtags and comma-separated blocks)
-      const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
-
-      // Step 3: Use YouTube video tags if available, otherwise use extracted tags
-      // Normalize: lowercase, trim, remove leading '#', deduplicate
-      const allTags = new Set<string>();
-      if (videoTags && videoTags.length > 0) {
-        // Prefer YouTube video tags
-        videoTags.forEach(tag => {
-          const normalized = tag.toLowerCase().trim();
-          if (normalized.length > 0) {
-            allTags.add(normalized);
-          }
-        });
-      } else {
-        // Fallback to extracted tags from description
-        extractedTags.forEach(tag => {
-          const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
-          if (normalized.length > 0) {
-            allTags.add(normalized);
-          }
-        });
-      }
-      const finalTags = Array.from(allTags).slice(0, 50);
-
-      // Generate slug
-      const baseSlug = slugify(title);
-      const uniqueSlug = await getUniqueSlug(baseSlug);
-
-      // Generate excerpt (first 160 chars of cleaned description, plain text)
-      const excerpt = cleanedDescription
-        .replace(/\n/g, ' ')
-        .replace(/<[^>]*>/g, '')
-        .trim()
-        .substring(0, 160) || '';
-
-      // Generate content HTML from cleaned description (without boilerplate and tag block)
-      // Escape HTML and convert newlines to <br> within a single <p> tag
-      const escapedDescription = cleanedDescription
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
-
-      const descriptionHtml = `<p>${escapedDescription}</p>`;
-
-      const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${newestVideoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-
-      const content = `${descriptionHtml}\n\n${embedHtml}`;
-
-      // Get thumbnail URL
-      const thumbnailUrl = getThumbnailUrl(thumbnails);
-
-      // Create Firestore document
-      const contentData: any = {
-        title,
-        slug: uniqueSlug,
-        status: 'published',
-        content,
-        excerpt,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        publishedAt: admin.firestore.FieldValue.serverTimestamp(),
-        authorEmail: authorEmail || '',
-        authorId: authorId || '',
-        type: 'youtube',
-        youtubeVideoId: newestVideoId,
-        youtubeUrl: `https://www.youtube.com/watch?v=${newestVideoId}`,
-        thumbnailUrl,
-        // Source metadata
-        source: {
-          type: 'youtube',
-          videoId: newestVideoId,
-          channelId: channelIdFromVideo,
-          publishedAt: admin.firestore.FieldValue.serverTimestamp(),
-          backfilled: false
-        },
-        // Store raw and cleaned descriptions for reference
-        youtube: {
-          descriptionRaw: rawDescription,
-          descriptionClean: cleanedDescription
+      // Step 1: Fetch multiple videos from uploads playlist (process all new ones)
+      // We'll process videos until we find one that already exists
+      while (createdCount + skippedCount < MAX_VIDEOS_TO_CHECK) {
+        // Build playlist URL - fetch multiple videos at once
+        let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
+        if (nextPageToken) {
+          playlistUrl += `&pageToken=${nextPageToken}`;
         }
-      };
 
-      // Store tags at top level (only if tags exist)
-      if (finalTags.length > 0) {
-        contentData.tags = finalTags;
+        let playlistData: YouTubePlaylistResponse;
+        try {
+          const playlistResponseText = await httpsGet(playlistUrl);
+          playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
+        } catch (error: any) {
+          console.error('YouTube API playlistItems error:', error.message);
+          throw new Error(`YouTube API error: ${error.message}`);
+        }
+
+        if (!playlistData.items || playlistData.items.length === 0) {
+          console.log('No videos found in uploads playlist');
+          break;
+        }
+
+        // Process each video in this page
+        let foundExistingVideo = false;
+        for (const item of playlistData.items) {
+          if (createdCount + skippedCount >= MAX_VIDEOS_TO_CHECK) {
+            console.log(`Reached safety cap of ${MAX_VIDEOS_TO_CHECK} videos`);
+            break;
+          }
+
+          const videoId = item.snippet.resourceId.videoId;
+          console.log(`Processing video: ${videoId}`);
+
+          // Check if this video already exists in Firestore
+          const existingVideoQuery = await db.collection('content')
+            .where('youtubeVideoId', '==', videoId)
+            .limit(1)
+            .get();
+
+          if (!existingVideoQuery.empty) {
+            console.log(`Video ${videoId} already exists in Firestore, stopping (all older videos are already processed)`);
+            foundExistingVideo = true;
+            skippedCount++;
+            break; // Stop processing since videos are ordered by date
+          }
+
+          // Get full video details from YouTube API (include status to check if public)
+          const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${videoId}&key=${youtubeApiKey}`;
+
+          let videoData: YouTubeVideoResponse;
+          try {
+            const videoResponseText = await httpsGet(videoUrl);
+            videoData = JSON.parse(videoResponseText) as YouTubeVideoResponse;
+          } catch (error: any) {
+            console.error(`Error fetching video ${videoId}:`, error.message);
+            skippedCount++;
+            continue;
+          }
+
+          if (!videoData.items || videoData.items.length === 0) {
+            console.log(`Video ${videoId} not found in YouTube API`);
+            skippedCount++;
+            continue;
+          }
+
+          // Check if video is public (ignore private/unlisted)
+          const videoStatus = (videoData.items[0] as any).status;
+          if (videoStatus?.privacyStatus !== 'public') {
+            console.log(`Video ${videoId} is not public (${videoStatus?.privacyStatus}), skipping`);
+            skippedCount++;
+            continue;
+          }
+
+          const snippet = videoData.items[0].snippet;
+          const title = snippet.title;
+          const rawDescription = snippet.description || '';
+          const thumbnails = snippet.thumbnails;
+          const videoPublishedAtStr = snippet.publishedAt;
+          const channelIdFromVideo = snippet.channelId;
+          const videoTags = snippet.tags || []; // YouTube video tags (preferred source)
+
+          // Step 1: Strip boilerplate from description (before tag extraction)
+          const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
+
+          // Step 2: Extract tags from cleaned description (hashtags and comma-separated blocks)
+          const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
+
+          // Step 3: Use YouTube video tags if available, otherwise use extracted tags
+          // Normalize: lowercase, trim, remove leading '#', deduplicate
+          const allTags = new Set<string>();
+          if (videoTags && videoTags.length > 0) {
+            // Prefer YouTube video tags
+            videoTags.forEach(tag => {
+              const normalized = tag.toLowerCase().trim();
+              if (normalized.length > 0) {
+                allTags.add(normalized);
+              }
+            });
+          } else {
+            // Fallback to extracted tags from description
+            extractedTags.forEach(tag => {
+              const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
+              if (normalized.length > 0) {
+                allTags.add(normalized);
+              }
+            });
+          }
+          const finalTags = Array.from(allTags).slice(0, 50);
+
+          // Generate slug
+          const baseSlug = slugify(title);
+          const uniqueSlug = await getUniqueSlug(baseSlug);
+
+          // Generate excerpt (first 160 chars of cleaned description, plain text)
+          const excerpt = cleanedDescription
+            .replace(/\n/g, ' ')
+            .replace(/<[^>]*>/g, '')
+            .trim()
+            .substring(0, 160) || '';
+
+          // Generate content HTML from cleaned description (without boilerplate and tag block)
+          // Escape HTML and convert newlines to <br> within a single <p> tag
+          const escapedDescription = cleanedDescription
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+
+          const descriptionHtml = `<p>${escapedDescription}</p>`;
+
+          const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+
+          const content = `${descriptionHtml}\n\n${embedHtml}`;
+
+          // Get thumbnail URL
+          const thumbnailUrl = getThumbnailUrl(thumbnails);
+
+          // Convert YouTube publishedAt to Firestore Timestamp (use video's actual publishedAt)
+          const videoPublishedAtDate = new Date(videoPublishedAtStr);
+          const publishedAtTimestamp = admin.firestore.Timestamp.fromDate(videoPublishedAtDate);
+
+          // Create Firestore document
+          const contentData: any = {
+            title,
+            slug: uniqueSlug,
+            status: 'published',
+            content,
+            excerpt,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            publishedAt: publishedAtTimestamp, // Use video's actual published date
+            authorEmail: authorEmail || '',
+            authorId: authorId || '',
+            type: 'youtube',
+            youtubeVideoId: videoId,
+            youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+            thumbnailUrl,
+            // Source metadata
+            source: {
+              type: 'youtube',
+              videoId: videoId,
+              channelId: channelIdFromVideo,
+              publishedAt: publishedAtTimestamp,
+              backfilled: false
+            },
+            // Store raw and cleaned descriptions for reference
+            youtube: {
+              descriptionRaw: rawDescription,
+              descriptionClean: cleanedDescription
+            }
+          };
+
+          // Store tags at top level (only if tags exist)
+          if (finalTags.length > 0) {
+            contentData.tags = finalTags;
+          }
+
+          const docRef = await db.collection('content').add(contentData);
+          createdCount++;
+          console.log(`Created new YouTube post: ${docRef.id} for video: ${videoId}`);
+        }
+
+        // If we found an existing video, we can stop (all older videos are already processed)
+        if (foundExistingVideo) {
+          break;
+        }
+
+        // Check if there are more pages
+        if (playlistData.nextPageToken) {
+          nextPageToken = playlistData.nextPageToken;
+        } else {
+          break; // No more pages
+        }
       }
 
-      const docRef = await db.collection('content').add(contentData);
-      console.log('Created new YouTube post:', docRef.id, 'for video:', newestVideoId);
-
+      console.log(`YouTube sync complete. Created: ${createdCount}, Skipped: ${skippedCount}`);
       return null;
     } catch (error) {
       console.error('Error syncing YouTube uploads:', error);
