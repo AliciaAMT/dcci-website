@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent, IonIcon } from '@ionic/angular/standalone';
-import { ContactFormComponent } from '../components/contact-form.component';
+import { WebsiteProblemReportComponent } from '../components/website-problem-report.component';
 import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
 import { FooterComponent } from '../components/footer.component';
 import { VersionService } from '../services/version.service';
@@ -16,7 +16,7 @@ import { VersionService } from '../services/version.service';
     CommonModule,
     IonContent,
     IonIcon,
-    ContactFormComponent,
+    WebsiteProblemReportComponent,
     PageHeaderWithMenuComponent,
     FooterComponent
   ]

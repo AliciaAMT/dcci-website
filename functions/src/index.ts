@@ -223,34 +223,54 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
         }
       }
 
-      // Determine recipient email - use admin@accessiblewebmedia.com for problem reports
-      const isProblemReport = sanitizedSubject.toLowerCase().includes('website problem') || 
-                              sanitizedSubject.toLowerCase().includes('problem report') ||
-                              sanitizedSubject.toLowerCase().includes('bug report');
-      const recipientEmail = isProblemReport ? 'admin@accessiblewebmedia.com' : to;
+      // Regular contact form always goes to Hatun
+      const recipientEmail = to;
+
+      console.log('Sending contact form email:', {
+        subject: sanitizedSubject,
+        to: recipientEmail,
+        from: user
+      });
 
       // Send email notification (using sanitized data and escaped HTML)
-      await tx.sendMail({
-        from: `"DCCI Ministries Website" <${user}>`,
-        to: recipientEmail,
-        replyTo: `${sanitizedName} <${sanitizedEmail}>`,
-        subject: `Contact Form: ${sanitizedSubject}`,
-        text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nNewsletter: ${sanitizedNewsletter ? 'Yes' : 'No'}\nIP: ${clientIP}\n\n${sanitizedMessage}`,
-        html: `
-          <h3>New Contact Form Submission</h3>
-          <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
-          <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
-          <p><b>Subject:</b> ${escapeHtmlForEmail(sanitizedSubject)}</p>
-          <p><b>Newsletter Subscription:</b> ${sanitizedNewsletter ? 'Yes' : 'No'}</p>
-          <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
-          <hr>
-          <p><b>Message:</b></p>
-          <p>${escapeHtmlForEmail(sanitizedMessage)}</p>
-          <hr>
-          <p><small>This email was sent from the DCCI Ministries contact form.</small></p>
-          <p><small>Contact ID: ${contactRef.id}</small></p>
-        `
-      });
+      try {
+        const emailResult = await tx.sendMail({
+          from: `"DCCI Ministries Website" <${user}>`,
+          to: recipientEmail,
+          replyTo: `${sanitizedName} <${sanitizedEmail}>`,
+          subject: `Contact Form: ${sanitizedSubject}`,
+          text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nNewsletter: ${sanitizedNewsletter ? 'Yes' : 'No'}\nIP: ${clientIP}\n\n${sanitizedMessage}`,
+          html: `
+            <h3>New Contact Form Submission</h3>
+            <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
+            <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
+            <p><b>Subject:</b> ${escapeHtmlForEmail(sanitizedSubject)}</p>
+            <p><b>Newsletter Subscription:</b> ${sanitizedNewsletter ? 'Yes' : 'No'}</p>
+            <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
+            <hr>
+            <p><b>Message:</b></p>
+            <p>${escapeHtmlForEmail(sanitizedMessage)}</p>
+            <hr>
+            <p><small>This email was sent from the DCCI Ministries contact form.</small></p>
+            <p><small>Contact ID: ${contactRef.id}</small></p>
+          `
+        });
+
+        console.log('Email sent successfully:', {
+          messageId: emailResult.messageId,
+          to: recipientEmail,
+          subject: `Contact Form: ${sanitizedSubject}`
+        });
+      } catch (emailError: any) {
+        console.error('Error sending email:', {
+          error: emailError.message,
+          stack: emailError.stack,
+          to: recipientEmail,
+          from: user
+        });
+        // Still return success to user, but log the error
+        // The contact is already stored in Firestore
+      }
 
       res.status(200).json({
         success: true,
@@ -260,6 +280,137 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
     } catch (e) {
       console.error('Contact form error:', e);
       res.status(500).json({ error: "Failed to process contact form" });
+    }
+  });
+});
+
+// Separate function for website problem reports - always goes to admin@accessiblewebmedia.com
+export const submitWebsiteProblemReport = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
+
+    const { name, email, subject, message, website, formLoadTime, submissionTime } = req.body || {};
+    
+    // Get client IP from various sources
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const firstForwardedIP = Array.isArray(forwardedFor)
+      ? forwardedFor[0]?.trim()
+      : forwardedFor?.split(',')[0]?.trim();
+
+    const clientIP: string = req.ip ||
+                    req.connection?.remoteAddress ||
+                    req.socket?.remoteAddress ||
+                    firstForwardedIP ||
+                    (Array.isArray(req.headers['x-real-ip']) ? req.headers['x-real-ip'][0] : req.headers['x-real-ip']) ||
+                    'unknown';
+
+    console.log('Website problem report - Client IP detected:', clientIP);
+
+    // IP blocking check - block common VPN/spam IP ranges
+    const blockedRanges = ['111.', '185.', '45.', '91.', '104.'];
+    const isBlockedIP = blockedRanges.some(range => clientIP.startsWith(range));
+
+    if (isBlockedIP) {
+      console.log('Blocked IP detected:', clientIP);
+      res.status(403).json({
+        error: "VPN detected",
+        message: "We've detected that you're using a VPN. To help prevent spam, please turn off your VPN and try again."
+      });
+      return;
+    }
+
+    // Honeypot check
+    if (website) {
+      console.log('Error');
+      res.status(204).end(); return;
+    }
+
+    // Sanitize and validate all input data
+    const validation = sanitizeContactForm({ name, email, subject, message, newsletter: false, formLoadTime, submissionTime });
+
+    if (!validation.isValid) {
+      console.log('Input validation failed:', validation.errors);
+      res.status(400).json({
+        error: "Invalid input",
+        message: "Please check your input and try again.",
+        details: validation.errors
+      });
+      return;
+    }
+
+    const { name: sanitizedName, email: sanitizedEmail, subject: sanitizedSubject, message: sanitizedMessage, formLoadTime: sanitizedFormLoadTime, submissionTime: sanitizedSubmissionTime } = validation.sanitizedData!;
+
+    try {
+      // Store problem report in Firestore
+      const problemReportData = {
+        name: sanitizedName,
+        email: sanitizedEmail,
+        subject: sanitizedSubject,
+        message: sanitizedMessage,
+        type: 'website_problem',
+        clientIP,
+        formLoadTime: sanitizedFormLoadTime,
+        submissionTime: sanitizedSubmissionTime,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      const problemReportRef = await db.collection('websiteProblemReports').add(problemReportData);
+      console.log('Website problem report stored with ID:', problemReportRef.id);
+
+      // Always send to admin@accessiblewebmedia.com for website problems
+      const recipientEmail = 'admin@accessiblewebmedia.com';
+
+      console.log('Sending website problem report email:', {
+        subject: sanitizedSubject,
+        to: recipientEmail,
+        from: user
+      });
+
+      // Send email notification
+      try {
+        const emailResult = await tx.sendMail({
+          from: `"DCCI Ministries Website" <${user}>`,
+          to: recipientEmail,
+          replyTo: `${sanitizedName} <${sanitizedEmail}>`,
+          subject: `Website Problem Report: ${sanitizedSubject}`,
+          text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nIP: ${clientIP}\n\n${sanitizedMessage}`,
+          html: `
+            <h3>Website Problem Report</h3>
+            <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
+            <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
+            <p><b>Subject:</b> ${escapeHtmlForEmail(sanitizedSubject)}</p>
+            <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
+            <hr>
+            <p><b>Message:</b></p>
+            <p>${escapeHtmlForEmail(sanitizedMessage)}</p>
+            <hr>
+            <p><small>This is a website problem report from the DCCI Ministries website.</small></p>
+            <p><small>Report ID: ${problemReportRef.id}</small></p>
+          `
+        });
+
+        console.log('Website problem report email sent successfully:', {
+          messageId: emailResult.messageId,
+          to: recipientEmail
+        });
+      } catch (emailError: any) {
+        console.error('Error sending website problem report email:', {
+          error: emailError.message,
+          stack: emailError.stack,
+          to: recipientEmail,
+          from: user
+        });
+        // Still return success to user, but log the error
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Problem report submitted successfully",
+        reportId: problemReportRef.id
+      });
+    } catch (e) {
+      console.error('Website problem report error:', e);
+      res.status(500).json({ error: "Failed to process problem report" });
     }
   });
 });
