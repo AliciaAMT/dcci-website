@@ -1649,8 +1649,31 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
         return;
       }
 
-      const { email, oobCode } = req.body;
+      const { uid, email, oobCode } = req.body;
       let targetEmail: string | null = null;
+
+      // If uid is provided, verify in Auth and update Firestore by uid
+      if (uid && typeof uid === 'string') {
+        try {
+          console.log('UID provided. Verifying emailVerified in Firebase Auth for uid:', uid);
+          const userRecord = await admin.auth().getUser(uid);
+          if (userRecord.emailVerified === true) {
+            const db = admin.firestore();
+            const userRef = db.collection('adminUsers').doc(uid);
+            await userRef.set({ emailVerified: true }, { merge: true });
+            console.log('Successfully updated emailVerified for uid:', uid, 'email:', userRecord.email);
+            res.status(200).json({ success: true, message: 'Email verified status updated by uid', email: userRecord.email });
+            return;
+          } else {
+            console.warn('Auth record not yet emailVerified for uid:', uid);
+            res.status(409).json({ error: 'Auth email not verified yet' });
+            return;
+          }
+        } catch (uidError: any) {
+          console.error('Error handling uid path:', uidError);
+          // Fall through to other methods if needed
+        }
+      }
 
       // If email is provided, use it directly
       if (email && typeof email === 'string') {
@@ -1750,13 +1773,13 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
       }
 
       const userDoc = querySnapshot.docs[0];
-      const uid = userDoc.id;
-      console.log('Found user document with UID:', uid);
+      const foundUid = userDoc.id;
+      console.log('Found user document with UID:', foundUid);
 
       // Verify that the email is actually verified in Firebase Auth
       let userRecord;
       try {
-        userRecord = await admin.auth().getUser(uid);
+        userRecord = await admin.auth().getUser(foundUid);
         console.log('User record from Auth:', {
           uid: userRecord.uid,
           email: userRecord.email,
@@ -1770,7 +1793,7 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
 
       // Always update Firestore - if applyActionCode succeeded, the email is verified
       // Don't check Firebase Auth status as it might not have propagated yet
-      console.log('Updating Firestore document for UID:', uid);
+      console.log('Updating Firestore document for UID:', foundUid);
       console.log('Current document data before update:', userDoc.data());
       
       // Use updateDoc instead of setDoc for clearer intent (only update emailVerified)
@@ -1787,7 +1810,7 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
         emailVerified: updatedData?.emailVerified
       });
 
-      console.log(`Successfully updated emailVerified for user ${uid} (${email})`);
+      console.log(`Successfully updated emailVerified for user ${foundUid} (${email})`);
       
       res.status(200).json({ success: true, message: 'Email verified status updated in Firestore' });
     } catch (error) {

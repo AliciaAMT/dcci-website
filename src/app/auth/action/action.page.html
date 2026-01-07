@@ -10,13 +10,13 @@
 
       <!-- Success State -->
       <ion-card-header *ngIf="status === 'success'">
-        <ion-card-title>
+        <ion-card-title tabindex="-1" aria-live="polite">
           <ion-icon name="checkmark-circle" color="success"></ion-icon>
           Email Verified!
         </ion-card-title>
       </ion-card-header>
       <ion-card-content *ngIf="status === 'success'">
-        <div class="status-content" role="status" aria-live="polite">
+        <div class="status-content" role="status">
           <p class="success-message">{{ message }}</p>
           <ion-button expand="block" (click)="goToSignIn()" class="continue-button">
             Continue to Sign In

@@ -49,9 +49,16 @@ service cloud.firestore {
         request.auth.uid == userId;
 
       // Allow users to update their own document
+      // Specifically allow updating emailVerified from false to true (for email verification flow)
       // Allow admins to update any user document (for user management)
-      allow update: if (request.auth != null && request.auth.uid == userId) ||
-        isAdminUser();
+      allow update: if (
+        // User updating only their own emailVerified/emailVerifiedAt fields
+        (request.auth != null && request.auth.uid == userId &&
+         request.resource.data.diff(resource.data).changedKeys().hasOnly(['emailVerified', 'emailVerifiedAt']) &&
+         request.resource.data.emailVerified == true) ||
+        // Admins can update any user document
+        isAdminUser()
+      );
 
       // CRITICAL: Allow users to read their own document (required for isAdminUser() to work)
       // Allow admins to read all admin documents (for user management)

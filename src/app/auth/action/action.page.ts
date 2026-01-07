@@ -46,6 +46,8 @@ export class ActionPage implements OnInit {
     const allParams = this.route.snapshot.queryParams;
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    // Also capture uid that we added to the continue URL when sending verification
+    const uidFromQuery = allParams['uid'] || urlParams.get('uid') || hashParams.get('uid') || null;
     
     // Check referrer for action code (Firebase might redirect from there)
     const referrer = document.referrer;
@@ -85,9 +87,10 @@ export class ActionPage implements OnInit {
     
     console.log('🔍 Mode:', mode);
     console.log('🔍 OobCode:', oobCode ? 'Present' : 'Missing');
+    console.log('🔍 UID:', uidFromQuery || '(none)');
 
     if (mode === 'verifyEmail' && oobCode) {
-      this.handleEmailVerification(oobCode);
+      this.handleEmailVerification(oobCode, uidFromQuery || undefined);
     } else {
       console.error('❌ Invalid verification link:', {
         mode,
@@ -102,53 +105,35 @@ export class ActionPage implements OnInit {
     }
   }
 
-  async handleEmailVerification(actionCode: string) {
+  async handleEmailVerification(actionCode: string, uid?: string) {
     try {
       this.status = 'loading';
-      this.message = '';
-      this.errorMessage = '';
-
-      const result = await this.authService.verifyEmail(actionCode);
+      const result = await this.authService.verifyEmail(actionCode, uid);
 
       if (result.success) {
+        // Show success message with button to go to sign in (NO auto-redirect)
         this.status = 'success';
-        this.message = result.message;
+        this.message = 'Thank you for verifying your email!';
+        // Focus the success heading for accessibility
+        setTimeout(() => {
+          const successHeading = document.querySelector('[aria-live="polite"]') as HTMLElement;
+          if (successHeading) {
+            successHeading.focus();
+          }
+        }, 100);
       } else {
-        // Check error code for specific cases
-        const errorCode = result.code || '';
-        const errorMessage = result.message.toLowerCase();
-        
-        // Check if error indicates already verified or already applied
-        if (errorCode === 'auth/expired-action-code' && errorMessage.includes('already')) {
-          this.status = 'already-verified';
-          this.message = 'Your email has already been verified. You can sign in now.';
-        } else if (errorMessage.includes('already') || errorMessage.includes('already verified') || errorMessage.includes('already applied')) {
-          this.status = 'already-verified';
-          this.message = 'Your email has already been verified. You can sign in now.';
-        } else if (errorCode === 'auth/expired-action-code' || errorMessage.includes('expired')) {
-          this.status = 'error';
-          this.errorMessage = 'This verification link has expired. Please request a new verification email.';
-        } else if (errorCode === 'auth/invalid-action-code' || errorMessage.includes('invalid')) {
-          this.status = 'error';
-          this.errorMessage = 'This verification link is invalid. Please request a new verification email.';
-        } else {
-          this.status = 'error';
-          this.errorMessage = result.message || 'Verification failed. Please try again or request a new verification email.';
-        }
+        this.status = 'error';
+        this.errorMessage = result.message || 'Verification failed. Please try again.';
       }
     } catch (error: any) {
       console.error('Email verification error:', error);
       this.status = 'error';
-      this.errorMessage = 'An unexpected error occurred. Please try again or request a new verification email.';
+      this.errorMessage = 'An unexpected error occurred. Please try again.';
     }
   }
 
   goToSignIn() {
-    if (this.status === 'success' || this.status === 'already-verified') {
-      this.router.navigate(['/admin/login'], { queryParams: { verified: '1' } });
-    } else {
-      this.router.navigate(['/admin/login']);
-    }
+    this.router.navigate(['/admin/login'], { queryParams: { verified: '1' } });
   }
 }
 

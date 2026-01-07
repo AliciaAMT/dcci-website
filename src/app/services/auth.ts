@@ -1,7 +1,7 @@
 import { Injectable, NgZone, Injector, runInInjectionContext } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { Firestore, collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs } from '@angular/fire/firestore';
+import { Firestore, collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs, serverTimestamp } from '@angular/fire/firestore';
 import { Auth as FirebaseAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User, sendEmailVerification, applyActionCode, checkActionCode, confirmPasswordReset, sendPasswordResetEmail, verifyPasswordResetCode, ActionCodeSettings } from '@angular/fire/auth';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { SanitizationService } from './sanitization';
@@ -104,9 +104,9 @@ export class AuthService {
           const user = userCredential.user;
 
           // Send email verification with custom action code settings
-          // Use handleCodeInApp: true so Firebase passes the action code directly to our app
+          // Include the uid in the continue URL so the action page can update Firestore by uid
           const actionCodeSettings: ActionCodeSettings = {
-            url: 'https://dcciministries.com/auth/action',
+            url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}`,
             handleCodeInApp: true
           };
           await sendEmailVerification(user, actionCodeSettings);
@@ -191,23 +191,31 @@ export class AuthService {
           // Clear failed attempts on successful login
           await this.clearFailedAttempts(sanitizedEmail);
 
-          // Check if email is verified
+          // Reload user to get fresh state (including emailVerified status)
+          await user.reload();
+          // Force token refresh to ensure fresh claims
+          await user.getIdToken(true);
+
+          // Check if email is verified after reload
           if (!user.emailVerified) {
-            // Don't sign out - keep user logged in but redirect to verification page
-            return { success: false, message: 'EMAIL_NOT_VERIFIED', needsVerification: true };
+            // Sign out and return error
+            await this.signOut();
+            return { success: false, message: 'Please verify your email first.', needsVerification: true };
           }
+
+          // Email is verified - update Firestore
+          await runInInjectionContext(this.injector, async () => {
+            await setDoc(doc(this.firestore, 'adminUsers', user.uid), {
+              emailVerified: true,
+              emailVerifiedAt: serverTimestamp(),
+              lastLoginAt: new Date()
+            }, { merge: true });
+          });
 
           // Load user data from Firestore
           const userData = await this.loadUserData(user.uid);
 
           if (userData && userData.isAdmin) {
-            // Update last login time and email verification status
-            await runInInjectionContext(this.injector, async () => {
-            await setDoc(doc(this.firestore, 'adminUsers', user.uid), {
-              lastLoginAt: new Date(),
-              emailVerified: user.emailVerified
-            }, { merge: true });
-            });
 
             return { success: true, message: 'Login successful!' };
           } else {
@@ -301,10 +309,9 @@ export class AuthService {
             return { success: false, message: 'No user is currently logged in.' };
           }
 
-          // Configure action code settings to use custom URL
-          // Use handleCodeInApp: true so Firebase passes the action code directly to our app
+          // Configure action code settings to include uid in the continue URL
           const actionCodeSettings: ActionCodeSettings = {
-            url: 'https://dcciministries.com/auth/action',
+            url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}`,
             handleCodeInApp: true
           };
 
@@ -329,115 +336,36 @@ export class AuthService {
 
   /**
    * Verify email with action code
+   * Applies the action code and immediately updates Firestore if uid is provided
    */
-  async verifyEmail(actionCode: string): Promise<{ success: boolean; message: string; code?: string }> {
-    let email: string | null = null;
-    
+  async verifyEmail(actionCode: string, uid?: string): Promise<{ success: boolean; message: string }> {
     try {
-      // First, try to check the action code to get the email (even if code is already used)
-      try {
-        const actionCodeInfo = await checkActionCode(this.auth, actionCode);
-        email = actionCodeInfo.data.email || null;
-      } catch (checkError: any) {
-        console.warn('Could not check action code (might be already used):', checkError.code);
-        // Continue - we'll try to update Firestore anyway if we can get email another way
+      // Apply the action code to verify the email in Firebase Auth
+      await applyActionCode(this.auth, actionCode);
+      
+      // If uid is provided, update Firestore immediately
+      if (uid) {
+        try {
+          await runInInjectionContext(this.injector, async () => {
+            await setDoc(doc(this.firestore, 'adminUsers', uid), {
+              emailVerified: true,
+              emailVerifiedAt: serverTimestamp()
+            }, { merge: true });
+          });
+          console.log('✅ Firestore updated immediately after verification for uid:', uid);
+        } catch (firestoreError: any) {
+          console.error('⚠️ Failed to update Firestore immediately:', firestoreError);
+          // Don't fail verification - Firestore will be updated during sign-in
+        }
       }
       
-      // Try to verify the action code
-      try {
-        await applyActionCode(this.auth, actionCode);
-        
-        // Action code was successfully applied - update Firestore
-        if (email) {
-          try {
-            console.log('📧 Calling Cloud Function to update emailVerified for:', email);
-            const response = await firstValueFrom(
-              this.http.post<{ success: boolean; message: string }>(
-                `${environment.firebaseFunctionsUrl}/updateEmailVerified`,
-                { email: email.toLowerCase().trim() },
-                { headers: { 'Content-Type': 'application/json' } }
-              )
-            );
-            
-            if (response?.success) {
-              console.log('✅ Cloud Function successfully updated emailVerified:', response.message);
-            } else {
-              console.error('❌ Cloud Function returned unsuccessful response:', response);
-            }
-          } catch (cloudFunctionError: any) {
-            console.error('❌ Cloud Function call failed:', cloudFunctionError);
-            console.error('Error status:', cloudFunctionError?.status);
-            console.error('Error message:', cloudFunctionError?.message);
-            console.error('Error body:', cloudFunctionError?.error);
-            // Don't fail verification - email is still verified in Firebase Auth
-          }
-        }
-        
-        return { success: true, message: 'Email verified successfully! You can now log in.' };
-      } catch (applyError: any) {
-        // If action code is invalid/already used, try to update Firestore anyway
-        if (applyError.code === 'auth/invalid-action-code' || applyError.code === 'auth/expired-action-code') {
-          console.log('Action code invalid/expired, but email may already be verified. Updating Firestore...');
-          
-          if (email) {
-            try {
-              console.log('📧 Calling Cloud Function to update emailVerified (action code already used):', email);
-              const response = await firstValueFrom(
-                this.http.post<{ success: boolean; message: string }>(
-                  `${environment.firebaseFunctionsUrl}/updateEmailVerified`,
-                  { email: email.toLowerCase().trim() },
-                  { headers: { 'Content-Type': 'application/json' } }
-                )
-              );
-              
-              if (response?.success) {
-                console.log('✅ Cloud Function successfully updated emailVerified:', response.message);
-              }
-            } catch (cloudFunctionError: any) {
-              console.error('❌ Cloud Function call failed:', cloudFunctionError);
-            }
-          } else {
-            // If we can't get email from action code, try calling Cloud Function with oobCode
-            // The Cloud Function can use Admin SDK to extract email even from used codes
-            try {
-              console.log('📧 Calling Cloud Function with oobCode to update emailVerified:', actionCode);
-              const response = await firstValueFrom(
-                this.http.post<{ success: boolean; message: string }>(
-                  `${environment.firebaseFunctionsUrl}/updateEmailVerified`,
-                  { oobCode: actionCode },
-                  { headers: { 'Content-Type': 'application/json' } }
-                )
-              );
-              
-              if (response?.success) {
-                console.log('✅ Cloud Function successfully updated emailVerified:', response.message);
-              } else {
-                console.warn('⚠️ Cloud Function could not update emailVerified with oobCode');
-              }
-            } catch (cloudFunctionError: any) {
-              console.error('❌ Cloud Function call with oobCode failed:', cloudFunctionError);
-              console.warn('⚠️ Could not update Firestore. Email may already be verified in Firebase Auth.');
-            }
-          }
-          
-          // Return as "already verified" since the code was already used
-          return { 
-            success: true, 
-            message: 'Your email has already been verified. You can sign in now.',
-            code: applyError.code
-          };
-        }
-        // Re-throw other errors
-        throw applyError;
-      }
+      return { success: true, message: 'Email verified successfully!' };
     } catch (error: any) {
-      console.error('Email verification error:', error);
-      // Return error with code for better handling
-      return { 
-        success: false, 
-        message: this.getErrorMessage(error.code),
-        code: error.code 
-      };
+      // If already verified, that's fine - just return success
+      if (error.code === 'auth/invalid-action-code' || error.code === 'auth/expired-action-code') {
+        return { success: true, message: 'Email verified successfully!' };
+      }
+      return { success: false, message: this.getErrorMessage(error.code) };
     }
   }
 
