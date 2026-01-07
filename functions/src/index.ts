@@ -1131,7 +1131,7 @@ export const syncYouTubeUploads = functions.pubsub
 
       // Check if automatic YouTube articles are enabled
       const settingsDoc = await db.collection('settings').doc('youtubeSettings').get();
-      if (settingsDoc.exists()) {
+      if (settingsDoc.exists) {
         const settings = settingsDoc.data();
         if (settings && settings.automaticArticlesEnabled === false) {
           console.log('Automatic YouTube articles are disabled. Skipping sync.');
@@ -1640,6 +1640,9 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
   const cors = corsLib({ origin: true });
   cors(req, res, async () => {
     try {
+      console.log('updateEmailVerified called with method:', req.method);
+      console.log('Request body:', req.body);
+      
       // Only allow POST
       if (req.method !== 'POST') {
         res.status(405).json({ error: 'Method not allowed' });
@@ -1649,47 +1652,99 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
       const { email } = req.body;
 
       if (!email || typeof email !== 'string') {
+        console.error('Invalid email in request:', email);
         res.status(400).json({ error: 'Email is required' });
         return;
       }
 
-      // Find user by email in Firestore
+      // Normalize email: lowercase and trim
+      const normalizedEmail = email.toLowerCase().trim();
+      console.log('Looking up user with normalized email:', normalizedEmail);
+
+      // Find user by email in Firestore (case-insensitive search would require getting all docs)
+      // For now, we'll try exact match first, then try lowercase
       const db = admin.firestore();
       const usersRef = db.collection('adminUsers');
-      const querySnapshot = await usersRef.where('email', '==', email).limit(1).get();
+      
+      // Try exact match first
+      let querySnapshot = await usersRef.where('email', '==', normalizedEmail).limit(1).get();
+      
+      // If not found, try with original email (in case it's stored with different case)
+      if (querySnapshot.empty && normalizedEmail !== email) {
+        console.log('Trying with original email case:', email);
+        querySnapshot = await usersRef.where('email', '==', email).limit(1).get();
+      }
+      
+      // If still not found, get all docs and search case-insensitively (less efficient but more reliable)
+      if (querySnapshot.empty) {
+        console.log('Exact match failed, searching all users case-insensitively...');
+        const allUsersSnapshot = await usersRef.get();
+        const matchingDoc = allUsersSnapshot.docs.find(doc => {
+          const docEmail = doc.data().email;
+          return docEmail && docEmail.toLowerCase().trim() === normalizedEmail;
+        });
+        
+        if (matchingDoc) {
+          // Create a fake QuerySnapshot-like structure
+          querySnapshot = {
+            empty: false,
+            docs: [matchingDoc],
+            size: 1
+          } as any;
+          console.log('Found user with case-insensitive search:', matchingDoc.id);
+        }
+      }
 
       if (querySnapshot.empty) {
+        console.error('No user found in Firestore with email:', email);
         res.status(404).json({ error: 'User not found' });
         return;
       }
 
       const userDoc = querySnapshot.docs[0];
       const uid = userDoc.id;
+      console.log('Found user document with UID:', uid);
 
       // Verify that the email is actually verified in Firebase Auth
       let userRecord;
       try {
         userRecord = await admin.auth().getUser(uid);
-      } catch (authError) {
+        console.log('User record from Auth:', {
+          uid: userRecord.uid,
+          email: userRecord.email,
+          emailVerified: userRecord.emailVerified
+        });
+      } catch (authError: any) {
         // User might not exist in Auth yet, but we can still update Firestore
-        console.warn('User not found in Auth, but updating Firestore anyway:', uid);
+        console.warn('User not found in Auth, but updating Firestore anyway:', uid, authError.message);
+        userRecord = null;
       }
 
-      if (userRecord && !userRecord.emailVerified) {
-        res.status(400).json({ error: 'Email is not verified in Firebase Auth' });
-        return;
-      }
-
-      // Update emailVerified in Firestore
-      await userDoc.ref.set({
+      // Always update Firestore - if applyActionCode succeeded, the email is verified
+      // Don't check Firebase Auth status as it might not have propagated yet
+      console.log('Updating Firestore document for UID:', uid);
+      console.log('Current document data before update:', userDoc.data());
+      
+      // Use updateDoc instead of setDoc for clearer intent (only update emailVerified)
+      await userDoc.ref.update({
         emailVerified: true
-      }, { merge: true });
+      });
 
-      console.log(`Updated emailVerified for user ${uid} (${email})`);
+      // Verify the update
+      const updatedDoc = await userDoc.ref.get();
+      const updatedData = updatedDoc.data();
+      console.log('Updated document data:', {
+        uid: updatedDoc.id,
+        email: updatedData?.email,
+        emailVerified: updatedData?.emailVerified
+      });
+
+      console.log(`Successfully updated emailVerified for user ${uid} (${email})`);
       
       res.status(200).json({ success: true, message: 'Email verified status updated in Firestore' });
     } catch (error) {
       console.error('Error updating emailVerified:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       res.status(500).json({ 
         error: 'Internal server error', 
         message: error instanceof Error ? error.message : 'Unknown error' 

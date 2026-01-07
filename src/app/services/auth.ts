@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Firestore, collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs } from '@angular/fire/firestore';
 import { Auth as FirebaseAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User, sendEmailVerification, applyActionCode, checkActionCode, confirmPasswordReset, sendPasswordResetEmail, verifyPasswordResetCode, ActionCodeSettings } from '@angular/fire/auth';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { SanitizationService } from './sanitization';
 import { environment } from '../../environments/environment';
 
@@ -334,74 +334,36 @@ export class AuthService {
       const actionCodeInfo = await checkActionCode(this.auth, actionCode);
       const email = actionCodeInfo.data.email;
       
-      // Verify the action code (this may sign the user in)
-      await applyActionCode(this.auth, actionCode);
-      
-      // Update emailVerified in Firestore
-      // Try to use current user's UID first (if signed in after applyActionCode)
-      // Otherwise, query by email
-      let updateSuccess = false;
-      
-      try {
-        await runInInjectionContext(this.injector, async () => {
-          const currentUser = this.auth.currentUser;
-          
-          if (currentUser && currentUser.uid) {
-            // User is signed in - update directly using UID
-            console.log('Updating emailVerified for user:', currentUser.uid);
-            const userRef = doc(this.firestore, 'adminUsers', currentUser.uid);
-            await updateDoc(userRef, {
-              emailVerified: true
-            });
-            updateSuccess = true;
-            console.log('Successfully updated emailVerified using UID');
-          } else if (email) {
-            // User not signed in - find by email and update
-            console.log('User not signed in, finding by email:', email);
-            const usersRef = collection(this.firestore, 'adminUsers');
-            const q = query(usersRef, where('email', '==', email));
-            const querySnapshot = await getDocs(q);
-            
-            if (!querySnapshot.empty) {
-              const userDoc = querySnapshot.docs[0];
-              console.log('Found user document:', userDoc.id);
-              const userRef = doc(this.firestore, 'adminUsers', userDoc.id);
-              await updateDoc(userRef, {
-                emailVerified: true
-              });
-              updateSuccess = true;
-              console.log('Successfully updated emailVerified using email query');
-            } else {
-              console.warn('No user found with email:', email);
-            }
-          }
-        });
-      } catch (firestoreError: any) {
-        console.error('Error updating Firestore emailVerified directly:', firestoreError);
-        // Try using Cloud Function as fallback
-        if (email) {
-          try {
-            console.log('Attempting to update via Cloud Function for email:', email);
-            const response = await this.http.post<{ success: boolean; message: string }>(
-              `${environment.firebaseFunctionsUrl}/updateEmailVerified`,
-              { email },
-              { headers: { 'Content-Type': 'application/json' } }
-            ).toPromise();
-            
-            if (response?.success) {
-              updateSuccess = true;
-              console.log('Successfully updated emailVerified via Cloud Function');
-            }
-          } catch (cloudFunctionError: any) {
-            console.error('Error updating via Cloud Function:', cloudFunctionError);
-            // Don't fail the entire verification if Cloud Function update fails
-            // The email is still verified in Firebase Auth
-          }
-        }
+      if (!email) {
+        return { success: false, message: 'Could not retrieve email from verification link.' };
       }
       
-      if (!updateSuccess) {
-        console.warn('Could not update emailVerified in Firestore, but email is verified in Firebase Auth');
+      // Verify the action code
+      await applyActionCode(this.auth, actionCode);
+      
+      // Update Firestore using Cloud Function (bypasses security rules)
+      // User is not logged in when clicking verification link, so direct update won't work
+      try {
+        console.log('📧 Calling Cloud Function to update emailVerified for:', email);
+        const response = await firstValueFrom(
+          this.http.post<{ success: boolean; message: string }>(
+            `${environment.firebaseFunctionsUrl}/updateEmailVerified`,
+            { email: email.toLowerCase().trim() },
+            { headers: { 'Content-Type': 'application/json' } }
+          )
+        );
+        
+        if (response?.success) {
+          console.log('✅ Cloud Function successfully updated emailVerified:', response.message);
+        } else {
+          console.error('❌ Cloud Function returned unsuccessful response:', response);
+        }
+      } catch (cloudFunctionError: any) {
+        console.error('❌ Cloud Function call failed:', cloudFunctionError);
+        console.error('Error status:', cloudFunctionError?.status);
+        console.error('Error message:', cloudFunctionError?.message);
+        console.error('Error body:', cloudFunctionError?.error);
+        // Don't fail verification - email is still verified in Firebase Auth
       }
       
       return { success: true, message: 'Email verified successfully! You can now log in.' };
