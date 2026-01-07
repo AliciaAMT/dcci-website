@@ -17,8 +17,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(var(--ion-color-success-rgb), 0.1);
-  border: 2px solid var(--ion-color-success);
+  background: #28a745; // Solid green
+  border: 2px solid #1e7e34;
   border-radius: 12px;
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
@@ -34,18 +34,19 @@
     ion-icon {
       font-size: 1.5rem;
       flex-shrink: 0;
+      color: #000000;
     }
 
     .banner-text {
       font-size: 0.95rem;
       font-weight: 500;
-      color: var(--ion-color-success-shade);
+      color: #000000; // Black text for better contrast
       line-height: 1.4;
     }
   }
 
   .banner-close {
-    --color: var(--ion-color-success-shade);
+    --color: #000000;
     --padding-start: 0.5rem;
     --padding-end: 0.5rem;
     margin: 0;
@@ -255,18 +256,22 @@
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
   font-weight: 500;
+
+  ion-icon {
+    color: #000000; // Black icons for better contrast
+  }
 }
 
 .status-message.success {
-  background: rgba(var(--ion-color-success-rgb), 0.1);
-  color: var(--ion-color-success);
-  border: 1px solid rgba(var(--ion-color-success-rgb), 0.3);
+  background: #28a745; // Solid green
+  color: #000000; // Black text
+  border: 2px solid #1e7e34;
 }
 
 .status-message.error {
-  background: rgba(var(--ion-color-danger-rgb), 0.1);
-  color: var(--ion-color-danger);
-  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.3);
+  background: #dc3545; // Solid red
+  color: #000000; // Black text
+  border: 2px solid #c82333;
 }
 
 .security-notice {

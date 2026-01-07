@@ -64,13 +64,21 @@
     }
 
     .success-message {
-      color: var(--ion-color-success);
+      color: #000000; // Black text for better contrast
       font-weight: 500;
+      background: #28a745; // Solid green background
+      padding: 1rem;
+      border-radius: 8px;
+      border: 2px solid #1e7e34;
     }
 
     .error-message {
-      color: var(--ion-color-danger);
+      color: #000000; // Black text for better contrast
       font-weight: 500;
+      background: #dc3545; // Solid red background
+      padding: 1rem;
+      border-radius: 8px;
+      border: 2px solid #c82333;
     }
 
     .continue-button {
