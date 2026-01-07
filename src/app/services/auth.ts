@@ -343,18 +343,20 @@ export class AuthService {
       // Apply the action code to verify the email in Firebase Auth
       await applyActionCode(this.auth, actionCode);
       
-      // If uid is provided, update Firestore immediately
+      // If uid is provided, update Firestore immediately via Cloud Function
+      // (User is not logged in, so we can't update Firestore directly due to security rules)
       if (uid) {
         try {
-          await runInInjectionContext(this.injector, async () => {
-            await setDoc(doc(this.firestore, 'adminUsers', uid), {
-              emailVerified: true,
-              emailVerifiedAt: serverTimestamp()
-            }, { merge: true });
-          });
+          await firstValueFrom(
+            this.http.post<{ success: boolean; message: string }>(
+              `${environment.firebaseFunctionsUrl}/updateEmailVerified`,
+              { uid },
+              { headers: { 'Content-Type': 'application/json' } }
+            )
+          );
           console.log('✅ Firestore updated immediately after verification for uid:', uid);
-        } catch (firestoreError: any) {
-          console.error('⚠️ Failed to update Firestore immediately:', firestoreError);
+        } catch (cloudFunctionError: any) {
+          console.error('⚠️ Failed to update Firestore immediately:', cloudFunctionError);
           // Don't fail verification - Firestore will be updated during sign-in
         }
       }
