@@ -1649,16 +1649,64 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
         return;
       }
 
-      const { email } = req.body;
+      const { email, oobCode } = req.body;
+      let targetEmail: string | null = null;
 
-      if (!email || typeof email !== 'string') {
-        console.error('Invalid email in request:', email);
-        res.status(400).json({ error: 'Email is required' });
+      // If email is provided, use it directly
+      if (email && typeof email === 'string') {
+        targetEmail = email.toLowerCase().trim();
+      } 
+      // If oobCode is provided, try to get email from it
+      // Note: Once an action code is used, we can't extract the email from it
+      // So we'll query all unverified users and check which one was just verified
+      else if (oobCode && typeof oobCode === 'string') {
+        console.log('oobCode provided but email not available. Querying recently verified users...');
+        
+        // Get all users from Firestore who are not verified
+        const db = admin.firestore();
+        const usersRef = db.collection('adminUsers');
+        const unverifiedUsers = await usersRef.where('emailVerified', '==', false).get();
+        
+        // Check each unverified user in Firebase Auth to see if they're now verified
+        for (const doc of unverifiedUsers.docs) {
+          try {
+            const userRecord = await admin.auth().getUser(doc.id);
+            if (userRecord.emailVerified) {
+              // This user was just verified! Update Firestore
+              targetEmail = userRecord.email?.toLowerCase().trim() || null;
+              console.log(`Found recently verified user: ${targetEmail}`);
+              
+              // Update Firestore
+              await doc.ref.update({ emailVerified: true });
+              console.log(`Successfully updated emailVerified for user ${doc.id} (${targetEmail})`);
+              
+              res.status(200).json({ 
+                success: true, 
+                message: 'Email verified status updated in Firestore',
+                email: targetEmail
+              });
+              return;
+            }
+          } catch (authError: any) {
+            // User might not exist in Auth, skip
+            continue;
+          }
+        }
+        
+        // If we get here, we couldn't find a recently verified user
+        console.warn('Could not find recently verified user from oobCode');
+        res.status(404).json({ error: 'Could not determine which user was verified' });
+        return;
+      }
+
+      if (!targetEmail) {
+        console.error('Invalid request: email or oobCode is required');
+        res.status(400).json({ error: 'Email or oobCode is required' });
         return;
       }
 
       // Normalize email: lowercase and trim
-      const normalizedEmail = email.toLowerCase().trim();
+      const normalizedEmail = targetEmail;
       console.log('Looking up user with normalized email:', normalizedEmail);
 
       // Find user by email in Firestore (case-insensitive search would require getting all docs)
@@ -1696,7 +1744,7 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
       }
 
       if (querySnapshot.empty) {
-        console.error('No user found in Firestore with email:', email);
+        console.error('No user found in Firestore with email:', normalizedEmail);
         res.status(404).json({ error: 'User not found' });
         return;
       }
@@ -1752,3 +1800,6 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
     }
   });
 });
+
+// Note: Auth triggers for email verification are not available in Firebase Functions v1
+// We rely on the updateEmailVerified HTTP Cloud Function being called from the client
