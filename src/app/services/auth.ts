@@ -11,7 +11,7 @@ export interface AdminUser {
   uid: string;
   email: string;
   isAdmin: boolean;
-  userRole?: 'Pending' | 'Admin' | null;
+  userRole?: 'Pending' | 'Admin' | 'Moderator' | null;
   emailVerified: boolean;
   createdAt: Date;
   lastLoginAt?: Date;
@@ -477,6 +477,22 @@ export class AuthService {
   isAdmin(): boolean {
     const currentUser = this.currentUserSubject.value;
     return currentUser ? currentUser.isAdmin : false;
+  }
+
+  /**
+   * Check if current user is a full Admin (not Moderator)
+   */
+  isFullAdmin(): boolean {
+    const currentUser = this.currentUserSubject.value;
+    return currentUser ? (currentUser.isAdmin && currentUser.userRole === 'Admin') : false;
+  }
+
+  /**
+   * Check if current user is a Moderator
+   */
+  isModerator(): boolean {
+    const currentUser = this.currentUserSubject.value;
+    return currentUser ? (currentUser.isAdmin && currentUser.userRole === 'Moderator') : false;
   }
 
   /**

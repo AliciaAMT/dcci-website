@@ -30,6 +30,18 @@ service cloud.firestore {
              get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true;
     }
 
+    // Helper function to check if the current user is a full Admin (not Moderator)
+    // Used for operations that require full admin privileges (like user deletion)
+    // Also allows users with isAdmin == true but no userRole set (for backwards compatibility)
+    function isFullAdmin() {
+      let userDoc = get(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+      return request.auth != null &&
+             request.auth.uid != null &&
+             exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+             userDoc.data.isAdmin == true &&
+             (userDoc.data.userRole == 'Admin' || userDoc.data.userRole != 'Moderator');
+    }
+
     // Helper function to validate content document fields
     // Allows all fields used by CMS and YouTube importer (tags, type, youtubeVideoId, etc.)
     function isValidContentFields(data) {
@@ -68,8 +80,9 @@ service cloud.firestore {
       // Allow admins to list all admin documents (for dashboard)
       allow list: if isAdminUser();
 
-      // Deny delete operations
-      allow delete: if false;
+      // Allow only full admins to delete user documents (for user management)
+      // Moderators cannot delete users
+      allow delete: if isFullAdmin();
     }
 
     // Failed attempts collection - for rate limiting

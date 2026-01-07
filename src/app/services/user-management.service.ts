@@ -1,8 +1,10 @@
 import { Injectable, Injector, runInInjectionContext } from '@angular/core';
 import { Firestore, collection, doc, getDocs, getDoc, updateDoc, query, orderBy } from '@angular/fire/firestore';
 import { Auth as FirebaseAuth } from '@angular/fire/auth';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService, AdminUser } from './auth';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +17,8 @@ export class UserManagementService {
     private firestore: Firestore,
     private injector: Injector,
     private authService: AuthService,
-    private auth: FirebaseAuth
+    private auth: FirebaseAuth,
+    private http: HttpClient
   ) {}
 
   /**
@@ -115,20 +118,21 @@ export class UserManagementService {
 
   /**
    * Update user role
-   * When setting role to "Admin", updates both isAdmin and userRole
+   * When setting role to "Admin" or "Moderator", updates both isAdmin and userRole
+   * When setting role to "Pending" or null, sets isAdmin to false
    */
-  async updateUserRole(userId: string, role: 'Pending' | 'Admin' | null): Promise<void> {
+  async updateUserRole(userId: string, role: 'Pending' | 'Admin' | 'Moderator' | null): Promise<void> {
     return await runInInjectionContext(this.injector, async () => {
       try {
         const userRef = doc(this.firestore, 'adminUsers', userId);
         
-        // If role is "Admin", set both isAdmin and userRole
+        // If role is "Admin" or "Moderator", set both isAdmin and userRole
         // If role is "Pending" or null, set isAdmin to false and update userRole
         const updateData: any = {
           userRole: role
         };
         
-        if (role === 'Admin') {
+        if (role === 'Admin' || role === 'Moderator') {
           updateData.isAdmin = true;
         } else {
           updateData.isAdmin = false;
@@ -140,5 +144,47 @@ export class UserManagementService {
         throw error;
       }
     });
+  }
+
+  /**
+   * Delete a user from both Firebase Auth and Firestore
+   * Calls a Cloud Function to handle the deletion (requires Admin SDK)
+   */
+  async deleteUser(userId: string): Promise<void> {
+    try {
+      // Get current user's auth token
+      const currentUser = this.auth.currentUser;
+      if (!currentUser) {
+        throw new Error('Not authenticated');
+      }
+
+      // Get ID token for authentication
+      const idToken = await currentUser.getIdToken(true); // Force refresh to ensure valid token
+
+      // Call Cloud Function to delete user from both Auth and Firestore
+      const response = await firstValueFrom(
+        this.http.post<{ success: boolean; message: string; userId: string }>(
+          `${environment.firebaseFunctionsUrl}/deleteUser`,
+          { userId },
+          {
+            headers: new HttpHeaders({
+              'Authorization': `Bearer ${idToken}`,
+              'Content-Type': 'application/json'
+            })
+          }
+        )
+      );
+
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to delete user');
+      }
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      // If it's an HTTP error, extract the error message
+      if (error.error && error.error.error) {
+        throw new Error(error.error.error);
+      }
+      throw error;
+    }
   }
 }

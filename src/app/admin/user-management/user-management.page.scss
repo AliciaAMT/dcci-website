@@ -111,3 +111,47 @@
   }
 }
 
+// Styles for delete user confirmation alert
+::ng-deep .delete-user-alert {
+  .alert-head {
+    background: var(--ion-color-danger);
+    color: white;
+    
+    .alert-title {
+      color: white;
+      font-weight: bold;
+    }
+    
+    .alert-sub-title {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+  
+  .alert-message {
+    text-align: left;
+    
+    strong {
+      color: var(--ion-color-danger);
+    }
+  }
+  
+  .danger-button {
+    --color: var(--ion-color-danger);
+    --background: var(--ion-color-danger-tint);
+    font-weight: bold;
+  }
+  
+  input {
+    border: 2px solid var(--ion-color-medium);
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: 10px;
+    width: 100%;
+    
+    &:focus {
+      border-color: var(--ion-color-danger);
+      outline: none;
+    }
+  }
+}
+

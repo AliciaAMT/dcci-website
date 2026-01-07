@@ -7,9 +7,13 @@
           <h1>Admin Dashboard</h1>
           <p class="welcome-message">Welcome back, {{ currentUser?.email }}!</p>
           <div class="user-info">
-            <ion-chip class="admin-chip" *ngIf="currentUser?.isAdmin">
+            <ion-chip class="admin-chip" *ngIf="currentUser?.userRole === 'Admin'">
               <ion-icon name="shield-checkmark-outline"></ion-icon>
               <ion-label>Admin</ion-label>
+            </ion-chip>
+            <ion-chip class="moderator-chip" *ngIf="currentUser?.userRole === 'Moderator'">
+              <ion-icon name="shield-outline"></ion-icon>
+              <ion-label>Moderator</ion-label>
             </ion-chip>
             <ion-chip class="verified-chip" *ngIf="currentUser?.emailVerified">
               <ion-icon name="checkmark-circle-outline"></ion-icon>
@@ -83,11 +87,11 @@
         </div>
         <div class="card-content">
           <div class="action-buttons">
-            <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToCreateContent()">
+            <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToCreateContent()" *ngIf="isFullAdmin()">
               <ion-icon name="create-outline" slot="start"></ion-icon>
               Create Content
             </ion-button>
-            <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToManageContent()">
+            <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToManageContent()" *ngIf="isFullAdmin()">
               <ion-icon name="document-text-outline" slot="start"></ion-icon>
               Manage Content
             </ion-button>
@@ -99,11 +103,11 @@
               <ion-icon name="chatbubbles-outline" slot="start"></ion-icon>
               Comments Settings
             </ion-button>
-            <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToUserManagement()">
+            <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToUserManagement()" *ngIf="isFullAdmin()">
               <ion-icon name="people-outline" slot="start"></ion-icon>
               User Management
             </ion-button>
-            <ion-button expand="block" fill="outline" class="action-btn">
+            <ion-button expand="block" fill="outline" class="action-btn" *ngIf="isFullAdmin()">
               <ion-icon name="settings-outline" slot="start"></ion-icon>
               Site Management
             </ion-button>

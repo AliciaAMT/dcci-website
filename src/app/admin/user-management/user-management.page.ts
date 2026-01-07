@@ -15,6 +15,7 @@ import {
     IonIcon,
     IonSpinner,
     IonChip,
+    IonButton,
     ToastController,
   LoadingController,
   AlertController
@@ -43,6 +44,7 @@ import { firstValueFrom } from 'rxjs';
     IonIcon,
     IonSpinner,
     IonChip,
+    IonButton,
     CommonModule,
     FormsModule
   ]
@@ -112,7 +114,7 @@ export class UserManagementPage implements OnInit, OnDestroy {
     }
   }
 
-  async onRoleChange(user: AdminUser, newRole: 'Pending' | 'Admin' | null) {
+  async onRoleChange(user: AdminUser, newRole: 'Pending' | 'Admin' | 'Moderator' | null) {
     // Prevent changing your own role
     if (user.uid === this.currentUser?.uid) {
       await this.showToast('You cannot change your own role', 'warning');
@@ -129,7 +131,7 @@ export class UserManagementPage implements OnInit, OnDestroy {
       return;
     }
 
-    // Show confirmation for Admin role assignment
+    // Show confirmation for Admin or Moderator role assignment
     if (newRole === 'Admin') {
       const alert = await this.alertController.create({
         header: 'Assign Admin Role',
@@ -155,12 +157,37 @@ export class UserManagementPage implements OnInit, OnDestroy {
         ]
       });
       await alert.present();
+    } else if (newRole === 'Moderator') {
+      const alert = await this.alertController.create({
+        header: 'Assign Moderator Role',
+        message: `Are you sure you want to assign Moderator role to ${user.email}? This will grant limited administrative access (YouTube Settings, Comments Settings).`,
+        buttons: [
+          {
+            text: 'Cancel',
+            role: 'cancel',
+            handler: () => {
+              // Reset dropdown to previous value on cancel
+              const userIndex = this.users.findIndex(u => u.uid === user.uid);
+              if (userIndex !== -1) {
+                this.users[userIndex].userRole = user.userRole || 'Pending';
+              }
+            }
+          },
+          {
+            text: 'Assign Moderator',
+            handler: async () => {
+              await this.updateUserRole(user, newRole);
+            }
+          }
+        ]
+      });
+      await alert.present();
     } else {
       await this.updateUserRole(user, newRole);
     }
   }
 
-  async updateUserRole(user: AdminUser, role: 'Pending' | 'Admin' | null) {
+  async updateUserRole(user: AdminUser, role: 'Pending' | 'Admin' | 'Moderator' | null) {
     if (this.isSaving) return;
 
     this.isSaving = true;
@@ -186,14 +213,104 @@ export class UserManagementPage implements OnInit, OnDestroy {
     }
   }
 
-  getRoleDisplayName(role: 'Pending' | 'Admin' | null | undefined): string {
+  getRoleDisplayName(role: 'Pending' | 'Admin' | 'Moderator' | null | undefined): string {
     if (!role) return 'Pending';
     return role;
   }
 
-  getRoleColor(role: 'Pending' | 'Admin' | null | undefined): string {
+  getRoleColor(role: 'Pending' | 'Admin' | 'Moderator' | null | undefined): string {
     if (role === 'Admin') return 'success';
+    if (role === 'Moderator') return 'warning';
     return 'medium';
+  }
+
+  async confirmDeleteUser(user: AdminUser) {
+    // Prevent deleting yourself
+    if (user.uid === this.currentUser?.uid) {
+      await this.showToast('You cannot delete your own account', 'warning');
+      return;
+    }
+
+    // Show strong warning about permanent deletion
+    const alert = await this.alertController.create({
+      header: '⚠️ DELETE USER',
+      subHeader: 'This action is PERMANENT and IRREVERSIBLE',
+      message: `You are about to permanently delete:\n\n${user.email}\n\nThis will:\n• Permanently remove all user data from the system\n• Delete the user's admin account\n• Remove all associated permissions and roles\n• Cannot be undone\n\n⚠️ WARNING: This action cannot be reversed!\n\nType "DELETE" below to confirm:`,
+      inputs: [
+        {
+          name: 'confirmText',
+          type: 'text',
+          placeholder: 'Type DELETE to confirm',
+          attributes: {
+            required: true
+          }
+        }
+      ],
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel',
+          cssClass: 'secondary'
+        },
+        {
+          text: 'Delete Permanently',
+          role: 'destructive',
+          cssClass: 'danger-button',
+          handler: async (data) => {
+            // Require typing "DELETE" to confirm
+            if (!data || !data.confirmText || data.confirmText.trim() !== 'DELETE') {
+              // Show error message
+              const errorAlert = await this.alertController.create({
+                header: 'Confirmation Required',
+                message: 'You must type "DELETE" exactly to confirm deletion.',
+                buttons: ['OK']
+              });
+              await errorAlert.present();
+              return false; // Keep the dialog open
+            }
+            
+            // Proceed with deletion
+            await this.deleteUser(user);
+            return true;
+          }
+        }
+      ],
+      cssClass: 'delete-user-alert'
+    });
+
+    await alert.present();
+  }
+
+  async deleteUser(user: AdminUser) {
+    if (this.isSaving) return;
+
+    // Double-check: prevent deleting yourself
+    if (user.uid === this.currentUser?.uid) {
+      await this.showToast('You cannot delete your own account', 'warning');
+      return;
+    }
+
+    this.isSaving = true;
+    const loading = await this.loadingController.create({
+      message: 'Deleting user...'
+    });
+    await loading.present();
+
+    try {
+      await this.userManagementService.deleteUser(user.uid);
+      await loading.dismiss();
+      
+      // Reload users to get fresh data from Firestore
+      await this.loadUsers();
+      
+      await this.showToast(`User ${user.email} has been permanently deleted`, 'success');
+    } catch (error) {
+      await loading.dismiss();
+      console.error('Error deleting user:', error);
+      await this.showToast('Failed to delete user', 'danger');
+    } finally {
+      this.isSaving = false;
+    }
   }
 
   private async showToast(message: string, color: 'success' | 'danger' | 'warning' = 'success') {

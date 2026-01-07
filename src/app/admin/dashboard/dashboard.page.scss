@@ -56,6 +56,23 @@
       }
     }
 
+    .moderator-chip {
+      --background: #ffffff !important;
+      --color: #f59e0b !important;
+      font-weight: 700;
+      border: 2px solid #ffffff;
+
+      ion-icon {
+        font-size: 1rem;
+        color: #f59e0b !important;
+      }
+
+      ion-label {
+        color: #f59e0b !important;
+        font-weight: 700;
+      }
+    }
+
     .verified-chip {
       --background: #ffffff !important;
       --color: #059669 !important;

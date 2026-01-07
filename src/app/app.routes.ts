@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './guards/admin-guard';
+import { adminOnlyGuard } from './guards/admin-only-guard';
 
 export const routes: Routes = [
   {
@@ -47,27 +48,27 @@ export const routes: Routes = [
   {
     path: 'admin/content/create',
     loadComponent: () => import('./admin/content/create-content/create-content.page').then( m => m.CreateContentPage),
-    canActivate: [adminGuard]
+    canActivate: [adminOnlyGuard]
   },
   {
     path: 'admin/content/manage',
     loadComponent: () => import('./admin/content/manage-content/manage-content.page').then( m => m.ManageContentPage),
-    canActivate: [adminGuard]
+    canActivate: [adminOnlyGuard]
   },
   {
     path: 'admin/content/drafts',
     loadComponent: () => import('./admin/content/drafts/drafts.page').then( m => m.DraftsPage),
-    canActivate: [adminGuard]
+    canActivate: [adminOnlyGuard]
   },
   {
     path: 'admin/content/published',
     loadComponent: () => import('./admin/content/published/published.page').then( m => m.PublishedPage),
-    canActivate: [adminGuard]
+    canActivate: [adminOnlyGuard]
   },
   {
     path: 'admin/content/edit/:id',
     loadComponent: () => import('./admin/content/create-content/create-content.page').then( m => m.CreateContentPage),
-    canActivate: [adminGuard]
+    canActivate: [adminOnlyGuard]
   },
   {
     path: 'admin/youtube-settings',
@@ -77,7 +78,7 @@ export const routes: Routes = [
   {
     path: 'admin/user-management',
     loadComponent: () => import('./admin/user-management/user-management.page').then( m => m.UserManagementPage),
-    canActivate: [adminGuard]
+    canActivate: [adminOnlyGuard]
   },
   {
     path: 'article/:slug',

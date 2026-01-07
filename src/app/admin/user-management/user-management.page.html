@@ -54,8 +54,25 @@
               placeholder="Select role"
             >
               <ion-select-option value="Pending">Pending</ion-select-option>
+              <ion-select-option value="Moderator">Moderator</ion-select-option>
               <ion-select-option value="Admin">Admin</ion-select-option>
             </ion-select>
+          </ion-item>
+          <ion-item>
+            <ion-label>
+              <h3>Danger Zone</h3>
+              <p>Permanent actions</p>
+            </ion-label>
+            <ion-button
+              fill="clear"
+              color="danger"
+              (click)="confirmDeleteUser(user)"
+              [disabled]="isSaving || user.uid === currentUser?.uid"
+              slot="end"
+            >
+              <ion-icon name="trash-outline" slot="start"></ion-icon>
+              Delete User
+            </ion-button>
           </ion-item>
         </div>
       </div>
