@@ -9,7 +9,7 @@ import { AuthService, AdminUser } from './auth';
 })
 export class UserManagementService {
   // Allowed emails for user management access (extra security layer)
-  private readonly ALLOWED_EMAILS = ['Maecheenoi3@gmail.com', 'Aliciataylorguitar@gmail.com', 'gardengirl153@gmail.com', 'Hatun']; // Add Hatun email later
+  private readonly ALLOWED_EMAILS = ['admin@accessiblewebmedia.com', 'hatun@dcciministries.com']; // Add Hatun email later
 
   constructor(
     private firestore: Firestore,
