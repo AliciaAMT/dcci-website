@@ -300,13 +300,45 @@ export class AuthService {
   /**
    * Send email verification to current user
    */
-  async sendEmailVerification(): Promise<{ success: boolean; message: string }> {
+  async sendEmailVerification(email?: string, password?: string): Promise<{ success: boolean; message: string }> {
     try {
       return await this.ngZone.run(async () => {
         try {
-          const user = this.auth.currentUser;
+          let user = this.auth.currentUser;
+          
+          // If no user is logged in but email/password provided, sign in temporarily
+          if (!user && email && password) {
+            try {
+              const credential = await signInWithEmailAndPassword(this.auth, email, password);
+              user = credential.user;
+              
+              // Configure action code settings
+              const actionCodeSettings: ActionCodeSettings = {
+                url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}&verified=1`,
+                handleCodeInApp: false
+              };
+
+              await sendEmailVerification(user, actionCodeSettings);
+              
+              // Sign out after sending email
+              await signOut(this.auth);
+              
+              return { success: true, message: 'Verification email sent! Please check your inbox.' };
+            } catch (signInError: any) {
+              // If sign-in fails, return appropriate error
+              if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
+                return { success: false, message: 'Invalid email or password. Please check your credentials and try again.' };
+              }
+              if (signInError.code === 'auth/too-many-requests') {
+                return { success: false, message: 'Too many requests. Please wait a few minutes before requesting another verification email.' };
+              }
+              return { success: false, message: this.getErrorMessage(signInError.code) };
+            }
+          }
+          
+          // If no user and no credentials provided
           if (!user) {
-            return { success: false, message: 'No user is currently logged in.' };
+            return { success: false, message: 'Please provide your email and password to resend the verification email, or sign in first.' };
           }
 
           // Configure action code settings
