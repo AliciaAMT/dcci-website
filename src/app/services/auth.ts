@@ -104,10 +104,10 @@ export class AuthService {
           const user = userCredential.user;
 
           // Send email verification with custom action code settings
-          // Include the uid in the continue URL so the action page can update Firestore by uid
+          // Firebase's hosted handler will verify the email, then redirect to our page
           const actionCodeSettings: ActionCodeSettings = {
-            url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}`,
-            handleCodeInApp: true
+            url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}&verified=1`,
+            handleCodeInApp: false
           };
           await sendEmailVerification(user, actionCodeSettings);
 
@@ -309,10 +309,11 @@ export class AuthService {
             return { success: false, message: 'No user is currently logged in.' };
           }
 
-          // Configure action code settings to include uid in the continue URL
+          // Configure action code settings
+          // Firebase's hosted handler will verify the email, then redirect to our page
           const actionCodeSettings: ActionCodeSettings = {
-            url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}`,
-            handleCodeInApp: true
+            url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}&verified=1`,
+            handleCodeInApp: false
           };
 
           await sendEmailVerification(user, actionCodeSettings);
