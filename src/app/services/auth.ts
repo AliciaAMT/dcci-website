@@ -198,9 +198,21 @@ export class AuthService {
 
           // Check if email is verified after reload
           if (!user.emailVerified) {
+            // Send verification email before signing out
+            try {
+              const actionCodeSettings: ActionCodeSettings = {
+                url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}&verified=1`,
+                handleCodeInApp: false
+              };
+              await sendEmailVerification(user, actionCodeSettings);
+            } catch (verifyError) {
+              // If sending fails, continue anyway - user can resend from verification page
+              console.error('Error sending verification email:', verifyError);
+            }
+            
             // Sign out and return error
             await this.signOut();
-            return { success: false, message: 'Please verify your email first.', needsVerification: true };
+            return { success: false, message: 'Please verify your email first. A verification email has been sent.', needsVerification: true };
           }
 
           // Email is verified - update Firestore

@@ -137,7 +137,8 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
         console.log('Auth result:', result);
 
         if (result.needsVerification) {
-          // User needs email verification - redirect to verification page
+          // User needs email verification - verification email was already sent in auth service
+          // Redirect to verification page
           this.router.navigate(['/admin/verification-required'], {
             queryParams: { email: email }
           });
