@@ -3,7 +3,7 @@
     <!-- Email Verified Banner -->
     <div *ngIf="showVerifiedBanner" class="verified-banner" role="status" aria-live="polite">
       <div class="banner-content">
-        <ion-icon name="checkmark-circle" style="color: #000000;"></ion-icon>
+        <ion-icon name="checkmark-circle"></ion-icon>
         <span class="banner-text">Email verified — you're ready to sign in.</span>
       </div>
       <ion-button 
@@ -86,13 +86,14 @@
         </ion-note>
 
         <!-- Honeypot Field (Hidden from users) -->
-        <div class="honeypot-field">
+        <div class="honeypot-field" inert>
           <ion-input
             type="text"
             formControlName="website"
             placeholder="Leave this field empty"
             tabindex="-1"
-            autocomplete="off">
+            autocomplete="off"
+            aria-hidden="true">
           </ion-input>
         </div>
 

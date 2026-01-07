@@ -42,6 +42,7 @@ export function registerIonicons(): void {
     'card-outline': i.cardOutline,
     'heart-outline': i.heartOutline,
     'close-outline': i.closeOutline,
+    'close': i.close,
     'wallet-outline': i.walletOutline,
     'time-outline': i.timeOutline,
     // Contact form icons

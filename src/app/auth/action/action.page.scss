@@ -64,21 +64,21 @@
     }
 
     .success-message {
-      color: #000000; // Black text for better contrast
+      color: var(--ion-color-dark);
       font-weight: 500;
-      background: #28a745; // Solid green background
+      background: var(--ion-color-success);
       padding: 1rem;
       border-radius: 8px;
-      border: 2px solid #1e7e34;
+      border: 2px solid var(--ion-color-success-shade);
     }
 
     .error-message {
-      color: #000000; // Black text for better contrast
+      color: var(--ion-color-dark);
       font-weight: 500;
-      background: #dc3545; // Solid red background
+      background: var(--ion-color-danger);
       padding: 1rem;
       border-radius: 8px;
-      border: 2px solid #c82333;
+      border: 2px solid var(--ion-color-danger-shade);
     }
 
     .continue-button {
