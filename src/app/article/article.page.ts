@@ -5,13 +5,15 @@ import { IonContent, IonSpinner } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
+import { FooterComponent } from '../components/footer.component';
+import { VersionService } from '../services/version.service';
 
 @Component({
   selector: 'app-article',
   templateUrl: './article.page.html',
   styleUrls: ['./article.page.scss'],
   standalone: true,
-  imports: [CommonModule, IonContent, IonSpinner, PageHeaderWithMenuComponent]
+  imports: [CommonModule, IonContent, IonSpinner, PageHeaderWithMenuComponent, FooterComponent]
 })
 export class ArticlePage implements OnInit, AfterViewInit {
   @ViewChild('articleContent', { static: false }) articleContent!: ElementRef;
@@ -19,13 +21,17 @@ export class ArticlePage implements OnInit, AfterViewInit {
   isLoading = true;
   error: string | null = null;
   sanitizedContent: SafeHtml = '';
+  version: string;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private contentService: ContentService,
-    private sanitizer: DomSanitizer
-  ) {}
+    private sanitizer: DomSanitizer,
+    private versionService: VersionService
+  ) {
+    this.version = this.versionService.getVersion();
+  }
 
   async ngOnInit() {
     const slug = this.route.snapshot.paramMap.get('slug');
@@ -123,5 +129,9 @@ export class ArticlePage implements OnInit, AfterViewInit {
   getThumbnailUrl(content: Content): string | null {
     const data = content as any;
     return data.thumbnailUrl || content.featuredImage || null;
+  }
+
+  onTagClick(tag: string) {
+    this.router.navigate(['/articles'], { queryParams: { tag: tag } });
   }
 }

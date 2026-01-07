@@ -40,6 +40,17 @@
           </ion-select>
         </ion-item>
       </div>
+
+      <div class="youtube-filter-row">
+        <label class="youtube-filter-label">
+          <ion-checkbox 
+            [(ngModel)]="showYouTubeArticles" 
+            (ionChange)="onYouTubeFilterChange()"
+            class="youtube-checkbox">
+          </ion-checkbox>
+          <span class="youtube-filter-text">Show YouTube videos</span>
+        </label>
+      </div>
     </div>
 
     <!-- Loading Spinner -->
@@ -52,7 +63,9 @@
     <div *ngIf="!isLoading" class="published-list">
       <div *ngIf="filteredPublished.length === 0" class="empty-state">
         <ion-icon name="newspaper-outline"></ion-icon>
-        <p>No published articles found</p>
+        <p *ngIf="searchTerm">No published articles found matching your search</p>
+        <p *ngIf="!searchTerm && !showYouTubeArticles">No written articles found</p>
+        <p *ngIf="!searchTerm && showYouTubeArticles">No published articles found</p>
       </div>
 
       <div *ngFor="let article of filteredPublished" class="article-card">

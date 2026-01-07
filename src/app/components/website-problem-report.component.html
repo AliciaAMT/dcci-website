@@ -1,0 +1,118 @@
+<div class="contact-form-container">
+  <div class="contact-form-card">
+    <!-- Form Header -->
+    <div class="form-header">
+      <ion-icon name="bug-outline" class="form-icon"></ion-icon>
+      <h2 class="form-title">Website Problem Report</h2>
+    </div>
+
+    <!-- Success Message -->
+    <div *ngIf="submitSuccess" class="success-message">
+      <ion-icon name="checkmark-circle-outline" class="success-icon"></ion-icon>
+      <h4>Problem Report Submitted Successfully!</h4>
+      <p>Thank you for reporting the issue. We'll investigate and fix it as soon as possible.</p>
+      <ion-button (click)="resetForm()" fill="outline" color="primary">
+        Report Another Problem
+      </ion-button>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="submitError" class="error-message">
+      <ion-icon name="alert-circle-outline" class="error-icon"></ion-icon>
+      <p>{{ submitError }}</p>
+    </div>
+
+    <!-- Problem Report Form -->
+    <form [formGroup]="problemReportForm" (ngSubmit)="onSubmit()" *ngIf="!submitSuccess" class="contact-form">
+      <div class="form-field-group">
+        <label for="name" class="form-label">Name *</label>
+        <ion-input
+          id="name"
+          formControlName="name"
+          placeholder="Enter your full name"
+          type="text"
+          class="form-input"
+          required>
+        </ion-input>
+        <div *ngIf="getErrorMessage('name')" class="error-text">
+          {{ getErrorMessage('name') }}
+        </div>
+      </div>
+
+      <div class="form-field-group">
+        <label for="email" class="form-label">Email *</label>
+        <ion-input
+          id="email"
+          formControlName="email"
+          placeholder="Enter your email address"
+          type="email"
+          class="form-input"
+          required>
+        </ion-input>
+        <div *ngIf="getErrorMessage('email')" class="error-text">
+          {{ getErrorMessage('email') }}
+        </div>
+      </div>
+
+      <div class="form-field-group">
+        <label for="subject" class="form-label">Subject *</label>
+        <ion-input
+          id="subject"
+          formControlName="subject"
+          placeholder="Brief description of the problem"
+          type="text"
+          class="form-input"
+          required>
+        </ion-input>
+        <div *ngIf="getErrorMessage('subject')" class="error-text">
+          {{ getErrorMessage('subject') }}
+        </div>
+      </div>
+
+      <div class="form-field-group">
+        <label for="message" class="form-label">Problem Description *</label>
+        <ion-textarea
+          id="message"
+          formControlName="message"
+          placeholder="Describe the problem in detail (what page, what happened, steps to reproduce, etc.)"
+          class="form-input"
+          rows="6"
+          required>
+        </ion-textarea>
+        <div *ngIf="getErrorMessage('message')" class="error-text">
+          {{ getErrorMessage('message') }}
+        </div>
+      </div>
+
+      <!-- Honeypot field - hidden from users -->
+      <div class="honeypot-field">
+        <ion-input
+          formControlName="website"
+          placeholder="Leave this field empty"
+          type="text">
+        </ion-input>
+      </div>
+
+      <!-- Hidden timestamp field for bot detection -->
+      <div class="honeypot-field">
+        <ion-input
+          formControlName="formTimestamp"
+          type="hidden">
+        </ion-input>
+      </div>
+
+      <div class="form-actions">
+        <ion-button
+          type="submit"
+          [disabled]="isSubmitting"
+          class="submit-button"
+          expand="block"
+          color="primary">
+          <ion-icon name="send-outline" slot="start"></ion-icon>
+          {{ isSubmitting ? 'Submitting...' : 'Submit Problem Report' }}
+        </ion-button>
+      </div>
+    </form>
+  </div>
+</div>
+

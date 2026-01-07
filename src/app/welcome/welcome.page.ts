@@ -10,12 +10,13 @@ import { AnalyticsService } from '../services/analytics.service';
 import { ContactFormComponent } from '../components/contact-form.component';
 import { NewsletterSignupComponent } from '../components/newsletter-signup.component';
 import { ContentCarouselComponent } from '../components/content-carousel.component';
+import { FooterComponent } from '../components/footer.component';
 
 @Component({
   selector: 'app-welcome',
   templateUrl: './welcome.page.html',
   styleUrls: ['./welcome.page.scss'],
-  imports: [IonContent, IonButton, IonIcon, ContactFormComponent, NewsletterSignupComponent, ContentCarouselComponent],
+  imports: [IonContent, IonButton, IonIcon, ContactFormComponent, NewsletterSignupComponent, ContentCarouselComponent, FooterComponent],
   standalone: true
 })
 export class WelcomePage {

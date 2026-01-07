@@ -1,0 +1,115 @@
+.app-footer {
+  width: 100%;
+  padding: 2rem 3rem;
+  text-align: center;
+  color: var(--ion-color-light);
+  animation: fadeInUp 1s ease-out 1.2s both;
+  margin-top: auto;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.copyright {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--ion-color-light);
+}
+
+.construction-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  color: var(--ion-color-light);
+  margin: 0;
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  color: var(--ion-color-light);
+  opacity: 0.8;
+  margin: 0;
+}
+
+.report-problem {
+  margin: 0;
+  margin-top: 0.5rem;
+}
+
+.problem-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--ion-color-light);
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  background: rgba(var(--ion-color-light-rgb), 0.15);
+  border: 2px solid var(--ion-color-light);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    background: rgba(var(--ion-color-light-rgb), 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  ion-icon {
+    font-size: 1.5rem;
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .app-footer {
+    padding: 1.5rem 1rem;
+  }
+
+  .copyright,
+  .construction-note {
+    font-size: 1.3rem;
+  }
+
+  .version-info {
+    font-size: 1.1rem;
+  }
+
+  .problem-link {
+    font-size: 1.2rem;
+  }
+}
+

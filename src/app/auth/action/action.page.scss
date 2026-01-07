@@ -1,0 +1,116 @@
+.action-page {
+  --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.action-container {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.action-card {
+  background: var(--ion-color-light);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(var(--ion-color-dark-rgb), 0.1);
+  overflow: hidden;
+
+  ion-card-header {
+    text-align: center;
+    padding: 2rem 2rem 1rem 2rem;
+
+    ion-card-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--ion-color-dark);
+
+      ion-icon {
+        font-size: 2rem;
+      }
+    }
+  }
+
+  ion-card-content {
+    padding: 1rem 2rem 2rem 2rem;
+  }
+
+  .status-content {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+
+    h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--ion-color-dark);
+    }
+
+    p {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .success-message {
+      color: var(--ion-color-dark);
+      font-weight: 500;
+      background: var(--ion-color-success);
+      padding: 1rem;
+      border-radius: 8px;
+      border: 2px solid var(--ion-color-success-shade);
+    }
+
+    .error-message {
+      color: var(--ion-color-dark);
+      font-weight: 500;
+      background: var(--ion-color-danger);
+      padding: 1rem;
+      border-radius: 8px;
+      border: 2px solid var(--ion-color-danger-shade);
+    }
+
+    .continue-button {
+      --border-radius: 12px;
+      --padding-top: 1rem;
+      --padding-bottom: 1rem;
+      margin-top: 1rem;
+      font-weight: 600;
+      font-size: 1.1rem;
+      min-width: 200px;
+    }
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .action-page {
+    padding: 1rem;
+  }
+
+  .action-card {
+    ion-card-header {
+      padding: 1.5rem 1.5rem 0.75rem 1.5rem;
+
+      ion-card-title {
+        font-size: 1.5rem;
+      }
+    }
+
+    ion-card-content {
+      padding: 0.75rem 1.5rem 1.5rem 1.5rem;
+    }
+  }
+}
+

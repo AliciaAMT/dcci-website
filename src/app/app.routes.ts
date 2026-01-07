@@ -16,6 +16,10 @@ export const routes: Routes = [
     loadComponent: () => import('./welcome/welcome.page').then( m => m.WelcomePage)
   },
   {
+    path: 'auth/action',
+    loadComponent: () => import('./auth/action/action.page').then( m => m.ActionPage)
+  },
+  {
     path: 'admin/login',
     loadComponent: () => import('./admin/login/login.page').then( m => m.LoginPage)
   },
@@ -66,6 +70,16 @@ export const routes: Routes = [
     canActivate: [adminGuard]
   },
   {
+    path: 'admin/youtube-settings',
+    loadComponent: () => import('./admin/youtube-settings/youtube-settings.page').then( m => m.YouTubeSettingsPage),
+    canActivate: [adminGuard]
+  },
+  {
+    path: 'admin/user-management',
+    loadComponent: () => import('./admin/user-management/user-management.page').then( m => m.UserManagementPage),
+    canActivate: [adminGuard]
+  },
+  {
     path: 'article/:slug',
     loadComponent: () => import('./article/article.page').then( m => m.ArticlePage)
   },
@@ -76,6 +90,10 @@ export const routes: Routes = [
   {
     path: 'archives',
     loadComponent: () => import('./archives/archives.page').then( m => m.ArchivesPage)
+  },
+  {
+    path: 'contact',
+    loadComponent: () => import('./contact/contact.page').then( m => m.ContactPage)
   },
 
 ];

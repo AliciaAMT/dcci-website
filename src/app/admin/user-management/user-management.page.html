@@ -1,0 +1,70 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/admin/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>User Management</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="user-management-container">
+    <div class="header-section">
+      <h2>User Management</h2>
+      <p class="subtitle">Manage user roles and permissions</p>
+    </div>
+
+    <div class="users-content" *ngIf="!isLoading">
+      <div *ngIf="users.length === 0" class="empty-state">
+        <ion-icon name="people-outline"></ion-icon>
+        <p>No users found</p>
+      </div>
+
+      <div *ngFor="let user of users" class="user-card">
+        <div class="user-header">
+          <div class="user-info">
+            <h3>{{ user.email }}</h3>
+            <div class="user-meta">
+              <ion-chip [color]="getRoleColor(user.userRole)" size="small">
+                <ion-label>{{ getRoleDisplayName(user.userRole) }}</ion-label>
+              </ion-chip>
+              <ion-chip *ngIf="user.isAdmin" color="success" size="small">
+                <ion-label>Admin</ion-label>
+              </ion-chip>
+              <ion-chip *ngIf="user.emailVerified" color="primary" size="small">
+                <ion-label>Verified</ion-label>
+              </ion-chip>
+              <span class="date" *ngIf="user.createdAt">
+                Joined: {{ user.createdAt | date:'short' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="user-actions">
+          <ion-item>
+            <ion-label>
+              <h3>User Role</h3>
+              <p>Assign a role to this user</p>
+            </ion-label>
+            <ion-select
+              [ngModel]="user.userRole || 'Pending'"
+              (ionChange)="onRoleChange(user, $event.detail.value)"
+              [disabled]="isSaving || user.uid === currentUser?.uid"
+              placeholder="Select role"
+            >
+              <ion-select-option value="Pending">Pending</ion-select-option>
+              <ion-select-option value="Admin">Admin</ion-select-option>
+            </ion-select>
+          </ion-item>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="isLoading" class="loading-container">
+      <ion-spinner></ion-spinner>
+      <p>Loading users...</p>
+    </div>
+  </div>
+</ion-content>
+

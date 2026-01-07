@@ -15,6 +15,7 @@ import {
   IonBackButton,
   IonButtons,
   IonChip,
+  IonSpinner,
   LoadingController,
   ToastController
 } from '@ionic/angular/standalone';
@@ -25,6 +26,7 @@ import { QuillModule } from 'ngx-quill';
 import Quill from 'quill';
 import { firstValueFrom } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
+import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
 
 @Component({
   selector: 'app-create-content',
@@ -45,6 +47,7 @@ import { filter, take } from 'rxjs/operators';
     IonBackButton,
     IonButtons,
     IonChip,
+    IonSpinner,
     CommonModule,
     FormsModule,
     QuillModule
@@ -64,6 +67,9 @@ export class CreateContentPage implements OnInit {
   isPublishing: boolean = false;
   savedContentId: string | null = null;
   isEditMode: boolean = false;
+  thumbnailUrl: string = '';
+  thumbnailFile: File | null = null;
+  isUploadingThumbnail: boolean = false;
 
   // Quill editor configuration
   quillModules = {
@@ -117,7 +123,8 @@ export class CreateContentPage implements OnInit {
     private authService: AuthService,
     public contentService: ContentService,
     private loadingController: LoadingController,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private storage: Storage
   ) {
     // Configure Quill fonts
     this.configureQuillFonts();
@@ -241,6 +248,9 @@ export class CreateContentPage implements OnInit {
         this.tagsInput = this.tags.map(tag => tag.replace(/^#/, '')).join(', ');
         this.slug = content.slug || '';
         this.showSlugField = true; // Show slug field when editing
+        // Load thumbnail URL
+        const data = content as any;
+        this.thumbnailUrl = data.thumbnailUrl || content.featuredImage || '';
       }
     } catch (error) {
       console.error('Error loading content for edit:', error);
@@ -261,6 +271,123 @@ export class CreateContentPage implements OnInit {
         }
         return '#' + tag;
       });
+  }
+
+  onThumbnailSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.showToast('Please select an image file', 'danger');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        this.showToast('Image size must be less than 5MB', 'danger');
+        return;
+      }
+      
+      this.thumbnailFile = file;
+      
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.thumbnailUrl = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async uploadThumbnail(): Promise<string | null> {
+    // If no new file selected, return existing thumbnail URL (or null)
+    if (!this.thumbnailFile) {
+      // Return existing thumbnailUrl if it's already a URL (starts with http/https)
+      // This preserves existing thumbnails when editing without changing them
+      if (this.thumbnailUrl && (this.thumbnailUrl.startsWith('http://') || this.thumbnailUrl.startsWith('https://'))) {
+        return this.thumbnailUrl;
+      }
+      // If thumbnailUrl is empty or was removed, return null
+      return null;
+    }
+
+    if (!this.currentUser) {
+      await this.showToast('User not authenticated', 'danger');
+      return null;
+    }
+
+    this.isUploadingThumbnail = true;
+    
+    try {
+      // Ensure user is authenticated
+      if (!this.currentUser || !this.currentUser.uid) {
+        await this.showToast('User not authenticated. Please log in again.', 'danger');
+        return null;
+      }
+
+      // Create a unique filename with safe characters
+      const timestamp = Date.now();
+      const sanitizedFileName = this.thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filename = `thumbnails/${this.currentUser.uid}/${timestamp}_${sanitizedFileName}`;
+      const storageRef = ref(this.storage, filename);
+      
+      // Upload file (metadata is optional and may cause issues if Storage isn't fully configured)
+      console.log('[Thumbnail Upload] Starting upload to:', filename);
+      console.log('[Thumbnail Upload] File type:', this.thumbnailFile.type);
+      console.log('[Thumbnail Upload] File size:', this.thumbnailFile.size, 'bytes');
+      
+      // Try upload without metadata first (simpler, more compatible)
+      await uploadBytes(storageRef, this.thumbnailFile);
+      console.log('[Thumbnail Upload] Upload successful');
+      
+      // Get download URL
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log('[Thumbnail Upload] Download URL:', downloadURL);
+      
+      this.thumbnailUrl = downloadURL;
+      this.thumbnailFile = null; // Clear file after successful upload
+      
+      return downloadURL;
+    } catch (error: any) {
+      console.error('Error uploading thumbnail:', error);
+      console.error('Error code:', error?.code);
+      console.error('Error message:', error?.message);
+      
+      let errorMessage = 'Failed to upload thumbnail. Please try again.';
+      
+      // Check for specific error codes
+      if (error?.code === 'storage/unauthorized') {
+        errorMessage = 'Permission denied. Please ensure you are logged in as an admin.';
+      } else if (error?.code === 'storage/quota-exceeded') {
+        errorMessage = 'Storage quota exceeded. Please contact support.';
+      } else if (error?.code === 'storage/unauthenticated') {
+        errorMessage = 'Not authenticated. Please log in again.';
+      } else if (error?.message?.includes('CORS') || error?.message?.includes('preflight')) {
+        errorMessage = 'Firebase Storage is not enabled. Please enable Storage in Firebase Console and deploy storage rules. See STORAGE_SETUP.md for instructions.';
+      } else if (error?.message?.includes('bucket') || error?.code === 'storage/unknown') {
+        errorMessage = 'Firebase Storage is not set up. Please enable Storage in Firebase Console.';
+      }
+      
+      // Log full error for debugging
+      console.error('[Thumbnail Upload] Full error object:', {
+        code: error?.code,
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+      
+      await this.showToast(errorMessage, 'danger');
+      return null;
+    } finally {
+      this.isUploadingThumbnail = false;
+    }
+  }
+
+  removeThumbnail() {
+    this.thumbnailUrl = '';
+    this.thumbnailFile = null;
   }
 
   private async showToast(message: string, color: 'success' | 'danger' = 'success') {
@@ -329,34 +456,52 @@ export class CreateContentPage implements OnInit {
     await loading.present();
 
     try {
+      // Upload thumbnail if a new file was selected
+      // Note: If Storage isn't enabled, this will fail gracefully
+      const thumbnailUrl = await this.uploadThumbnail();
+      
+      // If upload failed but we have a file, warn user but continue
+      if (this.thumbnailFile && !thumbnailUrl) {
+        const continueWithoutThumbnail = confirm(
+          'Thumbnail upload failed. This usually means Firebase Storage is not enabled.\n\n' +
+          'Would you like to continue publishing without a thumbnail?\n\n' +
+          'To fix this:\n' +
+          '1. Go to Firebase Console → Storage\n' +
+          '2. Click "Get Started" to enable Storage\n' +
+          '3. Run: firebase deploy --only storage\n\n' +
+          'See STORAGE_SETUP.md for detailed instructions.'
+        );
+        if (!continueWithoutThumbnail) {
+          this.isSaving = false;
+          await loading.dismiss();
+          return;
+        }
+      }
+      
+      const contentData: any = {
+        title: this.title.trim(),
+        excerpt: this.excerpt.trim(),
+        content: this.content.trim(),
+        status: 'draft',
+        authorId: this.currentUser.uid,
+        authorEmail: this.currentUser.email,
+        tags: this.tags.length > 0 ? this.tags : undefined
+      };
+      
+      // Add thumbnailUrl (include null to allow clearing)
+      contentData.thumbnailUrl = thumbnailUrl || null;
+
       if (this.savedContentId) {
         // Update existing draft
         console.log('[CreateContent] Updating existing draft, ID:', this.savedContentId);
         console.log('[CreateContent] Current user UID (will be preserved from existing doc):', this.currentUser.uid);
-        await this.contentService.updateDraft(this.savedContentId, {
-          title: this.title.trim(),
-          excerpt: this.excerpt.trim(),
-          content: this.content.trim(),
-          status: 'draft',
-          // Note: authorId/authorEmail passed here will be overridden by service to preserve original values
-          authorId: this.currentUser.uid,
-          authorEmail: this.currentUser.email,
-          tags: this.tags.length > 0 ? this.tags : undefined
-        }, this.slug.trim() || undefined);
+        await this.contentService.updateDraft(this.savedContentId, contentData, this.slug.trim() || undefined);
         await this.showToast('Draft updated successfully');
       } else {
         // Create new draft
         console.log('[CreateContent] Creating new draft');
         console.log('[CreateContent] Current user UID (will be used as authorId):', this.currentUser.uid);
-        this.savedContentId = await this.contentService.saveDraft({
-          title: this.title.trim(),
-          excerpt: this.excerpt.trim(),
-          content: this.content.trim(),
-          status: 'draft',
-          authorId: this.currentUser.uid,
-          authorEmail: this.currentUser.email,
-          tags: this.tags.length > 0 ? this.tags : undefined
-        }, this.slug.trim() || undefined);
+        this.savedContentId = await this.contentService.saveDraft(contentData, this.slug.trim() || undefined);
         await this.showToast('Draft saved successfully');
       }
     } catch (error) {
@@ -396,6 +541,28 @@ export class CreateContentPage implements OnInit {
     await loading.present();
 
     try {
+      // Upload thumbnail if a new file was selected
+      // Note: If Storage isn't enabled, this will fail gracefully
+      const thumbnailUrl = await this.uploadThumbnail();
+      
+      // If upload failed but we have a file, warn user but continue
+      if (this.thumbnailFile && !thumbnailUrl) {
+        const continueWithoutThumbnail = confirm(
+          'Thumbnail upload failed. This usually means Firebase Storage is not enabled.\n\n' +
+          'Would you like to continue publishing without a thumbnail?\n\n' +
+          'To fix this:\n' +
+          '1. Go to Firebase Console → Storage\n' +
+          '2. Click "Get Started" to enable Storage\n' +
+          '3. Run: firebase deploy --only storage\n\n' +
+          'See STORAGE_SETUP.md for detailed instructions.'
+        );
+        if (!continueWithoutThumbnail) {
+          this.isPublishing = false;
+          await loading.dismiss();
+          return;
+        }
+      }
+      
       const isUpdate = !!this.savedContentId;
       console.log('[CreateContent] Publishing content');
       console.log('[CreateContent] Operation:', isUpdate ? 'UPDATE (existing document)' : 'CREATE (new document)');
@@ -407,17 +574,20 @@ export class CreateContentPage implements OnInit {
         console.log('[CreateContent] Note: authorId will be set to current user (new document)');
       }
 
-      const contentId = await this.contentService.publish({
+      const contentData: any = {
         title: this.title.trim(),
         excerpt: this.excerpt.trim(),
         content: this.content.trim(),
         status: 'published',
-        // Note: For updates, authorId will be preserved from existing doc by service
-        // For creates, this authorId will be used
         authorId: this.currentUser.uid,
         authorEmail: this.currentUser.email,
         tags: this.tags.length > 0 ? this.tags : undefined
-      }, this.savedContentId || undefined, this.slug.trim() || undefined);
+      };
+      
+      // Add thumbnailUrl (include null to allow clearing)
+      contentData.thumbnailUrl = thumbnailUrl || null;
+
+      const contentId = await this.contentService.publish(contentData, this.savedContentId || undefined, this.slug.trim() || undefined);
 
       this.savedContentId = contentId;
       await this.showToast('Content published successfully!');

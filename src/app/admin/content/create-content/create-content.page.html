@@ -21,6 +21,55 @@
       ></ion-input>
     </ion-item>
 
+    <!-- Thumbnail Upload Section -->
+    <div class="thumbnail-upload-section">
+      <ion-label position="stacked" class="thumbnail-label">
+        <span class="label-text">Thumbnail Image (Optional)</span>
+        <span class="label-note">✨ Aesthetically important - displays as article preview</span>
+      </ion-label>
+      
+      <div class="thumbnail-container">
+        <div class="thumbnail-preview" *ngIf="thumbnailUrl">
+          <img [src]="thumbnailUrl" alt="Thumbnail preview">
+          <button type="button" class="remove-thumbnail-btn" (click)="removeThumbnail()" aria-label="Remove thumbnail">
+            <ion-icon name="close-circle"></ion-icon>
+          </button>
+        </div>
+        
+        <div class="thumbnail-upload-area" *ngIf="!thumbnailUrl">
+          <input
+            type="file"
+            accept="image/*"
+            (change)="onThumbnailSelected($event)"
+            id="thumbnail-upload"
+            class="thumbnail-input"
+          >
+          <label for="thumbnail-upload" class="thumbnail-upload-label">
+            <ion-icon name="image-outline"></ion-icon>
+            <span>Click to upload thumbnail image</span>
+            <small>Recommended: 1200x675px (16:9 ratio), max 5MB</small>
+          </label>
+        </div>
+        
+        <div class="thumbnail-upload-area" *ngIf="thumbnailUrl && thumbnailFile">
+          <input
+            type="file"
+            accept="image/*"
+            (change)="onThumbnailSelected($event)"
+            id="thumbnail-replace"
+            class="thumbnail-input"
+          >
+          <label for="thumbnail-replace" class="thumbnail-replace-label">
+            <ion-icon name="sync-outline"></ion-icon>
+            <span>Replace thumbnail</span>
+          </label>
+        </div>
+        
+        <ion-spinner *ngIf="isUploadingThumbnail" name="crescent" class="upload-spinner"></ion-spinner>
+      </div>
+      <p class="thumbnail-hint">This image appears as the article preview in lists and social media shares. Choose an engaging, high-quality image.</p>
+    </div>
+
     <ion-item>
       <ion-label position="stacked">Excerpt</ion-label>
       <ion-textarea

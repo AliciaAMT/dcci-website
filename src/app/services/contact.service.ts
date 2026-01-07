@@ -21,6 +21,7 @@ export interface NewsletterSubscriptionData {
 })
 export class ContactService {
   private readonly apiUrl = environment.firebaseFunctionsUrl + '/submitContactForm';
+  private readonly problemReportApiUrl = environment.firebaseFunctionsUrl + '/submitWebsiteProblemReport';
   private readonly newsletterApiUrl = environment.firebaseFunctionsUrl + '/subscribeToNewsletter';
 
   constructor(private http: HttpClient) {}
@@ -69,6 +70,31 @@ export class ContactService {
       // Re-throw the error with the response body if available
       if (error.error) {
         throw error; // This will include error.error with the server response
+      }
+
+      throw error;
+    }
+  }
+
+  // Submit website problem report (separate from regular contact form)
+  async submitWebsiteProblemReport(formData: ContactFormData): Promise<void> {
+    try {
+      const response = await firstValueFrom(this.http.post(this.problemReportApiUrl, formData, {
+        headers: new HttpHeaders({
+          'Content-Type': 'application/json'
+        })
+      }));
+
+      if (!response) {
+        throw new Error('No response from server');
+      }
+
+      console.log('Website problem report submitted successfully:', response);
+    } catch (error: any) {
+      console.error('Error submitting website problem report:', error);
+
+      if (error.error) {
+        throw error;
       }
 
       throw error;

@@ -1,14 +1,17 @@
 import { Injectable, NgZone, Injector, runInInjectionContext } from '@angular/core';
 import { Router } from '@angular/router';
-import { Firestore, collection, doc, getDoc, setDoc, query, where, getDocs } from '@angular/fire/firestore';
-import { Auth as FirebaseAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User, sendEmailVerification, applyActionCode, checkActionCode, confirmPasswordReset, sendPasswordResetEmail, verifyPasswordResetCode } from '@angular/fire/auth';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Firestore, collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs, serverTimestamp } from '@angular/fire/firestore';
+import { Auth as FirebaseAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User, sendEmailVerification, applyActionCode, checkActionCode, confirmPasswordReset, sendPasswordResetEmail, verifyPasswordResetCode, ActionCodeSettings } from '@angular/fire/auth';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { SanitizationService } from './sanitization';
+import { environment } from '../../environments/environment';
 
 export interface AdminUser {
   uid: string;
   email: string;
   isAdmin: boolean;
+  userRole?: 'Pending' | 'Admin' | null;
   emailVerified: boolean;
   createdAt: Date;
   lastLoginAt?: Date;
@@ -35,7 +38,8 @@ export class AuthService {
     private router: Router,
     private sanitization: SanitizationService,
     private ngZone: NgZone,
-    private injector: Injector
+    private injector: Injector,
+    private http: HttpClient
   ) {
     // Listen for auth state changes
     this.auth.onAuthStateChanged(async (user: User | null) => {
@@ -99,14 +103,20 @@ export class AuthService {
           const userCredential = await createUserWithEmailAndPassword(this.auth, sanitizedEmail, sanitizedPassword);
           const user = userCredential.user;
 
-          // Send email verification
-          await sendEmailVerification(user);
+          // Send email verification with custom action code settings
+          // Firebase's hosted handler will verify the email, then redirect to our page
+          const actionCodeSettings: ActionCodeSettings = {
+            url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}&verified=1`,
+            handleCodeInApp: false
+          };
+          await sendEmailVerification(user, actionCodeSettings);
 
           // Create user document in Firestore
           const userData: AdminUser = {
             uid: user.uid,
             email: sanitizedEmail,
             isAdmin: false, // Will be set to true manually in Firestore
+            userRole: 'Pending', // New users start as Pending
             emailVerified: false, // Will be updated when email is verified
             createdAt: new Date()
           };
@@ -181,23 +191,31 @@ export class AuthService {
           // Clear failed attempts on successful login
           await this.clearFailedAttempts(sanitizedEmail);
 
-          // Check if email is verified
+          // Reload user to get fresh state (including emailVerified status)
+          await user.reload();
+          // Force token refresh to ensure fresh claims
+          await user.getIdToken(true);
+
+          // Check if email is verified after reload
           if (!user.emailVerified) {
-            // Don't sign out - keep user logged in but redirect to verification page
-            return { success: false, message: 'EMAIL_NOT_VERIFIED', needsVerification: true };
+            // Sign out and return error
+            await this.signOut();
+            return { success: false, message: 'Please verify your email first.', needsVerification: true };
           }
+
+          // Email is verified - update Firestore
+          await runInInjectionContext(this.injector, async () => {
+            await setDoc(doc(this.firestore, 'adminUsers', user.uid), {
+              emailVerified: true,
+              emailVerifiedAt: serverTimestamp(),
+              lastLoginAt: new Date()
+            }, { merge: true });
+          });
 
           // Load user data from Firestore
           const userData = await this.loadUserData(user.uid);
 
           if (userData && userData.isAdmin) {
-            // Update last login time and email verification status
-            await runInInjectionContext(this.injector, async () => {
-            await setDoc(doc(this.firestore, 'adminUsers', user.uid), {
-              lastLoginAt: new Date(),
-              emailVerified: user.emailVerified
-            }, { merge: true });
-            });
 
             return { success: true, message: 'Login successful!' };
           } else {
@@ -282,16 +300,55 @@ export class AuthService {
   /**
    * Send email verification to current user
    */
-  async sendEmailVerification(): Promise<{ success: boolean; message: string }> {
+  async sendEmailVerification(email?: string, password?: string): Promise<{ success: boolean; message: string }> {
     try {
       return await this.ngZone.run(async () => {
         try {
-          const user = this.auth.currentUser;
+          let user = this.auth.currentUser;
+          
+          // If no user is logged in but email/password provided, sign in temporarily
+          if (!user && email && password) {
+            try {
+              const credential = await signInWithEmailAndPassword(this.auth, email, password);
+              user = credential.user;
+              
+              // Configure action code settings
+              const actionCodeSettings: ActionCodeSettings = {
+                url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}&verified=1`,
+                handleCodeInApp: false
+              };
+
+              await sendEmailVerification(user, actionCodeSettings);
+              
+              // Sign out after sending email
+              await signOut(this.auth);
+              
+              return { success: true, message: 'Verification email sent! Please check your inbox.' };
+            } catch (signInError: any) {
+              // If sign-in fails, return appropriate error
+              if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
+                return { success: false, message: 'Invalid email or password. Please check your credentials and try again.' };
+              }
+              if (signInError.code === 'auth/too-many-requests') {
+                return { success: false, message: 'Too many requests. Please wait a few minutes before requesting another verification email.' };
+              }
+              return { success: false, message: this.getErrorMessage(signInError.code) };
+            }
+          }
+          
+          // If no user and no credentials provided
           if (!user) {
-            return { success: false, message: 'No user is currently logged in.' };
+            return { success: false, message: 'Please provide your email and password to resend the verification email, or sign in first.' };
           }
 
-          await sendEmailVerification(user);
+          // Configure action code settings
+          // Firebase's hosted handler will verify the email, then redirect to our page
+          const actionCodeSettings: ActionCodeSettings = {
+            url: `https://dcciministries.com/auth/action?uid=${encodeURIComponent(user.uid)}&verified=1`,
+            handleCodeInApp: false
+          };
+
+          await sendEmailVerification(user, actionCodeSettings);
           return { success: true, message: 'Verification email sent! Please check your inbox.' };
         } catch (error: any) {
           console.error('Send verification error:', error);
@@ -312,15 +369,37 @@ export class AuthService {
 
   /**
    * Verify email with action code
+   * Applies the action code and immediately updates Firestore if uid is provided
    */
-  async verifyEmail(actionCode: string): Promise<{ success: boolean; message: string }> {
+  async verifyEmail(actionCode: string, uid?: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Verify the action code
+      // Apply the action code to verify the email in Firebase Auth
       await applyActionCode(this.auth, actionCode);
       
-      return { success: true, message: 'Email verified successfully! You can now log in.' };
+      // If uid is provided, update Firestore immediately via Cloud Function
+      // (User is not logged in, so we can't update Firestore directly due to security rules)
+      if (uid) {
+        try {
+          await firstValueFrom(
+            this.http.post<{ success: boolean; message: string }>(
+              `${environment.firebaseFunctionsUrl}/updateEmailVerified`,
+              { uid },
+              { headers: { 'Content-Type': 'application/json' } }
+            )
+          );
+          console.log('✅ Firestore updated immediately after verification for uid:', uid);
+        } catch (cloudFunctionError: any) {
+          console.error('⚠️ Failed to update Firestore immediately:', cloudFunctionError);
+          // Don't fail verification - Firestore will be updated during sign-in
+        }
+      }
+      
+      return { success: true, message: 'Email verified successfully!' };
     } catch (error: any) {
-      console.error('Email verification error:', error);
+      // If already verified, that's fine - just return success
+      if (error.code === 'auth/invalid-action-code' || error.code === 'auth/expired-action-code') {
+        return { success: true, message: 'Email verified successfully!' };
+      }
       return { success: false, message: this.getErrorMessage(error.code) };
     }
   }

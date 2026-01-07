@@ -1,0 +1,22 @@
+<ion-content [fullscreen]="true" class="action-page">
+  <div class="action-container">
+    <ion-card class="action-card">
+      <!-- Success State -->
+      <ion-card-header>
+        <ion-card-title tabindex="-1" aria-live="polite">
+          <ion-icon name="checkmark-circle" color="dark"></ion-icon>
+          Email Verified!
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="status-content" role="status">
+          <p class="success-message">{{ message }}</p>
+          <ion-button expand="block" (click)="goToSignIn()" class="continue-button">
+            Go to Sign In
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
+

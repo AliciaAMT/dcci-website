@@ -5,13 +5,15 @@ import { IonContent, IonIcon, IonButton, IonSpinner } from '@ionic/angular/stand
 import { ContentService, Content } from '../services/content.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { PageHeaderComponent } from '../components/page-header.component';
+import { FooterComponent } from '../components/footer.component';
+import { VersionService } from '../services/version.service';
 
 @Component({
   selector: 'app-article',
   templateUrl: './article.page.html',
   styleUrls: ['./article.page.scss'],
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonButton, IonSpinner, PageHeaderComponent]
+  imports: [CommonModule, IonContent, IonIcon, IonButton, IonSpinner, PageHeaderComponent, FooterComponent]
 })
 export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('articleContent', { static: false }) articleContent!: ElementRef;
@@ -22,13 +24,17 @@ export class ArticlePage implements OnInit, AfterViewInit, OnDestroy {
   videoLoadError = false;
   showVideoError = false;
   isMobile = false;
+  version: string;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private contentService: ContentService,
-    private sanitizer: DomSanitizer
-  ) {}
+    private sanitizer: DomSanitizer,
+    private versionService: VersionService
+  ) {
+    this.version = this.versionService.getVersion();
+  }
 
   async ngOnInit() {
     // Detect mobile device

@@ -7,20 +7,44 @@
         <ion-input
           [(ngModel)]="searchTerm"
           (ionInput)="onSearchChange()"
-          placeholder="Search articles..."
+          [placeholder]="activeTag ? 'Filtered by tag: ' + activeTag : 'Search articles...'"
+          [disabled]="!!activeTag"
           class="search-input">
         </ion-input>
         <ion-icon name="search-outline" class="search-icon"></ion-icon>
       </div>
       
       <div class="search-filters">
-        <select [(ngModel)]="searchType" (change)="onSearchTypeChange()" class="filter-select">
+        <select [(ngModel)]="searchType" (change)="onSearchTypeChange()" class="filter-select" [disabled]="!!activeTag">
           <option value="all">All Fields</option>
           <option value="title">Title</option>
           <option value="content">Content</option>
           <option value="tags">Tags</option>
           <option value="date">Date</option>
         </select>
+        <select [(ngModel)]="sortOption" (change)="onSortChange()" class="filter-select sort-select">
+          <option value="date-desc">Date: Newest First</option>
+          <option value="date-asc">Date: Oldest First</option>
+          <option value="title-asc">Title: A-Z</option>
+          <option value="title-desc">Title: Z-A</option>
+        </select>
+        <label class="youtube-filter-label">
+          <ion-checkbox 
+            [(ngModel)]="showYouTubeArticles" 
+            (ionChange)="onYouTubeFilterChange()"
+            class="youtube-checkbox">
+          </ion-checkbox>
+          <span class="youtube-filter-text">Show YouTube videos</span>
+        </label>
+      </div>
+      
+      <!-- Active Tag Filter -->
+      <div class="active-tag-filter" *ngIf="activeTag">
+        <span class="tag-label">Filtered by tag:</span>
+        <span class="active-tag">{{ activeTag }}</span>
+        <button class="clear-tag-btn" (click)="clearTagFilter()" aria-label="Clear tag filter">
+          <ion-icon name="close-circle-outline"></ion-icon>
+        </button>
       </div>
     </div>
 
@@ -33,13 +57,16 @@
     <!-- Articles List -->
     <div class="articles-list" *ngIf="!isLoading">
       <div class="results-count" *ngIf="filteredArticles.length > 0">
-        Showing {{ filteredArticles.length }} of {{ articles.length }} articles
+        <span *ngIf="activeTag">Showing {{ filteredArticles.length }} article{{ filteredArticles.length !== 1 ? 's' : '' }} with tag "{{ activeTag }}"</span>
+        <span *ngIf="!activeTag">Showing {{ filteredArticles.length }} of {{ articles.length }} articles</span>
       </div>
 
       <div class="empty-state" *ngIf="filteredArticles.length === 0 && !isLoading">
         <ion-icon name="newspaper-outline"></ion-icon>
-        <p *ngIf="searchTerm">No articles found matching "{{ searchTerm }}"</p>
-        <p *ngIf="!searchTerm">No articles available</p>
+        <p *ngIf="activeTag">No articles found with tag "{{ activeTag }}"</p>
+        <p *ngIf="!activeTag && searchTerm">No articles found matching "{{ searchTerm }}"</p>
+        <p *ngIf="!activeTag && !searchTerm && !showYouTubeArticles">No written articles available</p>
+        <p *ngIf="!activeTag && !searchTerm && showYouTubeArticles">No articles available</p>
       </div>
 
       <div class="article-card" *ngFor="let article of filteredArticles" (click)="navigateToArticle(article.slug!)">
@@ -59,6 +86,9 @@
         </div>
       </div>
     </div>
+    
+    <!-- Footer -->
+    <app-footer [version]="version"></app-footer>
   </div>
 </ion-content>
 

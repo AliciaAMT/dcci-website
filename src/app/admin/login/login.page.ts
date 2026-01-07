@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import {
@@ -11,7 +11,7 @@ import {
   IonSpinner,
   IonNote
 } from '@ionic/angular/standalone';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { SanitizationService } from '../../services/sanitization';
 import { Subscription } from 'rxjs';
@@ -34,19 +34,24 @@ import { Subscription } from 'rxjs';
     ReactiveFormsModule
   ]
 })
-export class LoginPage implements OnInit, OnDestroy {
+export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
+  @ViewChild('verificationCard', { read: ElementRef }) verificationCard!: ElementRef;
+  
   loginForm: FormGroup;
   isSignUpMode = false;
   isLoading = false;
   showPassword = false;
   statusMessage: { success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean } | null = null;
+  showVerifiedBanner = false;
   private userSubscription: Subscription = new Subscription();
+  private shouldScrollToVerification = false;
 
   constructor(
     private formBuilder: FormBuilder,
     private authService: AuthService,
     private sanitizationService: SanitizationService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     this.loginForm = this.formBuilder.group({
       email: ['', [Validators.required, Validators.email]],
@@ -63,6 +68,19 @@ export class LoginPage implements OnInit, OnDestroy {
       }
     });
     
+    // Check for verified query parameter
+    const verified = this.route.snapshot.queryParams['verified'];
+    if (verified === '1') {
+      this.showVerifiedBanner = true;
+      // Remove query param from URL
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { verified: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
+    }
+    
     // Check for existing lockouts when page loads
     this.checkForExistingLockout();
     
@@ -70,6 +88,19 @@ export class LoginPage implements OnInit, OnDestroy {
     this.loginForm.get('email')?.valueChanges.subscribe(() => {
       this.checkForExistingLockout();
     });
+  }
+
+  ngAfterViewChecked() {
+    // Scroll to verification card after successful signup
+    if (this.shouldScrollToVerification && this.verificationCard) {
+      setTimeout(() => {
+        this.verificationCard.nativeElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+        this.shouldScrollToVerification = false;
+      }, 100);
+    }
   }
 
   ngOnDestroy() {
@@ -128,11 +159,12 @@ export class LoginPage implements OnInit, OnDestroy {
             this.router.navigate(['/admin/dashboard']);
           }, 1000);
         } else if (result.success && this.isSignUpMode) {
-          // Successful signup - switch to login mode
-          setTimeout(() => {
-            this.toggleMode();
-            this.loginForm.get('password')?.setValue('');
-          }, 2000);
+          // Successful signup - stay on page so user can read verification instructions
+          // Clear password field for security
+          this.loginForm.get('password')?.setValue('');
+          // Set flag to scroll to verification card
+          this.shouldScrollToVerification = true;
+          // Don't switch modes or redirect - let them read the message
         }
       } catch (error) {
         console.error('Login error:', error);
@@ -153,6 +185,10 @@ export class LoginPage implements OnInit, OnDestroy {
 
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
+  }
+
+  dismissVerifiedBanner() {
+    this.showVerifiedBanner = false;
   }
 
   goToForgotPassword() {

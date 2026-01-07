@@ -7,12 +7,13 @@ import { VersionService } from '../services/version.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { ContactFormComponent } from '../components/contact-form.component';
 import { NewsletterSignupComponent } from '../components/newsletter-signup.component';
+import { FooterComponent } from '../components/footer.component';
 
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
-  imports: [IonContent, IonIcon, ContactFormComponent, NewsletterSignupComponent],
+  imports: [IonContent, IonIcon, ContactFormComponent, NewsletterSignupComponent, FooterComponent],
   standalone: true
 })
 export class HomePage {

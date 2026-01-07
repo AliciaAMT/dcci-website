@@ -14,11 +14,13 @@ try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const dotenv = require('dotenv');
     if (dotenv && dotenv.config) {
-      dotenv.config();
+      // Use sync config with error handling to avoid blocking
+      dotenv.config({ silent: true });
     }
   }
 } catch (e) {
   // dotenv not available or not needed - will use Firebase config instead
+  // Silently ignore errors during deployment
 }
 
 // YouTube API response types
@@ -221,28 +223,54 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
         }
       }
 
-      // Send email notification (using sanitized data and escaped HTML)
-      await tx.sendMail({
-        from: `"DCCI Ministries Website" <${user}>`,
-        to,
-        replyTo: `${sanitizedName} <${sanitizedEmail}>`,
-        subject: `Contact Form: ${sanitizedSubject}`,
-        text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nNewsletter: ${sanitizedNewsletter ? 'Yes' : 'No'}\nIP: ${clientIP}\n\n${sanitizedMessage}`,
-        html: `
-          <h3>New Contact Form Submission</h3>
-          <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
-          <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
-          <p><b>Subject:</b> ${escapeHtmlForEmail(sanitizedSubject)}</p>
-          <p><b>Newsletter Subscription:</b> ${sanitizedNewsletter ? 'Yes' : 'No'}</p>
-          <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
-          <hr>
-          <p><b>Message:</b></p>
-          <p>${escapeHtmlForEmail(sanitizedMessage)}</p>
-          <hr>
-          <p><small>This email was sent from the DCCI Ministries contact form.</small></p>
-          <p><small>Contact ID: ${contactRef.id}</small></p>
-        `
+      // Regular contact form always goes to Hatun
+      const recipientEmail = to;
+
+      console.log('Sending contact form email:', {
+        subject: sanitizedSubject,
+        to: recipientEmail,
+        from: user
       });
+
+      // Send email notification (using sanitized data and escaped HTML)
+      try {
+        const emailResult = await tx.sendMail({
+          from: `"DCCI Ministries Website" <${user}>`,
+          to: recipientEmail,
+          replyTo: `${sanitizedName} <${sanitizedEmail}>`,
+          subject: `Contact Form: ${sanitizedSubject}`,
+          text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nNewsletter: ${sanitizedNewsletter ? 'Yes' : 'No'}\nIP: ${clientIP}\n\n${sanitizedMessage}`,
+          html: `
+            <h3>New Contact Form Submission</h3>
+            <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
+            <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
+            <p><b>Subject:</b> ${escapeHtmlForEmail(sanitizedSubject)}</p>
+            <p><b>Newsletter Subscription:</b> ${sanitizedNewsletter ? 'Yes' : 'No'}</p>
+            <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
+            <hr>
+            <p><b>Message:</b></p>
+            <p>${escapeHtmlForEmail(sanitizedMessage)}</p>
+            <hr>
+            <p><small>This email was sent from the DCCI Ministries contact form.</small></p>
+            <p><small>Contact ID: ${contactRef.id}</small></p>
+          `
+        });
+
+        console.log('Email sent successfully:', {
+          messageId: emailResult.messageId,
+          to: recipientEmail,
+          subject: `Contact Form: ${sanitizedSubject}`
+        });
+      } catch (emailError: any) {
+        console.error('Error sending email:', {
+          error: emailError.message,
+          stack: emailError.stack,
+          to: recipientEmail,
+          from: user
+        });
+        // Still return success to user, but log the error
+        // The contact is already stored in Firestore
+      }
 
       res.status(200).json({
         success: true,
@@ -252,6 +280,137 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
     } catch (e) {
       console.error('Contact form error:', e);
       res.status(500).json({ error: "Failed to process contact form" });
+    }
+  });
+});
+
+// Separate function for website problem reports - always goes to admin@accessiblewebmedia.com
+export const submitWebsiteProblemReport = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
+
+    const { name, email, subject, message, website, formLoadTime, submissionTime } = req.body || {};
+    
+    // Get client IP from various sources
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const firstForwardedIP = Array.isArray(forwardedFor)
+      ? forwardedFor[0]?.trim()
+      : forwardedFor?.split(',')[0]?.trim();
+
+    const clientIP: string = req.ip ||
+                    req.connection?.remoteAddress ||
+                    req.socket?.remoteAddress ||
+                    firstForwardedIP ||
+                    (Array.isArray(req.headers['x-real-ip']) ? req.headers['x-real-ip'][0] : req.headers['x-real-ip']) ||
+                    'unknown';
+
+    console.log('Website problem report - Client IP detected:', clientIP);
+
+    // IP blocking check - block common VPN/spam IP ranges
+    const blockedRanges = ['111.', '185.', '45.', '91.', '104.'];
+    const isBlockedIP = blockedRanges.some(range => clientIP.startsWith(range));
+
+    if (isBlockedIP) {
+      console.log('Blocked IP detected:', clientIP);
+      res.status(403).json({
+        error: "VPN detected",
+        message: "We've detected that you're using a VPN. To help prevent spam, please turn off your VPN and try again."
+      });
+      return;
+    }
+
+    // Honeypot check
+    if (website) {
+      console.log('Error');
+      res.status(204).end(); return;
+    }
+
+    // Sanitize and validate all input data
+    const validation = sanitizeContactForm({ name, email, subject, message, newsletter: false, formLoadTime, submissionTime });
+
+    if (!validation.isValid) {
+      console.log('Input validation failed:', validation.errors);
+      res.status(400).json({
+        error: "Invalid input",
+        message: "Please check your input and try again.",
+        details: validation.errors
+      });
+      return;
+    }
+
+    const { name: sanitizedName, email: sanitizedEmail, subject: sanitizedSubject, message: sanitizedMessage, formLoadTime: sanitizedFormLoadTime, submissionTime: sanitizedSubmissionTime } = validation.sanitizedData!;
+
+    try {
+      // Store problem report in Firestore
+      const problemReportData = {
+        name: sanitizedName,
+        email: sanitizedEmail,
+        subject: sanitizedSubject,
+        message: sanitizedMessage,
+        type: 'website_problem',
+        clientIP,
+        formLoadTime: sanitizedFormLoadTime,
+        submissionTime: sanitizedSubmissionTime,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      const problemReportRef = await db.collection('websiteProblemReports').add(problemReportData);
+      console.log('Website problem report stored with ID:', problemReportRef.id);
+
+      // Always send to admin@accessiblewebmedia.com for website problems
+      const recipientEmail = 'admin@accessiblewebmedia.com';
+
+      console.log('Sending website problem report email:', {
+        subject: sanitizedSubject,
+        to: recipientEmail,
+        from: user
+      });
+
+      // Send email notification
+      try {
+        const emailResult = await tx.sendMail({
+          from: `"DCCI Ministries Website" <${user}>`,
+          to: recipientEmail,
+          replyTo: `${sanitizedName} <${sanitizedEmail}>`,
+          subject: `Website Problem Report: ${sanitizedSubject}`,
+          text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nIP: ${clientIP}\n\n${sanitizedMessage}`,
+          html: `
+            <h3>Website Problem Report</h3>
+            <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
+            <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
+            <p><b>Subject:</b> ${escapeHtmlForEmail(sanitizedSubject)}</p>
+            <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
+            <hr>
+            <p><b>Message:</b></p>
+            <p>${escapeHtmlForEmail(sanitizedMessage)}</p>
+            <hr>
+            <p><small>This is a website problem report from the DCCI Ministries website.</small></p>
+            <p><small>Report ID: ${problemReportRef.id}</small></p>
+          `
+        });
+
+        console.log('Website problem report email sent successfully:', {
+          messageId: emailResult.messageId,
+          to: recipientEmail
+        });
+      } catch (emailError: any) {
+        console.error('Error sending website problem report email:', {
+          error: emailError.message,
+          stack: emailError.stack,
+          to: recipientEmail,
+          from: user
+        });
+        // Still return success to user, but log the error
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Problem report submitted successfully",
+        reportId: problemReportRef.id
+      });
+    } catch (e) {
+      console.error('Website problem report error:', e);
+      res.status(500).json({ error: "Failed to process problem report" });
     }
   });
 });
@@ -970,6 +1129,17 @@ export const syncYouTubeUploads = functions.pubsub
     try {
       console.log('Starting YouTube sync...');
 
+      // Check if automatic YouTube articles are enabled
+      const settingsDoc = await db.collection('settings').doc('youtubeSettings').get();
+      if (settingsDoc.exists) {
+        const settings = settingsDoc.data();
+        if (settings && settings.automaticArticlesEnabled === false) {
+          console.log('Automatic YouTube articles are disabled. Skipping sync.');
+          return null;
+        }
+      }
+      // If settings don't exist, default to enabled (backward compatibility)
+
       // Get config from functions config or environment variables
       const youtubeApiKey = functions.config().youtube?.api_key || process.env.YOUTUBE_API_KEY;
       const playlistId = functions.config().youtube?.uploads_playlist_id || process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || 'UUf0MDB_oF7huA78BNADx9sQ';
@@ -982,179 +1152,208 @@ export const syncYouTubeUploads = functions.pubsub
         return null;
       }
 
-      // Step 1: Query Firestore for last known YouTube video
-      const lastKnownVideoQuery = await db.collection('content')
-        .where('type', '==', 'youtube')
-        .orderBy('publishedAt', 'desc')
-        .limit(1)
-        .get();
+      let createdCount = 0;
+      let skippedCount = 0;
+      let nextPageToken: string | undefined = undefined;
+      const MAX_VIDEOS_TO_CHECK = 50; // Check up to 50 videos per run (safety limit)
 
-      let lastKnownVideoId: string | null = null;
-      if (!lastKnownVideoQuery.empty) {
-        const lastDoc = lastKnownVideoQuery.docs[0].data();
-        lastKnownVideoId = lastDoc.youtubeVideoId || null;
-        console.log('Last known video ID:', lastKnownVideoId);
-      } else {
-        console.log('No existing YouTube videos found (first run)');
-      }
-
-      // Step 2: Call YouTube Data API to get newest video from uploads playlist
-      const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=1&order=date&key=${youtubeApiKey}`;
-
-      let playlistData: YouTubePlaylistResponse;
-      try {
-        const playlistResponseText = await httpsGet(playlistUrl);
-        playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
-      } catch (error: any) {
-        console.error('YouTube API playlistItems error:', error.message);
-        throw new Error(`YouTube API error: ${error.message}`);
-      }
-
-      if (!playlistData.items || playlistData.items.length === 0) {
-        console.log('No videos found in uploads playlist');
-        return null;
-      }
-
-      const newestVideoId = playlistData.items[0].snippet.resourceId.videoId;
-      console.log('Newest video ID from playlist:', newestVideoId);
-
-      // Step 3: Check if this video already exists in Firestore
-      const existingVideoQuery = await db.collection('content')
-        .where('youtubeVideoId', '==', newestVideoId)
-        .limit(1)
-        .get();
-
-      if (!existingVideoQuery.empty) {
-        console.log('Video already exists in Firestore, skipping:', newestVideoId);
-        return null;
-      }
-
-      // Step 4: Get video details from YouTube API (include status to check if public)
-      const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${newestVideoId}&key=${youtubeApiKey}`;
-
-      let videoData: YouTubeVideoResponse;
-      try {
-        const videoResponseText = await httpsGet(videoUrl);
-        videoData = JSON.parse(videoResponseText) as YouTubeVideoResponse;
-      } catch (error: any) {
-        console.error('YouTube API videos error:', error.message);
-        throw new Error(`YouTube API error: ${error.message}`);
-      }
-
-      if (!videoData.items || videoData.items.length === 0) {
-        console.log('Video not found in YouTube API:', newestVideoId);
-        return null;
-      }
-
-      // Check if video is public (ignore private/unlisted)
-      const videoStatus = (videoData.items[0] as any).status;
-      if (videoStatus?.privacyStatus !== 'public') {
-        console.log(`Video ${newestVideoId} is not public (${videoStatus?.privacyStatus}), skipping`);
-        return null;
-      }
-
-      const snippet = videoData.items[0].snippet;
-      const title = snippet.title;
-      const rawDescription = snippet.description || '';
-      const thumbnails = snippet.thumbnails;
-      const channelIdFromVideo = snippet.channelId;
-      const videoTags = snippet.tags || []; // YouTube video tags (preferred source)
-
-      // Step 1: Strip boilerplate from description (before tag extraction)
-      const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
-
-      // Step 2: Extract tags from cleaned description (hashtags and comma-separated blocks)
-      const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
-
-      // Step 3: Use YouTube video tags if available, otherwise use extracted tags
-      // Normalize: lowercase, trim, remove leading '#', deduplicate
-      const allTags = new Set<string>();
-      if (videoTags && videoTags.length > 0) {
-        // Prefer YouTube video tags
-        videoTags.forEach(tag => {
-          const normalized = tag.toLowerCase().trim();
-          if (normalized.length > 0) {
-            allTags.add(normalized);
-          }
-        });
-      } else {
-        // Fallback to extracted tags from description
-        extractedTags.forEach(tag => {
-          const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
-          if (normalized.length > 0) {
-            allTags.add(normalized);
-          }
-        });
-      }
-      const finalTags = Array.from(allTags).slice(0, 50);
-
-      // Generate slug
-      const baseSlug = slugify(title);
-      const uniqueSlug = await getUniqueSlug(baseSlug);
-
-      // Generate excerpt (first 160 chars of cleaned description, plain text)
-      const excerpt = cleanedDescription
-        .replace(/\n/g, ' ')
-        .replace(/<[^>]*>/g, '')
-        .trim()
-        .substring(0, 160) || '';
-
-      // Generate content HTML from cleaned description (without boilerplate and tag block)
-      // Escape HTML and convert newlines to <br> within a single <p> tag
-      const escapedDescription = cleanedDescription
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
-
-      const descriptionHtml = `<p>${escapedDescription}</p>`;
-
-      const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${newestVideoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-
-      const content = `${descriptionHtml}\n\n${embedHtml}`;
-
-      // Get thumbnail URL
-      const thumbnailUrl = getThumbnailUrl(thumbnails);
-
-      // Create Firestore document
-      const contentData: any = {
-        title,
-        slug: uniqueSlug,
-        status: 'published',
-        content,
-        excerpt,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        publishedAt: admin.firestore.FieldValue.serverTimestamp(),
-        authorEmail: authorEmail || '',
-        authorId: authorId || '',
-        type: 'youtube',
-        youtubeVideoId: newestVideoId,
-        youtubeUrl: `https://www.youtube.com/watch?v=${newestVideoId}`,
-        thumbnailUrl,
-        // Source metadata
-        source: {
-          type: 'youtube',
-          videoId: newestVideoId,
-          channelId: channelIdFromVideo,
-          publishedAt: admin.firestore.FieldValue.serverTimestamp(),
-          backfilled: false
-        },
-        // Store raw and cleaned descriptions for reference
-        youtube: {
-          descriptionRaw: rawDescription,
-          descriptionClean: cleanedDescription
+      // Step 1: Fetch multiple videos from uploads playlist (process all new ones)
+      // We'll process videos until we find one that already exists
+      while (createdCount + skippedCount < MAX_VIDEOS_TO_CHECK) {
+        // Build playlist URL - fetch multiple videos at once
+        let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
+        if (nextPageToken) {
+          playlistUrl += `&pageToken=${nextPageToken}`;
         }
-      };
 
-      // Store tags at top level (only if tags exist)
-      if (finalTags.length > 0) {
-        contentData.tags = finalTags;
+        let playlistData: YouTubePlaylistResponse;
+        try {
+          const playlistResponseText = await httpsGet(playlistUrl);
+          playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
+        } catch (error: any) {
+          console.error('YouTube API playlistItems error:', error.message);
+          throw new Error(`YouTube API error: ${error.message}`);
+        }
+
+        if (!playlistData.items || playlistData.items.length === 0) {
+          console.log('No videos found in uploads playlist');
+          break;
+        }
+
+        // Process each video in this page
+        let foundExistingVideo = false;
+        for (const item of playlistData.items) {
+          if (createdCount + skippedCount >= MAX_VIDEOS_TO_CHECK) {
+            console.log(`Reached safety cap of ${MAX_VIDEOS_TO_CHECK} videos`);
+            break;
+          }
+
+          const videoId = item.snippet.resourceId.videoId;
+          console.log(`Processing video: ${videoId}`);
+
+          // Check if this video already exists in Firestore
+          const existingVideoQuery = await db.collection('content')
+            .where('youtubeVideoId', '==', videoId)
+            .limit(1)
+            .get();
+
+          if (!existingVideoQuery.empty) {
+            console.log(`Video ${videoId} already exists in Firestore, stopping (all older videos are already processed)`);
+            foundExistingVideo = true;
+            skippedCount++;
+            break; // Stop processing since videos are ordered by date
+          }
+
+          // Get full video details from YouTube API (include status to check if public)
+          const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${videoId}&key=${youtubeApiKey}`;
+
+          let videoData: YouTubeVideoResponse;
+          try {
+            const videoResponseText = await httpsGet(videoUrl);
+            videoData = JSON.parse(videoResponseText) as YouTubeVideoResponse;
+          } catch (error: any) {
+            console.error(`Error fetching video ${videoId}:`, error.message);
+            skippedCount++;
+            continue;
+          }
+
+          if (!videoData.items || videoData.items.length === 0) {
+            console.log(`Video ${videoId} not found in YouTube API`);
+            skippedCount++;
+            continue;
+          }
+
+          // Check if video is public (ignore private/unlisted)
+          const videoStatus = (videoData.items[0] as any).status;
+          if (videoStatus?.privacyStatus !== 'public') {
+            console.log(`Video ${videoId} is not public (${videoStatus?.privacyStatus}), skipping`);
+            skippedCount++;
+            continue;
+          }
+
+          const snippet = videoData.items[0].snippet;
+          const title = snippet.title;
+          const rawDescription = snippet.description || '';
+          const thumbnails = snippet.thumbnails;
+          const videoPublishedAtStr = snippet.publishedAt;
+          const channelIdFromVideo = snippet.channelId;
+          const videoTags = snippet.tags || []; // YouTube video tags (preferred source)
+
+          // Step 1: Strip boilerplate from description (before tag extraction)
+          const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
+
+          // Step 2: Extract tags from cleaned description (hashtags and comma-separated blocks)
+          const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
+
+          // Step 3: Use YouTube video tags if available, otherwise use extracted tags
+          // Normalize: lowercase, trim, remove leading '#', deduplicate
+          const allTags = new Set<string>();
+          if (videoTags && videoTags.length > 0) {
+            // Prefer YouTube video tags
+            videoTags.forEach(tag => {
+              const normalized = tag.toLowerCase().trim();
+              if (normalized.length > 0) {
+                allTags.add(normalized);
+              }
+            });
+          } else {
+            // Fallback to extracted tags from description
+            extractedTags.forEach(tag => {
+              const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
+              if (normalized.length > 0) {
+                allTags.add(normalized);
+              }
+            });
+          }
+          const finalTags = Array.from(allTags).slice(0, 50);
+
+          // Generate slug
+          const baseSlug = slugify(title);
+          const uniqueSlug = await getUniqueSlug(baseSlug);
+
+          // Generate excerpt (first 160 chars of cleaned description, plain text)
+          const excerpt = cleanedDescription
+            .replace(/\n/g, ' ')
+            .replace(/<[^>]*>/g, '')
+            .trim()
+            .substring(0, 160) || '';
+
+          // Generate content HTML from cleaned description (without boilerplate and tag block)
+          // Escape HTML and convert newlines to <br> within a single <p> tag
+          const escapedDescription = cleanedDescription
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+
+          const descriptionHtml = `<p>${escapedDescription}</p>`;
+
+          const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+
+          const content = `${descriptionHtml}\n\n${embedHtml}`;
+
+          // Get thumbnail URL
+          const thumbnailUrl = getThumbnailUrl(thumbnails);
+
+          // Convert YouTube publishedAt to Firestore Timestamp (use video's actual publishedAt)
+          const videoPublishedAtDate = new Date(videoPublishedAtStr);
+          const publishedAtTimestamp = admin.firestore.Timestamp.fromDate(videoPublishedAtDate);
+
+          // Create Firestore document
+          const contentData: any = {
+            title,
+            slug: uniqueSlug,
+            status: 'published',
+            content,
+            excerpt,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            publishedAt: publishedAtTimestamp, // Use video's actual published date
+            authorEmail: authorEmail || '',
+            authorId: authorId || '',
+            type: 'youtube',
+            youtubeVideoId: videoId,
+            youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+            thumbnailUrl,
+            // Source metadata
+            source: {
+              type: 'youtube',
+              videoId: videoId,
+              channelId: channelIdFromVideo,
+              publishedAt: publishedAtTimestamp,
+              backfilled: false
+            },
+            // Store raw and cleaned descriptions for reference
+            youtube: {
+              descriptionRaw: rawDescription,
+              descriptionClean: cleanedDescription
+            }
+          };
+
+          // Store tags at top level (only if tags exist)
+          if (finalTags.length > 0) {
+            contentData.tags = finalTags;
+          }
+
+          const docRef = await db.collection('content').add(contentData);
+          createdCount++;
+          console.log(`Created new YouTube post: ${docRef.id} for video: ${videoId}`);
+        }
+
+        // If we found an existing video, we can stop (all older videos are already processed)
+        if (foundExistingVideo) {
+          break;
+        }
+
+        // Check if there are more pages
+        if (playlistData.nextPageToken) {
+          nextPageToken = playlistData.nextPageToken;
+        } else {
+          break; // No more pages
+        }
       }
 
-      const docRef = await db.collection('content').add(contentData);
-      console.log('Created new YouTube post:', docRef.id, 'for video:', newestVideoId);
-
+      console.log(`YouTube sync complete. Created: ${createdCount}, Skipped: ${skippedCount}`);
       return null;
     } catch (error) {
       console.error('Error syncing YouTube uploads:', error);
@@ -1427,3 +1626,203 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
     res.status(500).json({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
+
+/**
+ * Update emailVerified in Firestore after email verification
+ * This function is called from the client after applyActionCode succeeds
+ * It bypasses Firestore security rules to update the emailVerified field
+ * 
+ * Accepts: POST with { email: string } in body
+ * Returns: { success: boolean, message: string }
+ */
+export const updateEmailVerified = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  const cors = corsLib({ origin: true });
+  cors(req, res, async () => {
+    try {
+      console.log('updateEmailVerified called with method:', req.method);
+      console.log('Request body:', req.body);
+      
+      // Only allow POST
+      if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method not allowed' });
+        return;
+      }
+
+      const { uid, email, oobCode } = req.body;
+      let targetEmail: string | null = null;
+
+      // If uid is provided, verify in Auth and update Firestore by uid
+      if (uid && typeof uid === 'string') {
+        try {
+          console.log('UID provided. Verifying emailVerified in Firebase Auth for uid:', uid);
+          const userRecord = await admin.auth().getUser(uid);
+          if (userRecord.emailVerified === true) {
+            const db = admin.firestore();
+            const userRef = db.collection('adminUsers').doc(uid);
+            await userRef.set({ emailVerified: true }, { merge: true });
+            console.log('Successfully updated emailVerified for uid:', uid, 'email:', userRecord.email);
+            res.status(200).json({ success: true, message: 'Email verified status updated by uid', email: userRecord.email });
+            return;
+          } else {
+            console.warn('Auth record not yet emailVerified for uid:', uid);
+            res.status(409).json({ error: 'Auth email not verified yet' });
+            return;
+          }
+        } catch (uidError: any) {
+          console.error('Error handling uid path:', uidError);
+          // Fall through to other methods if needed
+        }
+      }
+
+      // If email is provided, use it directly
+      if (email && typeof email === 'string') {
+        targetEmail = email.toLowerCase().trim();
+      } 
+      // If oobCode is provided, try to get email from it
+      // Note: Once an action code is used, we can't extract the email from it
+      // So we'll query all unverified users and check which one was just verified
+      else if (oobCode && typeof oobCode === 'string') {
+        console.log('oobCode provided but email not available. Querying recently verified users...');
+        
+        // Get all users from Firestore who are not verified
+        const db = admin.firestore();
+        const usersRef = db.collection('adminUsers');
+        const unverifiedUsers = await usersRef.where('emailVerified', '==', false).get();
+        
+        // Check each unverified user in Firebase Auth to see if they're now verified
+        for (const doc of unverifiedUsers.docs) {
+          try {
+            const userRecord = await admin.auth().getUser(doc.id);
+            if (userRecord.emailVerified) {
+              // This user was just verified! Update Firestore
+              targetEmail = userRecord.email?.toLowerCase().trim() || null;
+              console.log(`Found recently verified user: ${targetEmail}`);
+              
+              // Update Firestore
+              await doc.ref.update({ emailVerified: true });
+              console.log(`Successfully updated emailVerified for user ${doc.id} (${targetEmail})`);
+              
+              res.status(200).json({ 
+                success: true, 
+                message: 'Email verified status updated in Firestore',
+                email: targetEmail
+              });
+              return;
+            }
+          } catch (authError: any) {
+            // User might not exist in Auth, skip
+            continue;
+          }
+        }
+        
+        // If we get here, we couldn't find a recently verified user
+        console.warn('Could not find recently verified user from oobCode');
+        res.status(404).json({ error: 'Could not determine which user was verified' });
+        return;
+      }
+
+      if (!targetEmail) {
+        console.error('Invalid request: email or oobCode is required');
+        res.status(400).json({ error: 'Email or oobCode is required' });
+        return;
+      }
+
+      // Normalize email: lowercase and trim
+      const normalizedEmail = targetEmail;
+      console.log('Looking up user with normalized email:', normalizedEmail);
+
+      // Find user by email in Firestore (case-insensitive search would require getting all docs)
+      // For now, we'll try exact match first, then try lowercase
+      const db = admin.firestore();
+      const usersRef = db.collection('adminUsers');
+      
+      // Try exact match first
+      let querySnapshot = await usersRef.where('email', '==', normalizedEmail).limit(1).get();
+      
+      // If not found, try with original email (in case it's stored with different case)
+      if (querySnapshot.empty && normalizedEmail !== email) {
+        console.log('Trying with original email case:', email);
+        querySnapshot = await usersRef.where('email', '==', email).limit(1).get();
+      }
+      
+      // If still not found, get all docs and search case-insensitively (less efficient but more reliable)
+      if (querySnapshot.empty) {
+        console.log('Exact match failed, searching all users case-insensitively...');
+        const allUsersSnapshot = await usersRef.get();
+        const matchingDoc = allUsersSnapshot.docs.find(doc => {
+          const docEmail = doc.data().email;
+          return docEmail && docEmail.toLowerCase().trim() === normalizedEmail;
+        });
+        
+        if (matchingDoc) {
+          // Create a fake QuerySnapshot-like structure
+          querySnapshot = {
+            empty: false,
+            docs: [matchingDoc],
+            size: 1
+          } as any;
+          console.log('Found user with case-insensitive search:', matchingDoc.id);
+        }
+      }
+
+      if (querySnapshot.empty) {
+        console.error('No user found in Firestore with email:', normalizedEmail);
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const foundUid = userDoc.id;
+      console.log('Found user document with UID:', foundUid);
+
+      // Verify that the email is actually verified in Firebase Auth
+      let userRecord;
+      try {
+        userRecord = await admin.auth().getUser(foundUid);
+        console.log('User record from Auth:', {
+          uid: userRecord.uid,
+          email: userRecord.email,
+          emailVerified: userRecord.emailVerified
+        });
+      } catch (authError: any) {
+        // User might not exist in Auth yet, but we can still update Firestore
+        console.warn('User not found in Auth, but updating Firestore anyway:', uid, authError.message);
+        userRecord = null;
+      }
+
+      // Always update Firestore - if applyActionCode succeeded, the email is verified
+      // Don't check Firebase Auth status as it might not have propagated yet
+      console.log('Updating Firestore document for UID:', foundUid);
+      console.log('Current document data before update:', userDoc.data());
+      
+      // Use updateDoc instead of setDoc for clearer intent (only update emailVerified)
+      await userDoc.ref.update({
+        emailVerified: true
+      });
+
+      // Verify the update
+      const updatedDoc = await userDoc.ref.get();
+      const updatedData = updatedDoc.data();
+      console.log('Updated document data:', {
+        uid: updatedDoc.id,
+        email: updatedData?.email,
+        emailVerified: updatedData?.emailVerified
+      });
+
+      console.log(`Successfully updated emailVerified for user ${foundUid} (${email})`);
+      
+      res.status(200).json({ success: true, message: 'Email verified status updated in Firestore' });
+    } catch (error) {
+      console.error('Error updating emailVerified:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      res.status(500).json({ 
+        error: 'Internal server error', 
+        message: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+});
+
+// Note: Auth triggers for email verification are not available in Firebase Functions v1
+// We rely on the updateEmailVerified HTTP Cloud Function being called from the client

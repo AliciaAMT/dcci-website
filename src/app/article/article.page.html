@@ -29,9 +29,12 @@
 
       <!-- Tags -->
       <div class="article-tags" *ngIf="content.tags && content.tags.length > 0">
-        <span class="tag" *ngFor="let tag of content.tags">{{ tag }}</span>
+        <span class="tag" *ngFor="let tag of content.tags" (click)="onTagClick(tag)">{{ tag }}</span>
       </div>
     </article>
+    
+    <!-- Footer -->
+    <app-footer [version]="version"></app-footer>
   </div>
 </ion-content>
 
