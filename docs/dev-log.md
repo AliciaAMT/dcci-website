@@ -1,5 +1,60 @@
 # Dev Log
 
+## 2025-01-XX (Recent Updates)
+
+### Admin Content Creation - Thumbnail Upload Security
+- **Enhanced Image Upload Validation**:
+  - Implemented strict file type validation allowing only safe static image formats:
+    - Allowed: JPEG, PNG, WebP, BMP, TIFF, AVIF, HEIC, HEIF
+    - Explicitly blocked: GIF, SVG, AVI, video files, audio files, and other non-image formats
+  - Added comprehensive security checks:
+    - MIME type validation (both client and server-side)
+    - File extension validation (additional security layer)
+    - Double extension detection (prevents `image.jpg.exe` attacks)
+    - File size limit: 5MB maximum
+    - Image dimension validation: maximum 4000x4000 pixels
+  - Updated Firebase Storage rules to enforce strict image type validation server-side
+  - Added WebP conversion suggestion with link to [ToWebP.io](https://towebp.io/) for better compression
+- **Files Modified**:
+  - `src/app/admin/content/create-content/create-content.page.ts` - Added `validateThumbnailFile()` and `validateImageDimensions()` functions
+  - `src/app/admin/content/create-content/create-content.page.html` - Updated accept attribute and added WebP suggestion
+  - `storage.rules` - Enhanced validation for thumbnails and content images
+
+### Admin Routing - Hard Refresh Fix
+- **Fixed Hard Refresh Redirect Issue**:
+  - Resolved regression where hard refresh on `/admin/*` routes redirected to homepage
+  - Updated admin guards to wait for Firebase Auth initialization before making routing decisions
+  - Changed guards to return `UrlTree` instead of using imperative `router.navigate()` calls
+  - Implemented proper async auth state checking using `onAuthStateChanged` wrapped in RxJS `defer`
+  - Added timeout handling for AuthService user data loading (3-second fallback)
+- **Files Modified**:
+  - `src/app/guards/admin-guard.ts` - Complete refactor to use UrlTree returns and wait for auth
+  - `src/app/guards/admin-only-guard.ts` - Complete refactor to use UrlTree returns and wait for auth
+- **Behavior Preserved**:
+  - Admin users can now hard refresh `/admin/dashboard` and stay on the page
+  - Non-admin users still redirect to appropriate pages (`/home` or `/admin/dashboard`)
+  - Nuclear lockdown redirects still work correctly
+  - All existing redirect destinations maintained
+
+### YouTube Sync - Removed Video Detection
+- **Enhanced YouTube Sync Function**:
+  - Added functionality to detect and remove articles for deleted YouTube videos
+  - Collects all video IDs from uploads playlist (up to 500 videos)
+  - Checks all existing YouTube articles in Firestore
+  - Verifies video existence via YouTube API before deletion
+  - Automatically deletes articles when:
+    - Video is not in the uploads playlist, OR
+    - Video doesn't exist in YouTube API, OR
+    - Video is private/unlisted
+  - Handles livestreams that get removed and replaced with new videos
+- **Files Modified**:
+  - `functions/src/index.ts` - Enhanced `syncYouTubeUploads` function with removal detection
+- **Logging**:
+  - Added `deletedCount` tracking
+  - Enhanced console logging for removal operations
+
+---
+
 ## 2025-11-29
 
 ### Admin Dashboard Enhancements
