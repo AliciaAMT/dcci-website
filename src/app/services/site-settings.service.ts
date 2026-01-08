@@ -8,6 +8,7 @@ export interface EmergencySiteSettings {
   disableRegistrations: boolean;
   disableComments: boolean;
   disableContactForms: boolean;
+  disableProblemReports: boolean;
   readOnlyMode: boolean;
   nuclearLockdown: boolean; // Nuclear option: blocks ALL access including admins. Only reversible via Firestore.
   updatedAt?: any;
@@ -26,6 +27,7 @@ export class SiteSettingsService {
     disableRegistrations: false,
     disableComments: false,
     disableContactForms: false,
+    disableProblemReports: false,
     readOnlyMode: false,
     nuclearLockdown: false
   };
@@ -38,6 +40,7 @@ export class SiteSettingsService {
   public disableRegistrations$: Observable<boolean>;
   public disableComments$: Observable<boolean>;
   public disableContactForms$: Observable<boolean>;
+  public disableProblemReports$: Observable<boolean>;
   public readOnlyMode$: Observable<boolean>;
   public nuclearLockdown$: Observable<boolean>;
 
@@ -63,6 +66,10 @@ export class SiteSettingsService {
     
     this.disableContactForms$ = new Observable(subscriber => {
       this.settings$.subscribe(settings => subscriber.next(settings.disableContactForms));
+    });
+    
+    this.disableProblemReports$ = new Observable(subscriber => {
+      this.settings$.subscribe(settings => subscriber.next(settings.disableProblemReports));
     });
     
     this.readOnlyMode$ = new Observable(subscriber => {
@@ -99,6 +106,7 @@ export class SiteSettingsService {
               disableRegistrations: data.disableRegistrations === true,
               disableComments: data.disableComments === true,
               disableContactForms: data.disableContactForms === true,
+              disableProblemReports: data.disableProblemReports === true,
               readOnlyMode: data.readOnlyMode === true,
               nuclearLockdown: data.nuclearLockdown === true,
               updatedAt: data.updatedAt,

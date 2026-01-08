@@ -22,14 +22,14 @@
       <p>{{ submitError }}</p>
     </div>
 
-    <!-- Contact Form Disabled Message -->
-    <div *ngIf="contactFormsDisabled" class="disabled-message">
+    <!-- Problem Reports Disabled Message -->
+    <div *ngIf="problemReportsDisabled" class="disabled-message">
       <ion-icon name="alert-circle-outline" class="disabled-icon"></ion-icon>
-      <p>Contact form temporarily unavailable.</p>
+      <p>Website problem reports are temporarily unavailable.</p>
     </div>
 
     <!-- Problem Report Form -->
-    <form [formGroup]="problemReportForm" (ngSubmit)="onSubmit()" *ngIf="!submitSuccess && !contactFormsDisabled" class="contact-form">
+    <form [formGroup]="problemReportForm" (ngSubmit)="onSubmit()" *ngIf="!submitSuccess && !problemReportsDisabled" class="contact-form">
       <div class="form-field-group">
         <label for="name" class="form-label">Name *</label>
         <ion-input

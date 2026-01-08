@@ -289,6 +289,19 @@ export const submitWebsiteProblemReport = functions.https.onRequest((req, res) =
   return cors(req, res, async () => {
     if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
 
+    // Check if problem reports are disabled
+    const settingsDoc = await db.collection('siteSettings').doc('emergency').get();
+    if (settingsDoc.exists) {
+      const settings = settingsDoc.data();
+      if (settings?.disableProblemReports === true) {
+        res.status(503).json({
+          error: "Service unavailable",
+          message: "Website problem reports are temporarily disabled."
+        });
+        return;
+      }
+    }
+
     const { name, email, subject, message, website, formLoadTime, submissionTime } = req.body || {};
     
     // Get client IP from various sources

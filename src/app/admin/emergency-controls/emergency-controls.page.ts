@@ -57,6 +57,7 @@ export class EmergencyControlsPage implements OnInit, OnDestroy {
     disableRegistrations: false,
     disableComments: false,
     disableContactForms: false,
+    disableProblemReports: false,
     readOnlyMode: false,
     nuclearLockdown: false
   };
@@ -231,6 +232,7 @@ If you're seeing this, nuclear lockdown may have been disabled in Firestore. Do 
         disableRegistrations: this.settings.disableRegistrations,
         disableComments: this.settings.disableComments,
         disableContactForms: this.settings.disableContactForms,
+        disableProblemReports: this.settings.disableProblemReports,
         readOnlyMode: this.settings.readOnlyMode,
         nuclearLockdown: this.settings.nuclearLockdown
       });

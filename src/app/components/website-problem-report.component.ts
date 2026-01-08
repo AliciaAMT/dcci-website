@@ -22,6 +22,7 @@ export class WebsiteProblemReportComponent implements OnInit, OnDestroy {
   submitError = '';
   formLoadTime: number = 0;
   contactFormsDisabled = false;
+  problemReportsDisabled = false;
   private settingsSubscription: Subscription = new Subscription();
 
   constructor(
@@ -52,13 +53,13 @@ export class WebsiteProblemReportComponent implements OnInit, OnDestroy {
       this.problemReportForm.patchValue({ subject: subjectToUse });
     }
 
-    // Subscribe to settings to check for nuclear lockdown and disabled contact forms
+    // Subscribe to settings to check for nuclear lockdown and disabled problem reports
     this.settingsSubscription = this.siteSettingsService.settings$.subscribe(settings => {
       // Nuclear lockdown blocks everything
-      const shouldDisable = settings.nuclearLockdown || settings.disableContactForms;
-      this.contactFormsDisabled = shouldDisable;
+      const shouldDisable = settings.nuclearLockdown || settings.disableProblemReports;
+      this.problemReportsDisabled = shouldDisable;
       if (shouldDisable) {
-        // Disable form when nuclear lockdown is active or contact forms are disabled
+        // Disable form when nuclear lockdown is active or problem reports are disabled
         this.problemReportForm.disable();
       } else {
         this.problemReportForm.enable();
@@ -80,9 +81,9 @@ export class WebsiteProblemReportComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Check if contact forms are disabled
-    if (settings.disableContactForms) {
-      this.submitError = 'Contact form temporarily unavailable.';
+    // Check if problem reports are disabled
+    if (settings.disableProblemReports) {
+      this.submitError = 'Website problem reports are temporarily unavailable.';
       return;
     }
 
