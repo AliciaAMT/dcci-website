@@ -66,10 +66,50 @@ The function reads configuration in this order:
 2. Environment variables (`process.env.YOUTUBE_*`)
 3. Default values (for playlist ID only)
 
+## How It Works
+
+### Automatic Sync Process
+
+The `syncYouTubeUploads` function runs every hour and performs the following:
+
+1. **Checks for New Videos**:
+   - Fetches videos from the uploads playlist (up to 50 per run)
+   - Creates new articles for videos that don't exist in Firestore
+   - Stops when it finds a video that already exists (videos are processed in date order)
+
+2. **Detects Removed Videos** (NEW):
+   - Collects all video IDs from the uploads playlist (up to 500 videos)
+   - Checks all existing YouTube articles in Firestore
+   - Verifies video existence via YouTube API
+   - Automatically deletes articles when:
+     - Video is not in the uploads playlist, OR
+     - Video doesn't exist in YouTube API, OR
+     - Video is private/unlisted
+   - **Use Case**: Handles livestreams that get removed and replaced with new videos
+
+3. **Logging**:
+   - Logs created, skipped, and deleted counts
+   - Provides detailed console output for debugging
+
+### Removed Video Detection
+
+The function now automatically cleans up articles for videos that have been removed. This is particularly useful for:
+- **Livestreams**: When a livestream is removed and replaced with a new video, the old article is automatically deleted
+- **Deleted Videos**: If a video is deleted from YouTube, its article is removed from the site
+- **Private Videos**: If a video is made private/unlisted, its article is removed
+
+The removal check happens before new video processing to ensure the playlist state is current.
+
 ## Verify Configuration
 
 After setting up, you can verify the function is working by checking the logs:
 ```bash
 firebase functions:log --only syncYouTubeUploads
 ```
+
+Look for log messages like:
+- `Collected X video IDs from playlist for removal check`
+- `Found X existing YouTube articles to check`
+- `Deleted article X for removed video Y`
+- `YouTube sync complete. Created: X, Skipped: Y, Deleted: Z`
 
