@@ -45,22 +45,22 @@ export class VerificationRequiredPage implements OnInit, OnDestroy {
     this.userEmail = this.route.snapshot.queryParams['email'] || '';
     
     // Check if user is logged in
-    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+      this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.isLoggedIn = !!user;
       
-      if (user) {
+        if (user) {
         // If user is logged in, use their email
         if (!this.userEmail) {
           this.userEmail = user.email || '';
-        }
-        
-        // Check if user is already verified and admin
+    }
+
+    // Check if user is already verified and admin
         if (user.emailVerified && user.isAdmin) {
-          // User is verified and admin, redirect to dashboard
-          this.router.navigate(['/admin/dashboard']);
+        // User is verified and admin, redirect to dashboard
+        this.router.navigate(['/admin/dashboard']);
         } else if (user.emailVerified && !user.isAdmin) {
-          // User is verified but not admin, redirect to home
-          this.router.navigate(['/home']);
+        // User is verified but not admin, redirect to home
+        this.router.navigate(['/home']);
         }
       } else {
         // No user logged in - if we have email from query params, that's fine

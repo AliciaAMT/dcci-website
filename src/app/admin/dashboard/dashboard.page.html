@@ -107,7 +107,7 @@
               <ion-icon name="people-outline" slot="start"></ion-icon>
               User Management
             </ion-button>
-            <ion-button expand="block" fill="outline" class="action-btn" *ngIf="isFullAdmin()">
+            <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToEmergencyControls()" *ngIf="isFullAdmin()">
               <ion-icon name="settings-outline" slot="start"></ion-icon>
               Site Management
             </ion-button>

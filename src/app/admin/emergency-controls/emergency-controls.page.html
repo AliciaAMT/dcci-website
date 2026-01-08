@@ -1,0 +1,158 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/admin/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Site Management</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="emergency-controls-container">
+    <div class="header-section">
+      <h2>Site Management</h2>
+      <h3 class="subheading">Emergency Controls</h3>
+      <p class="subtitle">Emergency controls for site-wide lockdown and feature gating</p>
+    </div>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="shield-outline"></ion-icon>
+          Site Controls
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <!-- Maintenance Mode -->
+        <ion-item>
+          <ion-icon name="construct-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>Maintenance Mode</h3>
+            <p>Lock out all non-admin users with maintenance page</p>
+          </ion-label>
+          <ion-toggle
+            [(ngModel)]="settings.maintenanceMode"
+            (ionChange)="onToggleChange('maintenanceMode', $event)"
+            [disabled]="isSaving"
+            slot="end">
+          </ion-toggle>
+        </ion-item>
+
+        <!-- Disable Registrations -->
+        <ion-item>
+          <ion-icon name="person-add-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>Disable New Registrations</h3>
+            <p>Block new user account creation</p>
+          </ion-label>
+          <ion-toggle
+            [(ngModel)]="settings.disableRegistrations"
+            (ionChange)="onToggleChange('disableRegistrations', $event)"
+            [disabled]="isSaving"
+            slot="end">
+          </ion-toggle>
+        </ion-item>
+
+        <!-- Disable Comments -->
+        <ion-item>
+          <ion-icon name="chatbubbles-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>Disable Comments Globally</h3>
+            <p>Hide or disable comment inputs across the site</p>
+          </ion-label>
+          <ion-toggle
+            [(ngModel)]="settings.disableComments"
+            (ionChange)="onToggleChange('disableComments', $event)"
+            [disabled]="isSaving"
+            slot="end">
+          </ion-toggle>
+        </ion-item>
+
+        <!-- Disable Contact Forms -->
+        <ion-item>
+          <ion-icon name="mail-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>Disable Contact Form Submissions</h3>
+            <p>Block all contact form submissions</p>
+          </ion-label>
+          <ion-toggle
+            [(ngModel)]="settings.disableContactForms"
+            (ionChange)="onToggleChange('disableContactForms', $event)"
+            [disabled]="isSaving"
+            slot="end">
+          </ion-toggle>
+        </ion-item>
+
+        <!-- Read-Only Mode -->
+        <ion-item>
+          <ion-icon name="lock-closed-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>Read-Only Mode</h3>
+            <p>Block all writes by non-admin users (Firestore enforced)</p>
+          </ion-label>
+          <ion-toggle
+            [(ngModel)]="settings.readOnlyMode"
+            (ionChange)="onToggleChange('readOnlyMode', $event)"
+            [disabled]="isSaving"
+            slot="end">
+          </ion-toggle>
+        </ion-item>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Nuclear Lockdown Card -->
+    <ion-card class="nuclear-card">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="warning"></ion-icon>
+          Nuclear Lockdown
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="nuclear-warning">
+          <ion-icon name="warning" color="danger"></ion-icon>
+          <h3>⚠️ LAST RESORT ONLY ⚠️</h3>
+          <p class="warning-text">
+            <strong>This will IMMEDIATELY block ALL access to the site, including admins.</strong>
+          </p>
+          <p class="warning-text">
+            The ONLY way to turn this off is by manually editing Firestore and setting <code>nuclearLockdown</code> to <code>false</code>.
+          </p>
+          <p class="warning-text">
+            This requires developer access to Firebase Console. <strong>You will not be able to disable this from the admin panel.</strong>
+          </p>
+          <p class="warning-text">
+            <strong>ONLY use this if:</strong>
+          </p>
+          <ul class="warning-list">
+            <li>Site is under active attack</li>
+            <li>Severe security breach detected</li>
+            <li>You have confirmed with developer they can access Firestore</li>
+          </ul>
+        </div>
+
+        <ion-item class="nuclear-toggle-item">
+          <ion-icon name="warning" slot="start"></ion-icon>
+          <ion-label>
+            <h3>Enable Nuclear Lockdown</h3>
+            <p>Blocks ALL access including admins - Developer must disable via Firestore</p>
+          </ion-label>
+          <ion-toggle
+            [(ngModel)]="settings.nuclearLockdown"
+            (ionChange)="onToggleChange('nuclearLockdown', $event)"
+            [disabled]="isSaving"
+            slot="end"
+            color="danger">
+          </ion-toggle>
+        </ion-item>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Loading Spinner -->
+    <div *ngIf="isSaving" class="loading-container">
+      <ion-spinner></ion-spinner>
+      <p>Saving settings...</p>
+    </div>
+  </div>
+</ion-content>
+

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { IonInput, IonButton, IonIcon } from '@ionic/angular/standalone';
 import { ContactService } from 'src/app/services/contact.service';
+import { SiteSettingsService } from '../services/site-settings.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-newsletter-signup',
@@ -19,7 +21,8 @@ export class NewsletterSignupComponent implements OnInit {
 
   constructor(
     private formBuilder: FormBuilder,
-    private contactService: ContactService
+    private contactService: ContactService,
+    private siteSettingsService: SiteSettingsService
   ) {
     this.newsletterForm = this.formBuilder.group({
       name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
@@ -30,6 +33,13 @@ export class NewsletterSignupComponent implements OnInit {
   ngOnInit() {}
 
   async onSubmit() {
+    // Check nuclear lockdown FIRST - blocks everything
+    const settings = await firstValueFrom(this.siteSettingsService.settings$);
+    if (settings.nuclearLockdown) {
+      this.submitError = 'Site is currently in maintenance mode. Please try again later.';
+      return;
+    }
+
     if (this.newsletterForm.valid) {
       this.isSubmitting = true;
       this.submitError = '';

@@ -187,6 +187,14 @@ export class DashboardPage implements OnInit, OnDestroy {
     this.router.navigate(['/admin/user-management']);
   }
 
+  navigateToEmergencyControls() {
+    // Blur any active element to prevent aria-hidden warnings during navigation
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    this.router.navigate(['/admin/emergency-controls']);
+  }
+
   /**
    * Check if current user is a full Admin (not Moderator)
    */

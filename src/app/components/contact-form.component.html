@@ -23,8 +23,14 @@
       <p>{{ submitError }}</p>
     </div>
 
+    <!-- Contact Form Disabled Message -->
+    <div *ngIf="contactFormsDisabled" class="disabled-message">
+      <ion-icon name="alert-circle-outline" class="disabled-icon"></ion-icon>
+      <p>Contact form temporarily unavailable.</p>
+    </div>
+
     <!-- Contact Form -->
-    <form [formGroup]="contactForm" (ngSubmit)="onSubmit()" *ngIf="!submitSuccess" class="contact-form">
+    <form [formGroup]="contactForm" (ngSubmit)="onSubmit()" *ngIf="!submitSuccess && !contactFormsDisabled" class="contact-form">
       <div class="form-field-group">
         <label for="name" class="form-label">Name *</label>
         <ion-input
