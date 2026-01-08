@@ -281,20 +281,159 @@ export class CreateContentPage implements OnInit {
       });
   }
 
-  onThumbnailSelected(event: Event) {
+  /**
+   * Validates thumbnail image file for security
+   * Only allows safe static image formats (JPEG, PNG, WebP, etc.)
+   * Explicitly excludes GIF, AVI, SVG, and other potentially dangerous formats
+   */
+  private validateThumbnailFile(file: File): { valid: boolean; error?: string } {
+    // Maximum file size: 5MB
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    
+    // Allowed MIME types - only safe static image formats
+    const ALLOWED_MIME_TYPES = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/bmp',
+      'image/tiff',
+      'image/tif',
+      'image/avif',
+      'image/heic',
+      'image/heif'
+    ];
+    
+    // Allowed file extensions (case-insensitive)
+    const ALLOWED_EXTENSIONS = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.webp',
+      '.bmp',
+      '.tiff',
+      '.tif',
+      '.avif',
+      '.heic',
+      '.heif'
+    ];
+    
+    // Explicitly blocked MIME types
+    const BLOCKED_MIME_TYPES = [
+      'image/gif',
+      'image/svg+xml',
+      'image/svg',
+      'video/',
+      'audio/',
+      'application/',
+      'text/',
+      'model/'
+    ];
+    
+    // Check file size
+    if (file.size === 0) {
+      return { valid: false, error: 'File is empty' };
+    }
+    
+    if (file.size > MAX_FILE_SIZE) {
+      return { valid: false, error: `Image size must be less than 5MB. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB` };
+    }
+    
+    // Check if file type is explicitly blocked
+    const lowerMimeType = file.type.toLowerCase();
+    for (const blockedType of BLOCKED_MIME_TYPES) {
+      if (lowerMimeType.startsWith(blockedType)) {
+        return { valid: false, error: `File type not allowed. GIF, SVG, video, and other non-image files are not permitted.` };
+      }
+    }
+    
+    // Validate MIME type
+    if (!ALLOWED_MIME_TYPES.includes(lowerMimeType)) {
+      return { valid: false, error: `Invalid file type. Only JPEG, PNG, WebP, BMP, TIFF, AVIF, and HEIC images are allowed.` };
+    }
+    
+    // Validate file extension (additional security layer)
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = ALLOWED_EXTENSIONS.some(ext => fileName.endsWith(ext));
+    
+    if (!hasValidExtension) {
+      return { valid: false, error: `Invalid file extension. Only .jpg, .jpeg, .png, .webp, .bmp, .tiff, .avif, and .heic files are allowed.` };
+    }
+    
+    // Additional security: Check for double extensions (e.g., image.jpg.exe)
+    const parts = fileName.split('.');
+    if (parts.length > 2) {
+      const lastExt = '.' + parts[parts.length - 1];
+      const secondLastExt = '.' + parts[parts.length - 2];
+      // If the last extension is not in allowed list, or if there's a suspicious pattern
+      if (!ALLOWED_EXTENSIONS.includes(lastExt) || 
+          (secondLastExt && !ALLOWED_EXTENSIONS.includes(secondLastExt) && secondLastExt !== '.tar')) {
+        return { valid: false, error: 'Suspicious file name detected. Please use a standard image file.' };
+      }
+    }
+    
+    return { valid: true };
+  }
+
+  /**
+   * Validates image dimensions
+   * Returns a promise that resolves to validation result
+   */
+  private validateImageDimensions(file: File, maxDimension: number): Promise<{ valid: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+      
+      reader.onload = (e: any) => {
+        img.onload = () => {
+          if (img.width > maxDimension || img.height > maxDimension) {
+            resolve({ 
+              valid: false, 
+              error: `Image dimensions must not exceed ${maxDimension}x${maxDimension} pixels. Current size: ${img.width}x${img.height}px` 
+            });
+          } else {
+            resolve({ valid: true });
+          }
+        };
+        
+        img.onerror = () => {
+          // If we can't load the image, it might be corrupted, but we'll allow it
+          // since MIME type and extension validation already passed
+          resolve({ valid: true });
+        };
+        
+        img.src = e.target.result;
+      };
+      
+      reader.onerror = () => {
+        resolve({ valid: true }); // Allow if we can't read, other validations will catch issues
+      };
+      
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async onThumbnailSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
       
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        this.showToast('Please select an image file', 'danger');
+      // Comprehensive validation
+      const validation = this.validateThumbnailFile(file);
+      if (!validation.valid) {
+        this.showToast(validation.error || 'Invalid file', 'danger');
+        // Clear the input
+        input.value = '';
         return;
       }
       
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        this.showToast('Image size must be less than 5MB', 'danger');
+      // Validate image dimensions
+      const MAX_DIMENSION = 4000;
+      const dimensionValidation = await this.validateImageDimensions(file, MAX_DIMENSION);
+      if (!dimensionValidation.valid) {
+        this.showToast(dimensionValidation.error || 'Invalid image dimensions', 'danger');
+        // Clear the input
+        input.value = '';
         return;
       }
       
@@ -326,6 +465,15 @@ export class CreateContentPage implements OnInit {
       return null;
     }
 
+    // Re-validate file before upload (security: prevent tampering between selection and upload)
+    const validation = this.validateThumbnailFile(this.thumbnailFile);
+    if (!validation.valid) {
+      await this.showToast(validation.error || 'Invalid file. Upload blocked for security.', 'danger');
+      this.thumbnailFile = null;
+      this.thumbnailUrl = '';
+      return null;
+    }
+
     this.isUploadingThumbnail = true;
     
     try {
@@ -335,10 +483,20 @@ export class CreateContentPage implements OnInit {
         return null;
       }
 
-      // Create a unique filename with safe characters
+      // Create a unique filename with safe characters and proper extension
       const timestamp = Date.now();
-      const sanitizedFileName = this.thumbnailFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filename = `thumbnails/${this.currentUser.uid}/${timestamp}_${sanitizedFileName}`;
+      // Get file extension from original filename (validate it's safe)
+      const originalName = this.thumbnailFile.name.toLowerCase();
+      const extension = originalName.substring(originalName.lastIndexOf('.'));
+      const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.avif', '.heic', '.heif'];
+      const safeExtension = allowedExtensions.includes(extension) ? extension : '.jpg'; // Default to .jpg if extension is missing
+      
+      // Sanitize filename: remove all non-alphanumeric except dots and hyphens, then add timestamp
+      const baseName = originalName.replace(/\.[^.]*$/, ''); // Remove extension
+      const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 50); // Limit length
+      const sanitizedFileName = `${sanitizedBaseName}_${timestamp}${safeExtension}`;
+      
+      const filename = `thumbnails/${this.currentUser.uid}/${sanitizedFileName}`;
       const storageRef = ref(this.storage, filename);
       
       // Upload file (metadata is optional and may cause issues if Storage isn't fully configured)
