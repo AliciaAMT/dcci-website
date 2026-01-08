@@ -131,16 +131,20 @@
         <ion-icon name="close-outline" slot="start"></ion-icon>
         Cancel
       </ion-button>
-      <ion-button fill="outline" (click)="saveDraft()" [disabled]="isSaving || isPublishing">
+      <ion-button fill="outline" (click)="saveDraft()" [disabled]="isSaving || isPublishing || readOnlyMode">
         <ion-icon name="save-outline" slot="start"></ion-icon>
         <span *ngIf="!isSaving">{{ savedContentId ? 'Update Draft' : 'Save Draft' }}</span>
         <span *ngIf="isSaving">Saving...</span>
       </ion-button>
-      <ion-button (click)="publish()" [disabled]="isSaving || isPublishing">
+      <ion-button (click)="publish()" [disabled]="isSaving || isPublishing || readOnlyMode">
         <ion-icon name="checkmark-outline" slot="start"></ion-icon>
         <span *ngIf="!isPublishing">Publish</span>
         <span *ngIf="isPublishing">Publishing...</span>
       </ion-button>
+    </div>
+    <div *ngIf="readOnlyMode" class="read-only-notice">
+      <ion-icon name="lock-closed-outline"></ion-icon>
+      <p>Site is in read-only mode. Save and publish are disabled.</p>
     </div>
 
   </div>

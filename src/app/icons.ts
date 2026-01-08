@@ -87,5 +87,7 @@ export function registerIonicons(): void {
     'chevron-forward-outline': i.chevronForwardOutline,
     // Menu icons
     'menu-outline': i.menuOutline,
+    // Emergency controls icons
+    'warning': i.warning,
   });
 }

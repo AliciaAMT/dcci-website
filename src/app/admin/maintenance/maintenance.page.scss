@@ -1,0 +1,44 @@
+.maintenance-page {
+  --background: var(--ion-color-light);
+}
+
+.maintenance-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.maintenance-content {
+  text-align: center;
+  max-width: 500px;
+  
+  .maintenance-icon {
+    font-size: 80px;
+    color: var(--ion-color-primary);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--ion-color-dark);
+    margin: 0 0 16px 0;
+  }
+
+  .maintenance-message {
+    font-size: 18px;
+    color: var(--ion-color-medium);
+    margin: 0 0 12px 0;
+    line-height: 1.6;
+  }
+
+  .maintenance-submessage {
+    font-size: 16px;
+    color: var(--ion-color-medium);
+    margin: 0;
+    line-height: 1.6;
+  }
+}
+

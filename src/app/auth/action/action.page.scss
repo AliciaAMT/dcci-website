@@ -64,7 +64,7 @@
     }
 
     .success-message {
-      color: var(--ion-color-dark);
+      color: var(--ion-color-success-contrast);
       font-weight: 500;
       background: var(--ion-color-success);
       padding: 1rem;
@@ -89,6 +89,16 @@
       font-weight: 600;
       font-size: 1.1rem;
       min-width: 200px;
+    }
+  }
+}
+
+/* Dark mode overrides for success messages - force black text */
+@media (prefers-color-scheme: dark) {
+  .status-content {
+    .success-message {
+      background: var(--ion-color-success) !important;
+      color: var(--ion-color-success-contrast) !important;
     }
   }
 }

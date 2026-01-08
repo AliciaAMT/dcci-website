@@ -4,8 +4,9 @@ service cloud.firestore {
     // Only allow writes to contacts collection from Firebase Functions
     match /contacts/{document} {
       // Allow create only (no update, no delete)
-      allow create: if request.auth != null ||
-        (resource == null && request.resource != null);
+      // Block writes if site is in read-only mode
+      allow create: if (request.auth != null ||
+        (resource == null && request.resource != null)) && !siteIsReadOnly();
 
       // Deny all other operations
       allow read, update, delete: if false;
@@ -14,8 +15,9 @@ service cloud.firestore {
     // Allow writes to subscribers collection from Firebase Functions
     match /subscribers/{document} {
       // Allow create and update (for newsletter management)
-      allow create, update: if request.auth != null ||
-        (resource == null && request.resource != null);
+      // Block writes if site is in read-only mode
+      allow create, update: if (request.auth != null ||
+        (resource == null && request.resource != null)) && !siteIsReadOnly();
 
       // Deny read and delete
       allow read, delete: if false;
@@ -28,6 +30,35 @@ service cloud.firestore {
              request.auth.uid != null &&
              exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Helper function to check if the current user is a full Admin (not Moderator)
+    // Used for operations that require full admin privileges (like user deletion)
+    // Also allows users with isAdmin == true but no userRole set (for backwards compatibility)
+    function isFullAdmin() {
+      let userDoc = get(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+      return request.auth != null &&
+             request.auth.uid != null &&
+             exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+             userDoc.data.isAdmin == true &&
+             (userDoc.data.userRole == 'Admin' || userDoc.data.userRole != 'Moderator');
+    }
+
+    // Helper function to check if site is in read-only mode or nuclear lockdown
+    // Returns true if readOnlyMode is enabled AND user is not an admin
+    // OR if nuclearLockdown is enabled (blocks EVERYONE including admins)
+    // Handles case where document doesn't exist (fail-safe: not read-only)
+    function siteIsReadOnly() {
+      // Check if document exists first (fail-safe: if it doesn't exist, not read-only)
+      // Nuclear lockdown blocks EVERYONE including admins
+      // Read-only mode blocks non-admins
+      return exists(/databases/$(database)/documents/siteSettings/emergency) &&
+             (
+               // Nuclear lockdown blocks ALL writes (even admins)
+               get(/databases/$(database)/documents/siteSettings/emergency).data.nuclearLockdown == true ||
+               // Read-only mode blocks non-admins
+               (get(/databases/$(database)/documents/siteSettings/emergency).data.readOnlyMode == true && !isAdminUser())
+             );
     }
 
     // Helper function to validate content document fields
@@ -45,19 +76,22 @@ service cloud.firestore {
     // Admin users collection - for CMS authentication
     match /adminUsers/{userId} {
       // Allow authenticated users to create their own admin user document
+      // Block if site is in read-only mode (registration disabled)
       allow create: if request.auth != null &&
-        request.auth.uid == userId;
+        request.auth.uid == userId &&
+        !siteIsReadOnly();
 
       // Allow users to update their own document
       // Specifically allow updating emailVerified from false to true (for email verification flow)
       // Allow admins to update any user document (for user management)
+      // Block writes if site is in read-only mode (except email verification updates and admin updates)
       allow update: if (
-        // User updating only their own emailVerified/emailVerifiedAt fields
+        // User updating only their own emailVerified/emailVerifiedAt fields (always allowed for verification)
         (request.auth != null && request.auth.uid == userId &&
          request.resource.data.diff(resource.data).changedKeys().hasOnly(['emailVerified', 'emailVerifiedAt']) &&
          request.resource.data.emailVerified == true) ||
-        // Admins can update any user document
-        isAdminUser()
+        // Admins can update any user document (always allowed)
+        (isAdminUser() && !siteIsReadOnly())
       );
 
       // CRITICAL: Allow users to read their own document (required for isAdminUser() to work)
@@ -68,8 +102,9 @@ service cloud.firestore {
       // Allow admins to list all admin documents (for dashboard)
       allow list: if isAdminUser();
 
-      // Deny delete operations
-      allow delete: if false;
+      // Allow only full admins to delete user documents (for user management)
+      // Moderators cannot delete users
+      allow delete: if isFullAdmin();
     }
 
     // Failed attempts collection - for rate limiting
@@ -105,8 +140,24 @@ service cloud.firestore {
       // Allow admins to read settings
       allow read: if isAdminUser();
       
-      // Allow admins to create and update settings
-      allow create, update: if isAdminUser();
+      // Allow admins to create and update settings (unless read-only mode for non-admins)
+      allow create, update: if isAdminUser() && !siteIsReadOnly();
+      
+      // Deny delete operations
+      allow delete: if false;
+    }
+
+    // Site settings collection - emergency site controls
+    match /siteSettings/{settingId} {
+      // Allow all users to read site settings (needed for maintenance mode check)
+      // This must work even when document doesn't exist yet
+      allow read: if true;
+      
+      // Only full admins can create/update emergency settings
+      // Must be full admin (not moderator) - these are critical settings
+      // Admins can always update (even in read-only mode, they need to turn it off)
+      // Note: We don't check siteIsReadOnly() here to allow admins to disable read-only mode
+      allow create, update: if isFullAdmin();
       
       // Deny delete operations
       allow delete: if false;
@@ -125,21 +176,26 @@ service cloud.firestore {
       // WRITE RULES (admin-only):
       // Allow admins to create content with any authorId (for importing/creating content on behalf of others)
       // Require authorId exists and is a non-empty string
+      // Block writes if site is in read-only mode (admins can still write)
       allow create: if isAdminUser() &&
         request.resource.data.authorId is string &&
         request.resource.data.authorId.size() > 0 &&
         request.resource.data.status in ['draft', 'published'] &&
-        isValidContentFields(request.resource.data);
+        isValidContentFields(request.resource.data) &&
+        !siteIsReadOnly();
 
       // Allow admins to update content with validated fields (including tags and YouTube fields)
       // Preserve authorId immutability - authorId cannot be changed on update
+      // Block writes if site is in read-only mode (admins can still write)
       allow update: if isAdminUser() &&
         request.resource.data.authorId == resource.data.authorId &&
         request.resource.data.status in ['draft', 'published'] &&
-        isValidContentFields(request.resource.data);
+        isValidContentFields(request.resource.data) &&
+        !siteIsReadOnly();
 
       // Allow admins to delete content
-      allow delete: if isAdminUser();
+      // Block writes if site is in read-only mode (admins can still write)
+      allow delete: if isAdminUser() && !siteIsReadOnly();
     }
 
     // Deny all other collections

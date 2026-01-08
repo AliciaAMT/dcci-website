@@ -107,11 +107,18 @@
           <span *ngIf="!isLoading">{{ isSignUpMode ? 'Create Account' : 'Sign In' }}</span>
         </ion-button>
 
+        <!-- Registration Disabled Message -->
+        <div *ngIf="registrationsDisabled && isSignUpMode" class="status-message error">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          <span>Registrations are temporarily disabled.</span>
+        </div>
+
         <!-- Toggle Mode Button -->
         <ion-button
           fill="clear"
           expand="block"
           (click)="toggleMode()"
+          [disabled]="registrationsDisabled"
           class="toggle-button">
           {{ isSignUpMode ? 'Already have an account? Sign In' : "Don't have an account? Create One" }}
         </ion-button>

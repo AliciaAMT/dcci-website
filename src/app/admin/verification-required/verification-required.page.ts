@@ -1,14 +1,10 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import {
   IonContent,
   IonButton,
   IonIcon,
-  IonSpinner,
-  IonItem,
-  IonLabel,
-  IonInput
+  IonSpinner
 } from '@ionic/angular/standalone';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth';
@@ -24,11 +20,7 @@ import { Subscription, interval } from 'rxjs';
     IonButton,
     IonIcon,
     IonSpinner,
-    IonItem,
-    IonLabel,
-    IonInput,
-    CommonModule,
-    ReactiveFormsModule
+    CommonModule
   ]
 })
 export class VerificationRequiredPage implements OnInit, OnDestroy {
@@ -37,8 +29,6 @@ export class VerificationRequiredPage implements OnInit, OnDestroy {
   showSuccessState = false;
   resendCooldown = 0;
   statusMessage: { success: boolean; message: string } | null = null;
-  credentialsForm: FormGroup;
-  showCredentialsForm = false;
   isLoggedIn = false;
   
   private cooldownSubscription: Subscription = new Subscription();
@@ -47,45 +37,37 @@ export class VerificationRequiredPage implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private authService: AuthService,
-    private formBuilder: FormBuilder
-  ) {
-    this.credentialsForm = this.formBuilder.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]]
-    });
-  }
+    private authService: AuthService
+  ) {}
 
   ngOnInit() {
     // Get email from route parameters or query params
     this.userEmail = this.route.snapshot.queryParams['email'] || '';
     
     // Check if user is logged in
-    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+      this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.isLoggedIn = !!user;
       
-      if (user) {
+        if (user) {
         // If user is logged in, use their email
         if (!this.userEmail) {
           this.userEmail = user.email || '';
-        }
-        
-        // Check if user is already verified and admin
+    }
+
+    // Check if user is already verified and admin
         if (user.emailVerified && user.isAdmin) {
-          // User is verified and admin, redirect to dashboard
-          this.router.navigate(['/admin/dashboard']);
+        // User is verified and admin, redirect to dashboard
+        this.router.navigate(['/admin/dashboard']);
         } else if (user.emailVerified && !user.isAdmin) {
-          // User is verified but not admin, redirect to home
-          this.router.navigate(['/home']);
+        // User is verified but not admin, redirect to home
+        this.router.navigate(['/home']);
         }
       } else {
-        // No user logged in - show credentials form if no email in query params
+        // No user logged in - if we have email from query params, that's fine
+        // Don't show credentials form - user should return to login page if they need to resend
         if (!this.userEmail) {
-          this.showCredentialsForm = true;
-        } else {
-          // Email provided in query params, pre-fill form
-          this.credentialsForm.patchValue({ email: this.userEmail });
-          this.showCredentialsForm = true;
+          // No email in query params - redirect to login
+          this.router.navigate(['/admin/login']);
         }
       }
     });
@@ -112,28 +94,22 @@ export class VerificationRequiredPage implements OnInit, OnDestroy {
 
       let result;
       
-      // If not logged in, use credentials from form
-      if (!this.isLoggedIn) {
-        if (this.credentialsForm.invalid) {
-          this.statusMessage = {
-            success: false,
-            message: 'Please enter your email and password to resend the verification email.'
-          };
-          this.isResending = false;
-          return;
-        }
-        
-        const email = this.credentialsForm.value.email;
-        const password = this.credentialsForm.value.password;
-        result = await this.authService.sendEmailVerification(email, password);
-        
-        // Update userEmail if form was used
-        if (result.success && email) {
-          this.userEmail = email;
-        }
-      } else {
-        // User is logged in, use their session
+      // If user is logged in, use their session
+      if (this.isLoggedIn) {
         result = await this.authService.sendEmailVerification();
+      } else if (this.userEmail) {
+        // We have email from query params but no logged-in user
+        // Tell user to return to login page - verification email was already sent when they tried to log in
+        this.statusMessage = {
+          success: true,
+          message: 'A verification email was already sent when you tried to log in. Please check your inbox. If you need another email, please return to the login page and try logging in again.'
+        };
+        this.isResending = false;
+        return;
+      } else {
+        // No email and no user - redirect to login
+        this.router.navigate(['/admin/login']);
+        return;
       }
       
       this.statusMessage = result;
@@ -141,8 +117,6 @@ export class VerificationRequiredPage implements OnInit, OnDestroy {
       if (result.success) {
         this.showSuccessState = true;
         this.startResendCooldown();
-        // Hide credentials form after successful send
-        this.showCredentialsForm = false;
       }
     } catch (error) {
       this.statusMessage = { 

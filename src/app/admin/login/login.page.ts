@@ -14,7 +14,8 @@ import {
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { SanitizationService } from '../../services/sanitization';
-import { Subscription } from 'rxjs';
+import { SiteSettingsService } from '../../services/site-settings.service';
+import { Subscription, firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -43,13 +44,16 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
   showPassword = false;
   statusMessage: { success: boolean; message: string; needsVerification?: boolean; isLocked?: boolean } | null = null;
   showVerifiedBanner = false;
+  registrationsDisabled = false;
   private userSubscription: Subscription = new Subscription();
+  private settingsSubscription: Subscription = new Subscription();
   private shouldScrollToVerification = false;
 
   constructor(
     private formBuilder: FormBuilder,
     private authService: AuthService,
     private sanitizationService: SanitizationService,
+    private siteSettingsService: SiteSettingsService,
     private router: Router,
     private route: ActivatedRoute
   ) {
@@ -129,6 +133,15 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
       try {
         let result;
         if (this.isSignUpMode) {
+          // Check if registrations are disabled
+          const registrationsDisabled = await firstValueFrom(this.siteSettingsService.disableRegistrations$);
+          if (registrationsDisabled) {
+            this.statusMessage = {
+              success: false,
+              message: 'Registrations are temporarily disabled.'
+            };
+            return;
+          }
           result = await this.authService.signUp(email, password, honeypot);
         } else {
           result = await this.authService.signIn(email, password, honeypot);
@@ -137,7 +150,8 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
         console.log('Auth result:', result);
 
         if (result.needsVerification) {
-          // User needs email verification - redirect to verification page
+          // User needs email verification - verification email was already sent in auth service
+          // Redirect to verification page
           this.router.navigate(['/admin/verification-required'], {
             queryParams: { email: email }
           });
@@ -178,6 +192,10 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   toggleMode() {
+    // Don't allow switching to sign up mode if registrations are disabled
+    if (!this.isSignUpMode && this.registrationsDisabled) {
+      return;
+    }
     this.isSignUpMode = !this.isSignUpMode;
     this.statusMessage = null;
     this.loginForm.reset();

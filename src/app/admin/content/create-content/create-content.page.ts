@@ -22,6 +22,7 @@ import {
 import { Router } from '@angular/router';
 import { AuthService, AdminUser } from '../../../services/auth';
 import { ContentService } from '../../../services/content.service';
+import { SiteSettingsService } from '../../../services/site-settings.service';
 import { QuillModule } from 'ngx-quill';
 import Quill from 'quill';
 import { firstValueFrom } from 'rxjs';
@@ -70,6 +71,7 @@ export class CreateContentPage implements OnInit {
   thumbnailUrl: string = '';
   thumbnailFile: File | null = null;
   isUploadingThumbnail: boolean = false;
+  readOnlyMode: boolean = false;
 
   // Quill editor configuration
   quillModules = {
@@ -122,6 +124,7 @@ export class CreateContentPage implements OnInit {
     private router: Router,
     private authService: AuthService,
     public contentService: ContentService,
+    private siteSettingsService: SiteSettingsService,
     private loadingController: LoadingController,
     private toastController: ToastController,
     private storage: Storage
@@ -211,6 +214,11 @@ export class CreateContentPage implements OnInit {
   }
 
   async ngOnInit() {
+    // Subscribe to read-only mode
+    this.siteSettingsService.readOnlyMode$.subscribe(readOnly => {
+      this.readOnlyMode = readOnly;
+    });
+
     // Verify user is admin and load user data
     // Wait for non-null user (filter out null values to ensure auth is ready)
     const user = await firstValueFrom(
@@ -413,6 +421,13 @@ export class CreateContentPage implements OnInit {
   }
 
   async saveDraft() {
+    // Check if read-only mode is enabled (admins can still write, this is just UI check)
+    // Firestore rules are authoritative
+    if (this.readOnlyMode) {
+      await this.showToast('Site is in read-only mode. Save disabled.', 'danger');
+      return;
+    }
+
     if (!this.validateForm()) {
       return;
     }
@@ -514,6 +529,14 @@ export class CreateContentPage implements OnInit {
   }
 
   async publish() {
+    // Check if read-only mode is enabled (admins can still write, this is just UI check)
+    // Firestore rules are authoritative
+    const readOnlyMode = await firstValueFrom(this.siteSettingsService.readOnlyMode$);
+    if (readOnlyMode) {
+      await this.showToast('Site is in read-only mode. Publish disabled.', 'danger');
+      return;
+    }
+
     if (!this.validateForm()) {
       return;
     }

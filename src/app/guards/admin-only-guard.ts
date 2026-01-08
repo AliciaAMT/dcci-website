@@ -5,11 +5,11 @@ import { AuthService } from '../services/auth';
 import { SiteSettingsService } from '../services/site-settings.service';
 
 /**
- * Guard for pages that Admins and Moderators can access
- * Used for: Dashboard, YouTube Settings, Comments Settings (eventually)
+ * Guard for pages that only full Admins can access (not Moderators)
+ * Used for: User Management, Content Creation, Content Management, Site Settings
  * NOTE: Nuclear lockdown blocks ALL access, including admins
  */
-export const adminGuard: CanActivateFn = (route, state) => {
+export const adminOnlyGuard: CanActivateFn = (route, state) => {
   const authService = inject(AuthService);
   const siteSettingsService = inject(SiteSettingsService);
   const router = inject(Router);
@@ -28,13 +28,12 @@ export const adminGuard: CanActivateFn = (route, state) => {
       return authService.currentUser$.pipe(
         take(1),
         map(user => {
-          // Allow users with Admin or Moderator role
-          if (user && user.isAdmin && user.emailVerified && 
-              (user.userRole === 'Admin' || user.userRole === 'Moderator')) {
+          // Only allow users with Admin role (not Moderator)
+          if (user && user.isAdmin && user.emailVerified && user.userRole === 'Admin') {
             return true;
           } else {
-            // Redirect to home page if not admin/moderator or email not verified
-            router.navigate(['/home']);
+            // Redirect to dashboard if not admin or email not verified
+            router.navigate(['/admin/dashboard']);
             return false;
           }
         })
@@ -43,3 +42,4 @@ export const adminGuard: CanActivateFn = (route, state) => {
     take(1)
   );
 };
+

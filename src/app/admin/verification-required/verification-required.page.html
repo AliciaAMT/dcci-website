@@ -46,34 +46,6 @@
         </div>
       </div>
 
-      <!-- Credentials Form (shown when not logged in) -->
-      <div *ngIf="showCredentialsForm && !isLoggedIn" class="credentials-form-section">
-        <h3>Enter Your Credentials</h3>
-        <p class="form-description">To resend your verification email, please enter your email and password:</p>
-        <form [formGroup]="credentialsForm">
-          <ion-item class="form-item">
-            <ion-icon name="mail-outline" slot="start"></ion-icon>
-            <ion-label position="stacked">Email Address</ion-label>
-            <ion-input
-              type="email"
-              formControlName="email"
-              placeholder="Enter your email"
-              [class.ion-invalid]="credentialsForm.get('email')?.invalid && credentialsForm.get('email')?.touched">
-            </ion-input>
-          </ion-item>
-          
-          <ion-item class="form-item">
-            <ion-icon name="lock-closed-outline" slot="start"></ion-icon>
-            <ion-label position="stacked">Password</ion-label>
-            <ion-input
-              type="password"
-              formControlName="password"
-              placeholder="Enter your password"
-              [class.ion-invalid]="credentialsForm.get('password')?.invalid && credentialsForm.get('password')?.touched">
-            </ion-input>
-          </ion-item>
-        </form>
-      </div>
 
       <!-- Troubleshooting -->
       <div class="troubleshooting-section">

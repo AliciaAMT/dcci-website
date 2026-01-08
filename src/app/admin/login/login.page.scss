@@ -24,42 +24,42 @@
   margin-bottom: 1.5rem;
   gap: 1rem;
   animation: slideDown 0.3s ease-out;
-  color: var(--ion-color-dark) !important; // Force black text for all children
+  color: var(--ion-color-success-contrast);
 
   .banner-content {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     flex: 1;
-    color: var(--ion-color-dark) !important;
+    color: var(--ion-color-success-contrast);
 
     ion-icon {
       font-size: 1.5rem;
       flex-shrink: 0;
-      color: var(--ion-color-dark) !important;
-      --ion-icon-color: var(--ion-color-dark) !important;
+      color: var(--ion-color-success-contrast);
+      --ion-icon-color: var(--ion-color-success-contrast);
     }
 
     .banner-text {
       font-size: 0.95rem;
       font-weight: 500;
-      color: var(--ion-color-dark) !important;
+      color: var(--ion-color-success-contrast);
       line-height: 1.4;
     }
   }
 
   .banner-close {
-    --color: var(--ion-color-dark) !important;
+    --color: var(--ion-color-success-contrast);
     --padding-start: 0.5rem;
     --padding-end: 0.5rem;
     margin: 0;
     flex-shrink: 0;
-    color: var(--ion-color-dark) !important;
+    color: var(--ion-color-success-contrast);
 
     ion-icon {
       font-size: 1.25rem;
-      color: var(--ion-color-dark) !important;
-      --ion-icon-color: var(--ion-color-dark) !important;
+      color: var(--ion-color-success-contrast);
+      --ion-icon-color: var(--ion-color-success-contrast);
     }
   }
 }
@@ -262,28 +262,44 @@
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--ion-color-dark) !important;
 
   ion-icon {
-    color: var(--ion-color-dark) !important;
-    --ion-icon-color: var(--ion-color-dark) !important;
+    margin-right: 0;
   }
 
   span {
-    color: var(--ion-color-dark) !important;
+    flex: 1;
   }
 }
 
 .status-message.success {
   background: var(--ion-color-success);
-  color: var(--ion-color-dark) !important;
+  color: var(--ion-color-success-contrast);
   border: 2px solid var(--ion-color-success-shade);
+
+  ion-icon {
+    color: var(--ion-color-success-contrast);
+    --ion-icon-color: var(--ion-color-success-contrast);
+  }
+
+  span {
+    color: var(--ion-color-success-contrast);
+  }
 }
 
 .status-message.error {
   background: var(--ion-color-danger);
-  color: var(--ion-color-dark) !important;
+  color: var(--ion-color-danger-contrast);
   border: 2px solid var(--ion-color-danger-shade);
+
+  ion-icon {
+    color: var(--ion-color-danger-contrast);
+    --ion-icon-color: var(--ion-color-danger-contrast);
+  }
+
+  span {
+    color: var(--ion-color-danger-contrast);
+  }
 }
 
 .security-notice {
@@ -529,6 +545,51 @@
   .security-notice {
     background: #ffffff;
     border: 2px solid #000000;
+  }
+}
+
+/* Dark mode overrides for success messages - force black text */
+@media (prefers-color-scheme: dark) {
+  .verified-banner {
+    background: var(--ion-color-success) !important;
+    color: var(--ion-color-success-contrast) !important;
+    
+    .banner-content {
+      color: var(--ion-color-success-contrast) !important;
+      
+      ion-icon {
+        color: var(--ion-color-success-contrast) !important;
+        --ion-icon-color: var(--ion-color-success-contrast) !important;
+      }
+      
+      .banner-text {
+        color: var(--ion-color-success-contrast) !important;
+      }
+    }
+    
+    .banner-close {
+      --color: var(--ion-color-success-contrast) !important;
+      color: var(--ion-color-success-contrast) !important;
+      
+      ion-icon {
+        color: var(--ion-color-success-contrast) !important;
+        --ion-icon-color: var(--ion-color-success-contrast) !important;
+      }
+    }
+  }
+  
+  .status-message.success {
+    background: var(--ion-color-success) !important;
+    color: var(--ion-color-success-contrast) !important;
+    
+    ion-icon {
+      color: var(--ion-color-success-contrast) !important;
+      --ion-icon-color: var(--ion-color-success-contrast) !important;
+    }
+    
+    span {
+      color: var(--ion-color-success-contrast) !important;
+    }
   }
 }
 

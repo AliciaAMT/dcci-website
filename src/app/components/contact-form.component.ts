@@ -1,9 +1,11 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox } from '@ionic/angular/standalone';
 import { ContactService } from 'src/app/services/contact.service';
+import { SiteSettingsService } from '../services/site-settings.service';
 import { ActivatedRoute } from '@angular/router';
+import { Subscription, firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-contact-form',
@@ -12,7 +14,7 @@ import { ActivatedRoute } from '@angular/router';
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox]
 })
-export class ContactFormComponent implements OnInit {
+export class ContactFormComponent implements OnInit, OnDestroy {
   @Input() prefillSubject: string = '';
   @Input() hideDescription: boolean = false;
   @Input() hideNewsletter: boolean = false;
@@ -21,10 +23,13 @@ export class ContactFormComponent implements OnInit {
   submitSuccess = false;
   submitError = '';
   formLoadTime: number = 0;
+  contactFormsDisabled = false;
+  private settingsSubscription: Subscription = new Subscription();
 
   constructor(
     private formBuilder: FormBuilder,
     private contactService: ContactService,
+    private siteSettingsService: SiteSettingsService,
     private route: ActivatedRoute
   ) {
     // Record when the form was loaded (for bot detection)
@@ -49,9 +54,41 @@ export class ContactFormComponent implements OnInit {
     if (subjectToUse) {
       this.contactForm.patchValue({ subject: subjectToUse });
     }
+
+    // Subscribe to settings to check for nuclear lockdown and disabled contact forms
+    this.settingsSubscription = this.siteSettingsService.settings$.subscribe(settings => {
+      // Nuclear lockdown blocks everything
+      const shouldDisable = settings.nuclearLockdown || settings.disableContactForms;
+      this.contactFormsDisabled = shouldDisable;
+      if (shouldDisable) {
+        // Disable form when nuclear lockdown is active or contact forms are disabled
+        this.contactForm.disable();
+      } else {
+        this.contactForm.enable();
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.settingsSubscription) {
+      this.settingsSubscription.unsubscribe();
+    }
   }
 
   async onSubmit() {
+    // Check nuclear lockdown FIRST - blocks everything
+    const settings = await firstValueFrom(this.siteSettingsService.settings$);
+    if (settings.nuclearLockdown) {
+      this.submitError = 'Site is currently in maintenance mode. Please try again later.';
+      return;
+    }
+
+    // Check if contact forms are disabled
+    if (settings.disableContactForms) {
+      this.submitError = 'Contact form temporarily unavailable.';
+      return;
+    }
+
     // Honeypot check - if website field is filled, it's likely a bot
     if (this.contactForm.get('website')?.value) {
       console.log('Error');

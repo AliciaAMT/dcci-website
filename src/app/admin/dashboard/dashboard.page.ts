@@ -73,8 +73,9 @@ export class DashboardPage implements OnInit, OnDestroy {
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
 
-      // Redirect if user is not admin or not verified
-      if (!user || !user.isAdmin || !user.emailVerified) {
+      // Redirect if user is not admin/moderator or not verified
+      if (!user || !user.isAdmin || !user.emailVerified || 
+          (user.userRole !== 'Admin' && user.userRole !== 'Moderator')) {
         this.router.navigate(['/home']);
       }
     });
@@ -184,6 +185,21 @@ export class DashboardPage implements OnInit, OnDestroy {
       document.activeElement.blur();
     }
     this.router.navigate(['/admin/user-management']);
+  }
+
+  navigateToEmergencyControls() {
+    // Blur any active element to prevent aria-hidden warnings during navigation
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    this.router.navigate(['/admin/emergency-controls']);
+  }
+
+  /**
+   * Check if current user is a full Admin (not Moderator)
+   */
+  isFullAdmin(): boolean {
+    return this.authService.isFullAdmin();
   }
 
   async logout() {

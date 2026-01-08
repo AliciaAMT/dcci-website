@@ -57,7 +57,28 @@
       }
     }
 
-    .error-message {
+    // Disabled message styles
+  .disabled-message {
+    padding: 20px;
+    text-align: center;
+    background: var(--ion-color-light);
+    border-radius: 8px;
+    margin-bottom: 20px;
+
+    .disabled-icon {
+      font-size: 48px;
+      color: var(--ion-color-medium);
+      margin-bottom: 16px;
+    }
+
+    p {
+      color: var(--ion-color-medium);
+      font-size: 16px;
+      margin: 0;
+    }
+  }
+
+  .error-message {
       background: rgba(var(--ion-color-danger-rgb, 245, 61, 61), 0.1);
       border: 1px solid var(--ion-color-danger, #f53d3d);
       border-radius: 8px;

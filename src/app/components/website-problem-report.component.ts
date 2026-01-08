@@ -1,9 +1,11 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { IonInput, IonButton, IonIcon, IonTextarea } from '@ionic/angular/standalone';
 import { ContactService } from 'src/app/services/contact.service';
+import { SiteSettingsService } from '../services/site-settings.service';
 import { ActivatedRoute } from '@angular/router';
+import { Subscription, firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-website-problem-report',
@@ -12,17 +14,21 @@ import { ActivatedRoute } from '@angular/router';
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, IonInput, IonButton, IonIcon, IonTextarea]
 })
-export class WebsiteProblemReportComponent implements OnInit {
+export class WebsiteProblemReportComponent implements OnInit, OnDestroy {
   @Input() prefillSubject: string = '';
   problemReportForm: FormGroup;
   isSubmitting = false;
   submitSuccess = false;
   submitError = '';
   formLoadTime: number = 0;
+  contactFormsDisabled = false;
+  problemReportsDisabled = false;
+  private settingsSubscription: Subscription = new Subscription();
 
   constructor(
     private formBuilder: FormBuilder,
     private contactService: ContactService,
+    private siteSettingsService: SiteSettingsService,
     private route: ActivatedRoute
   ) {
     // Record when the form was loaded (for bot detection)
@@ -46,9 +52,41 @@ export class WebsiteProblemReportComponent implements OnInit {
     if (subjectToUse) {
       this.problemReportForm.patchValue({ subject: subjectToUse });
     }
+
+    // Subscribe to settings to check for nuclear lockdown and disabled problem reports
+    this.settingsSubscription = this.siteSettingsService.settings$.subscribe(settings => {
+      // Nuclear lockdown blocks everything
+      const shouldDisable = settings.nuclearLockdown || settings.disableProblemReports;
+      this.problemReportsDisabled = shouldDisable;
+      if (shouldDisable) {
+        // Disable form when nuclear lockdown is active or problem reports are disabled
+        this.problemReportForm.disable();
+      } else {
+        this.problemReportForm.enable();
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.settingsSubscription) {
+      this.settingsSubscription.unsubscribe();
+    }
   }
 
   async onSubmit() {
+    // Check nuclear lockdown FIRST - blocks everything
+    const settings = await firstValueFrom(this.siteSettingsService.settings$);
+    if (settings.nuclearLockdown) {
+      this.submitError = 'Site is currently in maintenance mode. Please try again later.';
+      return;
+    }
+
+    // Check if problem reports are disabled
+    if (settings.disableProblemReports) {
+      this.submitError = 'Website problem reports are temporarily unavailable.';
+      return;
+    }
+
     // Honeypot check - if website field is filled, it's likely a bot
     if (this.problemReportForm.get('website')?.value) {
       console.log('Bot detected via honeypot');

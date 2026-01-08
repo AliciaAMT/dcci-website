@@ -13,6 +13,10 @@
   --ion-color-success-contrast: #000000;
   --ion-color-success-contrast-rgb: 0, 0, 0;
 
+  // Warning/Danger contrast text - always black for better accessibility on red backgrounds
+  --ion-color-warning-contrast-text: #000000;
+  --ion-color-warning-contrast-text-rgb: 0, 0, 0;
+
   // Light theme colors
   --ion-background-color: #ffffff;
   --ion-background-color-rgb: 255, 255, 255;
@@ -31,6 +35,10 @@
     --ion-color-success-contrast: #000000;
     --ion-color-success-contrast-rgb: 0, 0, 0;
 
+    // Warning/Danger contrast text - always black even in dark mode for better accessibility on red backgrounds
+    --ion-color-warning-contrast-text: #000000;
+    --ion-color-warning-contrast-text-rgb: 0, 0, 0;
+
     --ion-background-color: #1a1a1a;
     --ion-background-color-rgb: 26, 26, 26;
     --ion-text-color: #ffffff;
@@ -44,6 +52,14 @@
 
 // Ionic dark theme
 .ion-color-dark {
+  // Success color contrast - always black even in dark mode for better accessibility
+  --ion-color-success-contrast: #000000;
+  --ion-color-success-contrast-rgb: 0, 0, 0;
+
+  // Warning/Danger contrast text - always black even in dark mode for better accessibility on red backgrounds
+  --ion-color-warning-contrast-text: #000000;
+  --ion-color-warning-contrast-text-rgb: 0, 0, 0;
+
   --ion-background-color: #1a1a1a;
   --ion-background-color-rgb: 26, 26, 26;
   --ion-text-color: #ffffff;

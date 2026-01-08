@@ -289,6 +289,19 @@ export const submitWebsiteProblemReport = functions.https.onRequest((req, res) =
   return cors(req, res, async () => {
     if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
 
+    // Check if problem reports are disabled
+    const settingsDoc = await db.collection('siteSettings').doc('emergency').get();
+    if (settingsDoc.exists) {
+      const settings = settingsDoc.data();
+      if (settings?.disableProblemReports === true) {
+        res.status(503).json({
+          error: "Service unavailable",
+          message: "Website problem reports are temporarily disabled."
+        });
+        return;
+      }
+    }
+
     const { name, email, subject, message, website, formLoadTime, submissionTime } = req.body || {};
     
     // Get client IP from various sources
@@ -1635,6 +1648,120 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
  * Accepts: POST with { email: string } in body
  * Returns: { success: boolean, message: string }
  */
+// Delete user from both Auth and Firestore (admin-only)
+export const deleteUser = functions.https.onRequest((req, res) => {
+  // Enable CORS
+  const corsHandler = corsLib({ origin: true });
+  return corsHandler(req, res, async () => {
+    try {
+      // Handle OPTIONS request for CORS preflight
+      if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+      }
+
+      // Only allow POST requests
+      if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method not allowed. Use POST.' });
+        return;
+      }
+
+      // Get auth token from Authorization header
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ error: 'Unauthorized: No auth token provided' });
+        return;
+      }
+
+      const idToken = authHeader.split('Bearer ')[1];
+      
+      // Verify the token and get the user
+      let decodedToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(idToken);
+      } catch (error) {
+        console.error('Token verification error:', error);
+        res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        return;
+      }
+
+      const callerUid = decodedToken.uid;
+
+      // Verify caller is an admin
+      const callerDoc = await db.collection('adminUsers').doc(callerUid).get();
+      if (!callerDoc.exists) {
+        res.status(403).json({ error: 'Forbidden: User not found' });
+        return;
+      }
+
+      const callerData = callerDoc.data();
+      if (!callerData || !callerData.isAdmin) {
+        res.status(403).json({ error: 'Forbidden: Admin privileges required' });
+        return;
+      }
+
+      // Check if caller is a full admin (not moderator)
+      if (callerData.userRole === 'Moderator') {
+        res.status(403).json({ error: 'Forbidden: Full admin privileges required' });
+        return;
+      }
+
+      // Get user ID to delete from request body
+      const { userId } = req.body;
+      if (!userId || typeof userId !== 'string') {
+        res.status(400).json({ error: 'Bad request: userId is required' });
+        return;
+      }
+
+      // Prevent self-deletion
+      if (userId === callerUid) {
+        res.status(400).json({ error: 'Bad request: Cannot delete yourself' });
+        return;
+      }
+
+      // Get user data before deletion (for logging)
+      const userDoc = await db.collection('adminUsers').doc(userId).get();
+      if (!userDoc.exists) {
+        res.status(404).json({ error: 'User not found in Firestore' });
+        return;
+      }
+
+      const userData = userDoc.data();
+      const userEmail = userData?.email || userId;
+
+      // Delete from Auth first (this might fail if user doesn't exist in Auth)
+      try {
+        await admin.auth().deleteUser(userId);
+        console.log(`Deleted user ${userId} (${userEmail}) from Auth`);
+      } catch (authError: any) {
+        // If user doesn't exist in Auth, log but continue with Firestore deletion
+        if (authError.code === 'auth/user-not-found') {
+          console.log(`User ${userId} (${userEmail}) not found in Auth, continuing with Firestore deletion`);
+        } else {
+          console.error(`Error deleting user ${userId} from Auth:`, authError);
+          // Still try to delete from Firestore even if Auth deletion fails
+        }
+      }
+
+      // Delete from Firestore
+      await db.collection('adminUsers').doc(userId).delete();
+      console.log(`Deleted user ${userId} (${userEmail}) from Firestore`);
+
+      res.status(200).json({
+        success: true,
+        message: `User ${userEmail} deleted successfully`,
+        userId: userId
+      });
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
+    }
+  });
+});
+
 export const updateEmailVerified = functions.https.onRequest(async (req, res) => {
   // Enable CORS
   const cors = corsLib({ origin: true });
