@@ -1167,10 +1167,114 @@ export const syncYouTubeUploads = functions.pubsub
 
       let createdCount = 0;
       let skippedCount = 0;
+      let deletedCount = 0;
       let nextPageToken: string | undefined = undefined;
       const MAX_VIDEOS_TO_CHECK = 50; // Check up to 50 videos per run (safety limit)
 
-      // Step 1: Fetch multiple videos from uploads playlist (process all new ones)
+      // Step 1: Collect all video IDs currently in the playlist (for removal check)
+      const playlistVideoIds = new Set<string>();
+      let collectNextPageToken: string | undefined = undefined;
+      let collectedPages = 0;
+      const MAX_PAGES_TO_COLLECT = 10; // Collect up to 10 pages (500 videos) for removal check
+
+      while (collectedPages < MAX_PAGES_TO_COLLECT) {
+        let collectPlaylistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
+        if (collectNextPageToken) {
+          collectPlaylistUrl += `&pageToken=${collectNextPageToken}`;
+        }
+
+        let collectPlaylistData: YouTubePlaylistResponse;
+        try {
+          const collectResponseText = await httpsGet(collectPlaylistUrl);
+          collectPlaylistData = JSON.parse(collectResponseText) as YouTubePlaylistResponse;
+        } catch (error: any) {
+          console.error('Error collecting playlist video IDs:', error.message);
+          break; // If we can't collect, continue with new video processing
+        }
+
+        if (collectPlaylistData.items && collectPlaylistData.items.length > 0) {
+          for (const item of collectPlaylistData.items) {
+            const videoId = item.snippet.resourceId.videoId;
+            playlistVideoIds.add(videoId);
+          }
+        }
+
+        if (collectPlaylistData.nextPageToken) {
+          collectNextPageToken = collectPlaylistData.nextPageToken;
+          collectedPages++;
+        } else {
+          break; // No more pages
+        }
+      }
+
+      console.log(`Collected ${playlistVideoIds.size} video IDs from playlist for removal check`);
+
+      // Step 2: Check for removed videos and delete their articles
+      const existingYouTubeArticles = await db.collection('content')
+        .where('youtubeVideoId', '!=', null)
+        .get();
+
+      console.log(`Found ${existingYouTubeArticles.size} existing YouTube articles to check`);
+
+      for (const doc of existingYouTubeArticles.docs) {
+        const articleData = doc.data();
+        const articleVideoId = articleData.youtubeVideoId;
+
+        if (!articleVideoId) {
+          continue; // Skip if no video ID
+        }
+
+        // Check if video is still in the playlist
+        if (!playlistVideoIds.has(articleVideoId)) {
+          console.log(`Video ${articleVideoId} not found in playlist, checking if it still exists...`);
+
+          // Check if video still exists via YouTube API
+          const videoCheckUrl = `https://www.googleapis.com/youtube/v3/videos?part=id,status&id=${articleVideoId}&key=${youtubeApiKey}`;
+          
+          let shouldDelete = true;
+          try {
+            const videoCheckResponseText = await httpsGet(videoCheckUrl);
+            const videoCheckData = JSON.parse(videoCheckResponseText) as YouTubeVideoResponse;
+            
+            if (videoCheckData.items && videoCheckData.items.length > 0) {
+              const videoStatus = (videoCheckData.items[0] as any).status;
+              // Video exists - check if it's public and accessible
+              if (videoStatus?.privacyStatus === 'public') {
+                // Video is public but not in playlist
+                // For livestreams that get removed and turned into new videos, we still want to remove the old article
+                // So we delete it even if it's public but not in the uploads playlist
+                console.log(`Video ${articleVideoId} exists and is public, but not in uploads playlist. Removing article (likely replaced livestream).`);
+                shouldDelete = true;
+              } else {
+                // Video exists but is private/unlisted - definitely remove
+                console.log(`Video ${articleVideoId} exists but is ${videoStatus?.privacyStatus}, removing article`);
+                shouldDelete = true;
+              }
+            } else {
+              // Video doesn't exist in API response - definitely remove
+              console.log(`Video ${articleVideoId} not found in YouTube API, removing article`);
+              shouldDelete = true;
+            }
+          } catch (error: any) {
+            // If API call fails (e.g., video not found, 404, etc.), consider it removed
+            console.log(`Error checking video ${articleVideoId}: ${error.message}. Removing article.`);
+            shouldDelete = true;
+          }
+
+          // Delete the article
+          if (shouldDelete) {
+            try {
+              await doc.ref.delete();
+              deletedCount++;
+              console.log(`Deleted article ${doc.id} for removed video ${articleVideoId}`);
+            } catch (deleteError: any) {
+              console.error(`Error deleting article ${doc.id}:`, deleteError.message);
+            }
+          }
+        }
+      }
+
+      // Step 3: Fetch multiple videos from uploads playlist (process all new ones)
       // We'll process videos until we find one that already exists
       while (createdCount + skippedCount < MAX_VIDEOS_TO_CHECK) {
         // Build playlist URL - fetch multiple videos at once
@@ -1366,7 +1470,7 @@ export const syncYouTubeUploads = functions.pubsub
         }
       }
 
-      console.log(`YouTube sync complete. Created: ${createdCount}, Skipped: ${skippedCount}`);
+      console.log(`YouTube sync complete. Created: ${createdCount}, Skipped: ${skippedCount}, Deleted: ${deletedCount}`);
       return null;
     } catch (error) {
       console.error('Error syncing YouTube uploads:', error);
