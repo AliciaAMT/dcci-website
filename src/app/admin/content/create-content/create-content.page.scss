@@ -537,6 +537,47 @@
       font-style: italic;
       margin-bottom: 0;
     }
+
+    .webp-suggestion {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--ion-color-light);
+      border-radius: 8px;
+      border-left: 3px solid var(--ion-color-primary);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+
+      ion-icon {
+        color: var(--ion-color-primary);
+        font-size: 20px;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+
+      p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--ion-color-dark);
+        line-height: 1.5;
+
+        strong {
+          color: var(--ion-color-primary);
+        }
+
+        a {
+          color: var(--ion-color-primary);
+          text-decoration: none;
+          font-weight: 500;
+          transition: opacity 0.2s ease;
+
+          &:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+          }
+        }
+      }
+    }
   }
 }
 

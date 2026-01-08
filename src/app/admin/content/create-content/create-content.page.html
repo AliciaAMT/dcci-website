@@ -39,7 +39,7 @@
         <div class="thumbnail-upload-area" *ngIf="!thumbnailUrl">
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/bmp,image/tiff,image/avif,image/heic"
             (change)="onThumbnailSelected($event)"
             id="thumbnail-upload"
             class="thumbnail-input"
@@ -47,14 +47,14 @@
           <label for="thumbnail-upload" class="thumbnail-upload-label">
             <ion-icon name="image-outline"></ion-icon>
             <span>Click to upload thumbnail image</span>
-            <small>Recommended: 1200x675px (16:9 ratio), max 5MB</small>
+            <small>Recommended: 1200x675px (16:9 ratio), max 5MB, max 4000x4000px. Formats: JPEG, PNG, WebP, BMP, TIFF, AVIF, HEIC</small>
           </label>
         </div>
         
         <div class="thumbnail-upload-area" *ngIf="thumbnailUrl && thumbnailFile">
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/bmp,image/tiff,image/avif,image/heic"
             (change)="onThumbnailSelected($event)"
             id="thumbnail-replace"
             class="thumbnail-input"
@@ -68,6 +68,14 @@
         <ion-spinner *ngIf="isUploadingThumbnail" name="crescent" class="upload-spinner"></ion-spinner>
       </div>
       <p class="thumbnail-hint">This image appears as the article preview in lists and social media shares. Choose an engaging, high-quality image.</p>
+      <div class="webp-suggestion">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <p>
+          <strong>Tip:</strong> Convert large images to WebP format for better compression and faster loading. 
+          Use our free tool: <a href="https://towebp.io/" target="_blank" rel="noopener noreferrer">ToWebP.io</a> 
+          to convert JPG, PNG, and other formats to WebP (100% free, no uploads required).
+        </p>
+      </div>
     </div>
 
     <ion-item>
