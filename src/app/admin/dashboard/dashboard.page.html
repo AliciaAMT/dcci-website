@@ -91,6 +91,10 @@
               <ion-icon name="create-outline" slot="start"></ion-icon>
               Create Content
             </ion-button>
+            <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToArchiveContent()" *ngIf="isFullAdmin()">
+              <ion-icon name="archive-outline" slot="start"></ion-icon>
+              Archive Content
+            </ion-button>
             <ion-button expand="block" fill="outline" class="action-btn" (click)="navigateToManageContent()" *ngIf="isFullAdmin()">
               <ion-icon name="document-text-outline" slot="start"></ion-icon>
               Manage Content

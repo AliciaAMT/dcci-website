@@ -1,7 +1,7 @@
 import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { IonContent, IonSpinner } from '@ionic/angular/standalone';
+import { IonContent, IonSpinner, IonIcon } from '@ionic/angular/standalone';
 import { ContentService, Content } from '../services/content.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
@@ -13,7 +13,7 @@ import { VersionService } from '../services/version.service';
   templateUrl: './article.page.html',
   styleUrls: ['./article.page.scss'],
   standalone: true,
-  imports: [CommonModule, IonContent, IonSpinner, PageHeaderWithMenuComponent, FooterComponent]
+  imports: [CommonModule, IonContent, IonSpinner, IonIcon, PageHeaderWithMenuComponent, FooterComponent]
 })
 export class ArticlePage implements OnInit, AfterViewInit {
   @ViewChild('articleContent', { static: false }) articleContent!: ElementRef;
@@ -129,6 +129,55 @@ export class ArticlePage implements OnInit, AfterViewInit {
   getThumbnailUrl(content: Content): string | null {
     const data = content as any;
     return data.thumbnailUrl || content.featuredImage || null;
+  }
+
+  isArchived(content: Content): boolean {
+    const data = content as any;
+    return data.archive === true;
+  }
+
+  getOriginalDate(content: Content): Date | null {
+    if (!this.isArchived(content)) return null;
+    const data = content as any;
+    if (!data.originalDate) return null;
+    
+    // Handle Firestore Timestamp or Date
+    if (data.originalDate instanceof Date) {
+      return data.originalDate;
+    } else if (data.originalDate && typeof (data.originalDate as any).toDate === 'function') {
+      return (data.originalDate as any).toDate();
+    } else if (data.originalDate) {
+      return new Date(data.originalDate);
+    }
+    return null;
+  }
+
+  formatOriginalDate(content: Content): string | null {
+    const date = this.getOriginalDate(content);
+    if (!date) return null;
+    
+    try {
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return null;
+    }
+  }
+
+  getOriginalAuthor(content: Content): string | null {
+    if (!this.isArchived(content)) return null;
+    const data = content as any;
+    return data.originalAuthor || null;
+  }
+
+  getArchiveSource(content: Content): string | null {
+    if (!this.isArchived(content)) return null;
+    const data = content as any;
+    return data.archiveSource || 'wayback machine';
   }
 
   onTagClick(tag: string) {

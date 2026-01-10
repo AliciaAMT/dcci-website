@@ -28,6 +28,7 @@ import Quill from 'quill';
 import { firstValueFrom } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
 import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
+import { Timestamp } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-create-content',
@@ -68,10 +69,15 @@ export class CreateContentPage implements OnInit {
   isPublishing: boolean = false;
   savedContentId: string | null = null;
   isEditMode: boolean = false;
+  isArchiveMode: boolean = false;
   thumbnailUrl: string = '';
   thumbnailFile: File | null = null;
   isUploadingThumbnail: boolean = false;
   readOnlyMode: boolean = false;
+  // Archive-specific fields
+  originalDate: string = '';
+  originalAuthor: string = '';
+  archiveSource: string = 'wayback machine';
 
   // Quill editor configuration
   quillModules = {
@@ -233,8 +239,13 @@ export class CreateContentPage implements OnInit {
     }
     this.currentUser = user;
 
-    // Check if we're editing an existing content
+    // Check if we're in archive mode
     const url = this.router.url;
+    if (url.includes('/archive')) {
+      this.isArchiveMode = true;
+    }
+
+    // Check if we're editing an existing content
     if (url.includes('/edit/')) {
       const contentId = url.split('/edit/')[1];
       if (contentId) {
@@ -259,6 +270,25 @@ export class CreateContentPage implements OnInit {
         // Load thumbnail URL
         const data = content as any;
         this.thumbnailUrl = data.thumbnailUrl || content.featuredImage || '';
+        // Check if content is archived and set archive mode accordingly
+        if (data.archive === true) {
+          this.isArchiveMode = true;
+          // Load archive-specific fields
+          if (data.originalDate) {
+            // Convert Date or Timestamp to date string (YYYY-MM-DD format)
+            let dateValue: Date;
+            if (data.originalDate instanceof Date) {
+              dateValue = data.originalDate;
+            } else if (data.originalDate && typeof (data.originalDate as any).toDate === 'function') {
+              dateValue = (data.originalDate as any).toDate();
+            } else {
+              dateValue = new Date(data.originalDate);
+            }
+            this.originalDate = dateValue.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+          }
+          this.originalAuthor = data.originalAuthor || '';
+          this.archiveSource = data.archiveSource || 'wayback machine';
+        }
       }
     } catch (error) {
       console.error('Error loading content for edit:', error);
@@ -661,11 +691,54 @@ export class CreateContentPage implements OnInit {
         tags: this.tags.length > 0 ? this.tags : undefined
       };
       
+      // Add archive flag and archive-specific fields if in archive mode
+      if (this.isArchiveMode) {
+        contentData.archive = true;
+        
+        // Add original date if provided
+        if (this.originalDate && this.originalDate.trim()) {
+          const dateObj = new Date(this.originalDate);
+          if (!isNaN(dateObj.getTime())) {
+            contentData.originalDate = Timestamp.fromDate(dateObj);
+          }
+        }
+        
+        // Add original author if provided
+        if (this.originalAuthor && this.originalAuthor.trim()) {
+          contentData.originalAuthor = this.originalAuthor.trim();
+        }
+        
+        // Add archive source (default to "wayback machine" if not entered)
+        contentData.archiveSource = (this.archiveSource && this.archiveSource.trim()) 
+          ? this.archiveSource.trim() 
+          : 'wayback machine';
+      }
+      
       // Add thumbnailUrl (include null to allow clearing)
       contentData.thumbnailUrl = thumbnailUrl || null;
 
       if (this.savedContentId) {
         // Update existing draft
+        // Preserve archive flag and archive fields if they were already set (unless we're explicitly in archive mode)
+        if (!this.isArchiveMode) {
+          const existingContent = await this.contentService.getContent(this.savedContentId);
+          if (existingContent) {
+            const data = existingContent as any;
+            if (data.archive === true) {
+              contentData.archive = true;
+              // Preserve archive-specific fields
+              if (data.originalDate) {
+                contentData.originalDate = data.originalDate;
+              }
+              if (data.originalAuthor) {
+                contentData.originalAuthor = data.originalAuthor;
+              }
+              if (data.archiveSource) {
+                contentData.archiveSource = data.archiveSource;
+              }
+            }
+          }
+        }
         console.log('[CreateContent] Updating existing draft, ID:', this.savedContentId);
         console.log('[CreateContent] Current user UID (will be preserved from existing doc):', this.currentUser.uid);
         await this.contentService.updateDraft(this.savedContentId, contentData, this.slug.trim() || undefined);
@@ -764,6 +837,48 @@ export class CreateContentPage implements OnInit {
         authorEmail: this.currentUser.email,
         tags: this.tags.length > 0 ? this.tags : undefined
       };
+      
+      // Add archive flag and archive-specific fields if in archive mode
+      if (this.isArchiveMode) {
+        contentData.archive = true;
+        
+        // Add original date if provided
+        if (this.originalDate && this.originalDate.trim()) {
+          const dateObj = new Date(this.originalDate);
+          if (!isNaN(dateObj.getTime())) {
+            contentData.originalDate = Timestamp.fromDate(dateObj);
+          }
+        }
+        
+        // Add original author if provided
+        if (this.originalAuthor && this.originalAuthor.trim()) {
+          contentData.originalAuthor = this.originalAuthor.trim();
+        }
+        
+        // Add archive source (default to "wayback machine" if not entered)
+        contentData.archiveSource = (this.archiveSource && this.archiveSource.trim()) 
+          ? this.archiveSource.trim() 
+          : 'wayback machine';
+      } else if (this.savedContentId) {
+        // Preserve archive flag and archive fields if they were already set (when updating existing content)
+        const existingContent = await this.contentService.getContent(this.savedContentId);
+        if (existingContent) {
+          const data = existingContent as any;
+          if (data.archive === true) {
+            contentData.archive = true;
+            // Preserve archive-specific fields
+            if (data.originalDate) {
+              contentData.originalDate = data.originalDate;
+            }
+            if (data.originalAuthor) {
+              contentData.originalAuthor = data.originalAuthor;
+            }
+            if (data.archiveSource) {
+              contentData.archiveSource = data.archiveSource;
+            }
+          }
+        }
+      }
       
       // Add thumbnailUrl (include null to allow clearing)
       contentData.thumbnailUrl = thumbnailUrl || null;

@@ -2,8 +2,52 @@
 
 <ion-content [fullscreen]="true" class="archives-page">
   <div class="archives-container">
+    <!-- Loading State -->
+    <div class="loading-container" *ngIf="isLoading">
+      <ion-spinner></ion-spinner>
+      <p>Loading archived articles...</p>
+    </div>
+
+    <!-- Archived Articles List -->
+    <div class="archived-articles-section" *ngIf="!isLoading">
+      <div class="section-header">
+        <h2>Archived Articles</h2>
+        <p class="section-description">
+          These articles are preserved from earlier versions of DCCI Ministries and are presented here as part of the ministry archive.
+        </p>
+      </div>
+
+      <div class="articles-list" *ngIf="archivedArticles.length > 0">
+        <div class="results-count">
+          Showing {{ archivedArticles.length }} archived article{{ archivedArticles.length !== 1 ? 's' : '' }}
+        </div>
+
+        <div class="article-card" *ngFor="let article of archivedArticles" (click)="navigateToArticle(article.slug!)">
+          <div class="article-thumbnail" *ngIf="getThumbnailUrl(article)">
+            <img [src]="getThumbnailUrl(article)" [alt]="article.title">
+          </div>
+          <div class="article-info">
+            <h3 class="article-title">{{ article.title }}</h3>
+            <div class="article-meta">
+              <time class="article-date">
+                {{ getDateString(article.publishedAt || article.createdAt) }}
+              </time>
+            </div>
+            <p class="article-excerpt" *ngIf="article.excerpt">
+              {{ article.excerpt }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="archivedArticles.length === 0 && !isLoading">
+        <ion-icon name="archive-outline"></ion-icon>
+        <p>No archived articles available</p>
+      </div>
+    </div>
+
     <!-- Wayback Machine Section -->
-    <div class="wayback-section">
+    <div class="wayback-section" *ngIf="!isLoading">
       <div class="wayback-card">
         <ion-icon name="archive-outline" class="wayback-icon"></ion-icon>
         <h3>Access Our Previous Content</h3>

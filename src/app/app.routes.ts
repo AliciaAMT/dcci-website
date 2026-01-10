@@ -64,6 +64,11 @@ export const routes: Routes = [
     canActivate: [maintenanceGuard, adminOnlyGuard]
   },
   {
+    path: 'admin/content/archive',
+    loadComponent: () => import('./admin/content/create-content/create-content.page').then( m => m.CreateContentPage),
+    canActivate: [maintenanceGuard, adminOnlyGuard]
+  },
+  {
     path: 'admin/content/manage',
     loadComponent: () => import('./admin/content/manage-content/manage-content.page').then( m => m.ManageContentPage),
     canActivate: [maintenanceGuard, adminOnlyGuard]
