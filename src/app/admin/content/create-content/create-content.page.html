@@ -3,14 +3,14 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/admin/dashboard"></ion-back-button>
     </ion-buttons>
-    <ion-title>Create New Content</ion-title>
+    <ion-title>{{ isArchiveMode ? 'Archive Content' : 'Create New Content' }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="ion-padding">
   <div class="content-form">
-    <h2>{{ isEditMode ? 'Edit Article' : 'Create New Article' }}</h2>
-    <p class="subtitle">{{ isEditMode ? 'Update the details below' : 'Fill in the details below to create a new piece of content' }}</p>
+    <h2>{{ isEditMode ? 'Edit Article' : (isArchiveMode ? 'Create Archived Article' : 'Create New Article') }}</h2>
+    <p class="subtitle">{{ isEditMode ? 'Update the details below' : (isArchiveMode ? 'Fill in the details below to create archived content (archive=true)' : 'Fill in the details below to create a new piece of content') }}</p>
 
     <ion-item>
       <ion-label position="stacked">Title *</ion-label>
@@ -120,6 +120,39 @@
       Customize the URL slug for this article. Leave empty to auto-generate from title. 
       <strong>Note:</strong> Changing the slug of a published article will create a redirect from the old URL.
     </p>
+
+    <!-- Archive-specific fields -->
+    <div *ngIf="isArchiveMode" class="archive-fields-section">
+      <h3 class="archive-section-title">Archive Information</h3>
+      
+      <ion-item>
+        <ion-label position="stacked">Original Publication Date</ion-label>
+        <ion-input
+          type="date"
+          [(ngModel)]="originalDate"
+          placeholder="Select original publication date"
+        ></ion-input>
+      </ion-item>
+      <p class="tags-hint">The original date when this content was first published.</p>
+
+      <ion-item>
+        <ion-label position="stacked">Original Author</ion-label>
+        <ion-input
+          [(ngModel)]="originalAuthor"
+          placeholder="Enter original author name"
+        ></ion-input>
+      </ion-item>
+      <p class="tags-hint">The name of the original author of this content.</p>
+
+      <ion-item>
+        <ion-label position="stacked">Archive Source</ion-label>
+        <ion-input
+          [(ngModel)]="archiveSource"
+          placeholder="wayback machine"
+        ></ion-input>
+      </ion-item>
+      <p class="tags-hint">The source of this archived content (defaults to "wayback machine" if not specified).</p>
+    </div>
 
     <ion-item>
       <ion-label position="stacked">Content *</ion-label>

@@ -32,6 +32,7 @@ export class ArticlesPage implements OnInit, OnDestroy {
   searchTerm = '';
   searchType: 'all' | 'title' | 'content' | 'tags' | 'date' = 'all';
   showYouTubeArticles = true; // Default to showing YouTube articles
+  showArchivedArticles = false; // Default to hiding archived articles
   sortOption: 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc' = 'date-desc'; // Default: newest first
   activeTag: string | null = null;
   version: string;
@@ -101,6 +102,10 @@ export class ArticlesPage implements OnInit, OnDestroy {
     this.filterArticles();
   }
 
+  onArchivedFilterChange() {
+    this.filterArticles();
+  }
+
   onSortChange() {
     this.filterArticles();
   }
@@ -110,10 +115,20 @@ export class ArticlesPage implements OnInit, OnDestroy {
     return data.type === 'youtube' || !!data.youtubeVideoId || !!data.youtubeUrl;
   }
 
+  private isArchivedArticle(article: Content): boolean {
+    const data = article as any;
+    return data.archive === true;
+  }
+
   private filterArticles() {
     let filtered = [...this.articles];
 
-    // Filter by YouTube status first
+    // Filter by archive status first
+    if (!this.showArchivedArticles) {
+      filtered = filtered.filter(article => !this.isArchivedArticle(article));
+    }
+
+    // Filter by YouTube status
     if (!this.showYouTubeArticles) {
       filtered = filtered.filter(article => !this.isYouTubeArticle(article));
     }

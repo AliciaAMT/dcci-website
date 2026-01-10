@@ -73,6 +73,9 @@ export function registerIonicons(): void {
     'help-circle-outline': i.helpCircleOutline,
     'refresh-outline': i.refreshOutline,
     'person-outline': i.personOutline,
+    // Archive article icons
+    'calendar-outline': i.calendarOutline,
+    'library-outline': i.libraryOutline,
     'checkmark-outline': i.checkmarkOutline,
     'close-circle': i.closeCircle,
     // Content creation icons

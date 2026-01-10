@@ -63,11 +63,13 @@ service cloud.firestore {
 
     // Helper function to validate content document fields
     // Allows all fields used by CMS and YouTube importer (tags, type, youtubeVideoId, etc.)
+    // Also allows archive-specific fields (archive, originalDate, originalAuthor, archiveSource)
     function isValidContentFields(data) {
       let allowedFields = [
         'title', 'slug', 'content', 'excerpt', 'status', 'authorId', 'authorEmail',
         'createdAt', 'updatedAt', 'publishedAt', 'oldSlugs', 'tags', 'featuredImage',
-        'type', 'youtubeVideoId', 'youtubeUrl', 'thumbnailUrl'
+        'type', 'youtubeVideoId', 'youtubeUrl', 'thumbnailUrl',
+        'archive', 'originalDate', 'originalAuthor', 'archiveSource'
       ];
       // Check that all keys in data are in the allowed list (fields are optional)
       return data.keys().hasOnly(allowedFields);

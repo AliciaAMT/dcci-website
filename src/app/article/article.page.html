@@ -16,6 +16,12 @@
 
     <!-- Article Content -->
     <article *ngIf="content && !isLoading && !error" class="article">
+      <!-- Archive Notice -->
+      <div class="archive-notice" *ngIf="isArchived(content)">
+        <ion-icon name="archive-outline"></ion-icon>
+        <p>This article is preserved from an earlier version of DCCI Ministries and is presented here as part of the ministry archive. Some formatting or images from the original publication may be unavailable.</p>
+      </div>
+
       <!-- Thumbnail -->
       <div class="article-thumbnail" *ngIf="getThumbnailUrl(content)">
         <img [src]="getThumbnailUrl(content)" [alt]="content.title">
@@ -23,6 +29,31 @@
       
       <!-- Title -->
       <h1 class="article-title">{{ content.title }}</h1>
+
+      <!-- Archive Information (only for archived articles) -->
+      <div class="archive-info" *ngIf="isArchived(content)">
+        <div class="archive-info-item" *ngIf="formatOriginalDate(content)">
+          <ion-icon name="calendar-outline"></ion-icon>
+          <div class="archive-info-content">
+            <span class="archive-info-label">Original Publication Date:</span>
+            <span class="archive-info-value">{{ formatOriginalDate(content) }}</span>
+          </div>
+        </div>
+        <div class="archive-info-item" *ngIf="getOriginalAuthor(content)">
+          <ion-icon name="person-outline"></ion-icon>
+          <div class="archive-info-content">
+            <span class="archive-info-label">Original Author:</span>
+            <span class="archive-info-value">{{ getOriginalAuthor(content) }}</span>
+          </div>
+        </div>
+        <div class="archive-info-item" *ngIf="getArchiveSource(content)">
+          <ion-icon name="library-outline"></ion-icon>
+          <div class="archive-info-content">
+            <span class="archive-info-label">Archive Source:</span>
+            <span class="archive-info-value">{{ getArchiveSource(content) }}</span>
+          </div>
+        </div>
+      </div>
 
       <!-- Content -->
       <div class="article-content" #articleContent [innerHTML]="sanitizedContent"></div>

@@ -17,6 +17,10 @@ export interface Content {
   oldSlugs?: string[]; // For redirects when slug changes
   tags?: string[];
   featuredImage?: string;
+  archive?: boolean; // Flag to mark content as archived
+  originalDate?: Date | Timestamp; // Original publication date of archived content
+  originalAuthor?: string; // Original author of archived content
+  archiveSource?: string; // Source of the archive (e.g., "wayback machine")
 }
 
 @Injectable({

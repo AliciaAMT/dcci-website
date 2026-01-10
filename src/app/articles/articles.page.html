@@ -36,6 +36,14 @@
           </ion-checkbox>
           <span class="youtube-filter-text">Show YouTube videos</span>
         </label>
+        <label class="youtube-filter-label">
+          <ion-checkbox 
+            [(ngModel)]="showArchivedArticles" 
+            (ionChange)="onArchivedFilterChange()"
+            class="youtube-checkbox">
+          </ion-checkbox>
+          <span class="youtube-filter-text">Show archived articles</span>
+        </label>
       </div>
       
       <!-- Active Tag Filter -->
@@ -65,8 +73,10 @@
         <ion-icon name="newspaper-outline"></ion-icon>
         <p *ngIf="activeTag">No articles found with tag "{{ activeTag }}"</p>
         <p *ngIf="!activeTag && searchTerm">No articles found matching "{{ searchTerm }}"</p>
-        <p *ngIf="!activeTag && !searchTerm && !showYouTubeArticles">No written articles available</p>
-        <p *ngIf="!activeTag && !searchTerm && showYouTubeArticles">No articles available</p>
+        <p *ngIf="!activeTag && !searchTerm && !showYouTubeArticles && !showArchivedArticles">No written articles available</p>
+        <p *ngIf="!activeTag && !searchTerm && !showYouTubeArticles && showArchivedArticles">No written archived articles available</p>
+        <p *ngIf="!activeTag && !searchTerm && showYouTubeArticles && !showArchivedArticles">No articles available (archived articles are hidden)</p>
+        <p *ngIf="!activeTag && !searchTerm && showYouTubeArticles && showArchivedArticles">No articles available</p>
       </div>
 
       <div class="article-card" *ngFor="let article of filteredArticles" (click)="navigateToArticle(article.slug!)">
