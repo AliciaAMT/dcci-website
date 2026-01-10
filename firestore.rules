@@ -8,8 +8,11 @@ service cloud.firestore {
       allow create: if (request.auth != null ||
         (resource == null && request.resource != null)) && !siteIsReadOnly();
 
-      // Deny all other operations
-      allow read, update, delete: if false;
+      // Allow admins to read contact submissions (for dashboard activity)
+      allow read: if isAdminUser();
+      
+      // Deny update and delete
+      allow update, delete: if false;
     }
 
     // Allow writes to subscribers collection from Firebase Functions
@@ -19,8 +22,11 @@ service cloud.firestore {
       allow create, update: if (request.auth != null ||
         (resource == null && request.resource != null)) && !siteIsReadOnly();
 
-      // Deny read and delete
-      allow read, delete: if false;
+      // Allow admins to read subscribers (for dashboard activity)
+      allow read: if isAdminUser();
+      
+      // Deny delete
+      allow delete: if false;
     }
 
     // Helper function to check if the current user is an admin
