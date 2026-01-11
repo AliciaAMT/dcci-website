@@ -6,9 +6,9 @@ import { FooterComponent } from '../components/footer.component';
 import { VersionService } from '../services/version.service';
 
 @Component({
-  selector: 'app-contact',
-  templateUrl: './contact.page.html',
-  styleUrls: ['./contact.page.scss'],
+  selector: 'app-terms',
+  templateUrl: './terms.page.html',
+  styleUrls: ['./terms.page.scss'],
   standalone: true,
   imports: [
     CommonModule,
@@ -17,11 +17,10 @@ import { VersionService } from '../services/version.service';
     FooterComponent
   ]
 })
-export class ContactPage {
+export class TermsPage {
   version: string;
 
   constructor(private versionService: VersionService) {
     this.version = this.versionService.getVersion();
   }
 }
-

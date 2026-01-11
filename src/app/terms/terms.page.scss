@@ -1,17 +1,17 @@
-.contact-page {
+.terms-page {
   --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
   min-height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.contact-container {
+.terms-container {
   max-width: 120rem;
   margin: 0 auto;
   padding: 2rem 3rem;
   min-height: 100vh;
 }
 
-.contact-page-content {
+.terms-page-content {
   max-width: 900px;
   margin: 0 auto;
   padding: 2rem 0;
@@ -26,7 +26,7 @@
   animation: fadeInUp 1s ease-out 0.2s both;
 }
 
-.contact-content {
+.terms-content {
   background: rgba(255, 255, 255, 0.98);
   border-radius: 12px;
   padding: 3rem;
@@ -36,7 +36,7 @@
 
 .organization-info {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
   padding-bottom: 2rem;
   border-bottom: 2px solid var(--ion-color-light-tint);
 
@@ -45,27 +45,15 @@
     font-size: 1.4rem;
     color: var(--ion-color-dark);
   }
-}
 
-.intro-text {
-  margin-bottom: 3rem;
-  padding-bottom: 2rem;
-  border-bottom: 2px solid var(--ion-color-light-tint);
-
-  p {
-    font-size: 1.5rem;
-    line-height: 1.8;
-    color: var(--ion-color-dark);
-    margin: 0 0 1rem 0;
-    text-align: center;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
+  .last-updated {
+    color: var(--ion-color-medium);
+    font-size: 1.2rem;
+    font-weight: 500;
   }
 }
 
-.contact-section {
+.terms-section {
   margin-bottom: 3rem;
 
   &:last-child {
@@ -81,11 +69,37 @@
     border-bottom: 2px solid var(--ion-color-primary-tint);
   }
 
+  h3 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--ion-color-dark);
+    margin: 1.5rem 0 1rem 0;
+  }
+
   p {
     font-size: 1.4rem;
     line-height: 1.8;
     color: var(--ion-color-dark);
     margin: 0 0 1.5rem 0;
+  }
+
+  ul {
+    margin: 1rem 0 1.5rem 0;
+    padding-left: 2rem;
+    list-style-type: disc;
+
+    li {
+      font-size: 1.4rem;
+      line-height: 1.8;
+      color: var(--ion-color-dark);
+      margin: 0.8rem 0;
+
+      ul {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        list-style-type: circle;
+      }
+    }
   }
 
   a {
@@ -107,41 +121,35 @@
   margin: 1.5rem 0;
 
   p {
-    margin: 0;
+    margin: 0.5rem 0;
     font-size: 1.4rem;
     color: var(--ion-color-dark);
 
     strong {
       color: var(--ion-color-primary-shade);
-      margin-right: 0.5rem;
-    }
-
-    a {
-      color: var(--ion-color-primary);
-      text-decoration: underline;
-      font-weight: 500;
     }
   }
-}
 
-.note-section {
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 2px solid var(--ion-color-light-tint);
+  ul {
+    margin: 1rem 0 0 0;
+    list-style-type: none;
+    padding-left: 0;
 
-  p {
-    font-size: 1.4rem;
-    line-height: 1.8;
-    color: var(--ion-color-dark);
-    margin: 0 0 1rem 0;
+    li {
+      margin: 1rem 0;
+      padding-left: 0;
 
-    &:last-child {
-      margin-bottom: 0;
-    }
+      strong {
+        color: var(--ion-color-primary-shade);
+        display: block;
+        margin-bottom: 0.5rem;
+      }
 
-    strong {
-      color: var(--ion-color-primary-shade);
-      font-weight: 600;
+      a {
+        color: var(--ion-color-primary);
+        text-decoration: underline;
+        font-weight: 500;
+      }
     }
   }
 }
@@ -160,7 +168,7 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .contact-container {
+  .terms-container {
     padding: 1.5rem;
   }
 
@@ -168,29 +176,37 @@
     font-size: 2.5rem;
   }
 
-  .contact-content {
+  .terms-content {
     padding: 2rem 1.5rem;
   }
 
-  .intro-text {
-    p {
-      font-size: 1.3rem;
-    }
-  }
-
-  .contact-section {
+  .terms-section {
     h2 {
       font-size: 1.7rem;
     }
 
+    h3 {
+      font-size: 1.4rem;
+    }
+
     p {
       font-size: 1.3rem;
+    }
+
+    ul {
+      li {
+        font-size: 1.3rem;
+      }
     }
   }
 
   .organization-info {
     p {
       font-size: 1.3rem;
+    }
+
+    .last-updated {
+      font-size: 1.1rem;
     }
   }
 
@@ -200,12 +216,11 @@
     p {
       font-size: 1.3rem;
     }
-  }
 
-  .note-section {
-    p {
-      font-size: 1.3rem;
+    ul {
+      li {
+        font-size: 1.3rem;
+      }
     }
   }
 }
-

@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { IonIcon } from '@ionic/angular/standalone';
 
 @Component({
@@ -8,7 +8,7 @@ import { IonIcon } from '@ionic/angular/standalone';
   templateUrl: './footer.component.html',
   styleUrls: ['./footer.component.scss'],
   standalone: true,
-  imports: [CommonModule, IonIcon]
+  imports: [CommonModule, IonIcon, RouterModule]
 })
 export class FooterComponent {
   @Input() version: string = '1.0.0';

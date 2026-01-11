@@ -28,7 +28,13 @@ export class ContentCarouselComponent implements OnInit, OnDestroy {
     try {
       this.isLoading = true;
       this.error = null;
-      this.contentItems = await this.contentService.getPublishedContent();
+      let allContent = await this.contentService.getPublishedContent();
+
+      // Filter out archived content
+      this.contentItems = allContent.filter(content => {
+        const data = content as any;
+        return data.archive !== true;
+      });
 
       // Sort by date (newest first) - should already be sorted, but ensure it
       this.contentItems.sort((a, b) => {

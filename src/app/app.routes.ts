@@ -128,5 +128,30 @@ export const routes: Routes = [
     loadComponent: () => import('./privacy/privacy.page').then( m => m.PrivacyPage),
     canActivate: [maintenanceGuard]
   },
+  {
+    path: 'privacy-policy',
+    redirectTo: 'privacy',
+    pathMatch: 'full'
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./terms/terms.page').then( m => m.TermsPage),
+    canActivate: [maintenanceGuard]
+  },
+  {
+    path: 'terms-of-use',
+    redirectTo: 'terms',
+    pathMatch: 'full'
+  },
+  {
+    path: 'disclaimer',
+    loadComponent: () => import('./disclaimer/disclaimer.page').then( m => m.DisclaimerPage),
+    canActivate: [maintenanceGuard]
+  },
+  {
+    path: 'accessibility',
+    loadComponent: () => import('./accessibility/accessibility.page').then( m => m.AccessibilityPage),
+    canActivate: [maintenanceGuard]
+  },
 
 ];
