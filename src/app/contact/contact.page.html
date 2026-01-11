@@ -1,27 +1,44 @@
 <ion-content [fullscreen]="true" class="contact-page">
   <div class="contact-container">
     <app-page-header-with-menu></app-page-header-with-menu>
-    
+
     <div class="contact-page-content">
-      <h1 class="page-title">Report a Website Problem</h1>
-      
-      <div class="alert-box">
-        <ion-icon name="alert-circle-outline" class="alert-icon"></ion-icon>
-        <div class="alert-content">
-          <h2 class="alert-title">Website Problem Report</h2>
-          <p class="alert-message">
-            <strong>This form is for reporting website problems only</strong> (bugs, broken links, display issues, etc.).
-          </p>
-          <p class="alert-message">
-            For questions about content, apologetics, ministry inquiries, or general contact, please use the 
-            <a (click)="navigateToWelcomeContact()" class="welcome-link">contact form on the Welcome page</a>.
-          </p>
+      <h1 class="page-title">CONTACT US</h1>
+
+      <div class="contact-content">
+        <div class="organization-info">
+          <p><strong>DCCI Ministries</strong></p>
         </div>
+
+        <div class="intro-text">
+          <p>We welcome respectful inquiries, questions, and communication.</p>
+          <p>Please use the appropriate contact below so your message reaches the right place.</p>
+        </div>
+
+        <section class="contact-section">
+          <h2>CONTENT, THEOLOGICAL, OR MINISTRY INQUIRIES</h2>
+          <p>For questions about teachings, articles, videos, theology, or the mission of DCCI Ministries:</p>
+          <div class="contact-info-box">
+            <p><strong>Email:</strong> <a href="mailto:info@dcciministries.com">info@dcciministries.com</a></p>
+          </div>
+        </section>
+
+        <section class="contact-section">
+          <h2>WEBSITE, TECHNICAL, OR BUG REPORTS</h2>
+          <p>For issues related to the website, accessibility, errors, or technical concerns:</p>
+          <div class="contact-info-box">
+            <p><strong>Email:</strong> <a href="mailto:admin@accessiblewebmedia.com">admin@accessiblewebmedia.com</a></p>
+          </div>
+        </section>
+
+        <section class="contact-section note-section">
+          <p><strong>Please note:</strong></p>
+          <p>DCCI Ministries does not provide medical, legal, or professional counseling services through this website.</p>
+          <p>We aim to respond to legitimate inquiries as reasonably and promptly as possible.</p>
+        </section>
       </div>
-      
-      <app-website-problem-report></app-website-problem-report>
     </div>
-    
+
     <!-- Footer -->
     <app-footer [version]="version"></app-footer>
   </div>
