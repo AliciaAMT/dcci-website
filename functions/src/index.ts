@@ -330,7 +330,7 @@ export const submitWebsiteProblemReport = functions.https.onRequest((req, res) =
     }
 
     const { name, email, subject, message, website, formLoadTime, submissionTime } = req.body || {};
-    
+
     // Get client IP from various sources
     const forwardedFor = req.headers['x-forwarded-for'];
     const firstForwardedIP = Array.isArray(forwardedFor)
@@ -707,11 +707,11 @@ function estimateDocumentSize(data: any): number {
   let size = 0;
   // Base overhead for a document (approximately 32 bytes)
   size += 32;
-  
+
   for (const [key, value] of Object.entries(data)) {
     // Field name size
     size += Buffer.byteLength(key, 'utf8');
-    
+
     // Value size estimation
     if (value === null) {
       size += 1; // null marker
@@ -729,7 +729,7 @@ function estimateDocumentSize(data: any): number {
       size += estimateDocumentSize(value);
     }
   }
-  
+
   return size;
 }
 
@@ -753,7 +753,7 @@ export const getStorageUsage = functions.https.onRequest((req, res) => {
       } catch (primaryError: any) {
         errorMessage = primaryError.message;
         console.log(`Failed to access bucket ${primaryBucketName}:`, primaryError.message);
-        
+
         // If it's a .firebasestorage.app bucket, try .appspot.com version
         if (primaryBucketName.endsWith('.firebasestorage.app')) {
           const altBucketName = primaryBucketName.replace('.firebasestorage.app', '.appspot.com');
@@ -793,7 +793,7 @@ export const getStorageUsage = functions.https.onRequest((req, res) => {
           // Get all collections and estimate their sizes
           // Note: This is an expensive operation and should be used sparingly
           const collections = ['adminUsers', 'contacts', 'subscribers', 'content', 'stats', 'pageViews', 'websiteProblemReports', 'settings'];
-          
+
           for (const collectionName of collections) {
             try {
               const snapshot = await db.collection(collectionName).get();
@@ -806,7 +806,7 @@ export const getStorageUsage = functions.https.onRequest((req, res) => {
               console.log(`Skipping collection ${collectionName}:`, collectionError.message);
             }
           }
-          
+
           firestoreBytesRemaining = Math.max(0, FREE_TIER_FIRESTORE_BYTES - firestoreBytes);
           firestorePercentUsed = Math.min(
             100,
@@ -822,7 +822,7 @@ export const getStorageUsage = functions.https.onRequest((req, res) => {
       const combinedBytes = storageBytes + (firestoreEstimation ? firestoreBytes : 0);
       const combinedFreeTierBytes = FREE_TIER_STORAGE_BYTES + (firestoreEstimation ? FREE_TIER_FIRESTORE_BYTES : 0);
       const combinedBytesRemaining = storageBytesRemaining + (firestoreEstimation ? firestoreBytesRemaining : 0);
-      const combinedPercentUsed = firestoreEstimation 
+      const combinedPercentUsed = firestoreEstimation
         ? Math.min(100, Number(((combinedBytes / combinedFreeTierBytes) * 100).toFixed(2)))
         : storagePercentUsed;
 
@@ -1385,12 +1385,12 @@ export const syncYouTubeUploads = functions.pubsub
 
           // Check if video still exists via YouTube API
           const videoCheckUrl = `https://www.googleapis.com/youtube/v3/videos?part=id,status&id=${articleVideoId}&key=${youtubeApiKey}`;
-          
+
           let shouldDelete = true;
           try {
             const videoCheckResponseText = await httpsGet(videoCheckUrl);
             const videoCheckData = JSON.parse(videoCheckResponseText) as YouTubeVideoResponse;
-            
+
             if (videoCheckData.items && videoCheckData.items.length > 0) {
               const videoStatus = (videoCheckData.items[0] as any).status;
               // Video exists - check if it's public and accessible
@@ -1903,7 +1903,7 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
  * Update emailVerified in Firestore after email verification
  * This function is called from the client after applyActionCode succeeds
  * It bypasses Firestore security rules to update the emailVerified field
- * 
+ *
  * Accepts: POST with { email: string } in body
  * Returns: { success: boolean, message: string }
  */
@@ -1933,7 +1933,7 @@ export const deleteUser = functions.https.onRequest((req, res) => {
       }
 
       const idToken = authHeader.split('Bearer ')[1];
-      
+
       // Verify the token and get the user
       let decodedToken;
       try {
@@ -2013,9 +2013,9 @@ export const deleteUser = functions.https.onRequest((req, res) => {
       });
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Internal server error',
-        message: error.message 
+        message: error.message
       });
     }
   });
@@ -2028,7 +2028,7 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
     try {
       console.log('updateEmailVerified called with method:', req.method);
       console.log('Request body:', req.body);
-      
+
       // Only allow POST
       if (req.method !== 'POST') {
         res.status(405).json({ error: 'Method not allowed' });
@@ -2064,18 +2064,18 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
       // If email is provided, use it directly
       if (email && typeof email === 'string') {
         targetEmail = email.toLowerCase().trim();
-      } 
+      }
       // If oobCode is provided, try to get email from it
       // Note: Once an action code is used, we can't extract the email from it
       // So we'll query all unverified users and check which one was just verified
       else if (oobCode && typeof oobCode === 'string') {
         console.log('oobCode provided but email not available. Querying recently verified users...');
-        
+
         // Get all users from Firestore who are not verified
         const db = admin.firestore();
         const usersRef = db.collection('adminUsers');
         const unverifiedUsers = await usersRef.where('emailVerified', '==', false).get();
-        
+
         // Check each unverified user in Firebase Auth to see if they're now verified
         for (const doc of unverifiedUsers.docs) {
           try {
@@ -2084,13 +2084,13 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
               // This user was just verified! Update Firestore
               targetEmail = userRecord.email?.toLowerCase().trim() || null;
               console.log(`Found recently verified user: ${targetEmail}`);
-              
+
               // Update Firestore
               await doc.ref.update({ emailVerified: true });
               console.log(`Successfully updated emailVerified for user ${doc.id} (${targetEmail})`);
-              
-              res.status(200).json({ 
-                success: true, 
+
+              res.status(200).json({
+                success: true,
                 message: 'Email verified status updated in Firestore',
                 email: targetEmail
               });
@@ -2101,7 +2101,7 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
             continue;
           }
         }
-        
+
         // If we get here, we couldn't find a recently verified user
         console.warn('Could not find recently verified user from oobCode');
         res.status(404).json({ error: 'Could not determine which user was verified' });
@@ -2122,16 +2122,16 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
       // For now, we'll try exact match first, then try lowercase
       const db = admin.firestore();
       const usersRef = db.collection('adminUsers');
-      
+
       // Try exact match first
       let querySnapshot = await usersRef.where('email', '==', normalizedEmail).limit(1).get();
-      
+
       // If not found, try with original email (in case it's stored with different case)
       if (querySnapshot.empty && normalizedEmail !== email) {
         console.log('Trying with original email case:', email);
         querySnapshot = await usersRef.where('email', '==', email).limit(1).get();
       }
-      
+
       // If still not found, get all docs and search case-insensitively (less efficient but more reliable)
       if (querySnapshot.empty) {
         console.log('Exact match failed, searching all users case-insensitively...');
@@ -2140,7 +2140,7 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
           const docEmail = doc.data().email;
           return docEmail && docEmail.toLowerCase().trim() === normalizedEmail;
         });
-        
+
         if (matchingDoc) {
           // Create a fake QuerySnapshot-like structure
           querySnapshot = {
@@ -2181,7 +2181,7 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
       // Don't check Firebase Auth status as it might not have propagated yet
       console.log('Updating Firestore document for UID:', foundUid);
       console.log('Current document data before update:', userDoc.data());
-      
+
       // Use updateDoc instead of setDoc for clearer intent (only update emailVerified)
       await userDoc.ref.update({
         emailVerified: true
@@ -2197,14 +2197,14 @@ export const updateEmailVerified = functions.https.onRequest(async (req, res) =>
       });
 
       console.log(`Successfully updated emailVerified for user ${foundUid} (${email})`);
-      
+
       res.status(200).json({ success: true, message: 'Email verified status updated in Firestore' });
     } catch (error) {
       console.error('Error updating emailVerified:', error);
       console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      res.status(500).json({ 
-        error: 'Internal server error', 
-        message: error instanceof Error ? error.message : 'Unknown error' 
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });

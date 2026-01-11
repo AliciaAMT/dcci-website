@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  version: '1.0.1',
+  version: '1.0.2',
   firebase: {
     apiKey: "__PUBLIC_WEB_API_KEY__",
     authDomain: "__PROJECT__.firebaseapp.com",

@@ -93,7 +93,7 @@ export class DashboardPage implements OnInit, OnDestroy {
       this.currentUser = user;
 
       // Redirect if user is not admin/moderator or not verified
-      if (!user || !user.isAdmin || !user.emailVerified || 
+      if (!user || !user.isAdmin || !user.emailVerified ||
           (user.userRole !== 'Admin' && user.userRole !== 'Moderator')) {
         this.router.navigate(['/home']);
       }
@@ -132,12 +132,12 @@ export class DashboardPage implements OnInit, OnDestroy {
       const storageLimitBytes = storageData?.storageFreeTierBytes ?? storageData?.freeTierBytes ?? this.stats.storageLimitBytes;
       const storageUsedBytes = storageData?.storageBytes ?? storageData?.totalBytes ?? 0;
       const storagePercentUsed = storageData?.storagePercentUsed ?? storageData?.percentUsed ?? 0;
-      
+
       // Firestore usage (if available)
       const firestoreUsedBytes = storageData?.firestoreBytes ?? null;
       const firestoreLimitBytes = storageData?.firestoreFreeTierBytes ?? (firestoreUsedBytes !== null ? this.stats.firestoreLimitBytes : null);
       const firestorePercentUsed = storageData?.firestorePercentUsed ?? null;
-      
+
       // Combined usage (if Firestore is available)
       const combinedUsedBytes = storageData?.combinedBytes ?? null;
       const combinedLimitBytes = storageData?.combinedFreeTierBytes ?? null;
@@ -194,7 +194,7 @@ export class DashboardPage implements OnInit, OnDestroy {
             limit(5)
           );
           const publishedSnapshot = await getDocs(publishedContentQuery);
-          
+
           publishedSnapshot.forEach((doc) => {
             const content = doc.data() as any;
             const timestamp = content.publishedAt || content.createdAt;
@@ -223,14 +223,14 @@ export class DashboardPage implements OnInit, OnDestroy {
               .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
               .filter((item: any) => item.publishedAt || item.createdAt)
               .sort((a: any, b: any) => {
-                const aTime = a.publishedAt?.toDate ? a.publishedAt.toDate().getTime() : 
+                const aTime = a.publishedAt?.toDate ? a.publishedAt.toDate().getTime() :
                              (a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0);
-                const bTime = b.publishedAt?.toDate ? b.publishedAt.toDate().getTime() : 
+                const bTime = b.publishedAt?.toDate ? b.publishedAt.toDate().getTime() :
                              (b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0);
                 return bTime - aTime;
               })
               .slice(0, 5);
-            
+
             publishedArray.forEach((item: any) => {
               const timestamp = item.publishedAt || item.createdAt;
               if (timestamp) {
@@ -257,7 +257,7 @@ export class DashboardPage implements OnInit, OnDestroy {
             limit(5)
           );
           const contactsSnapshot = await getDocs(contactsQuery);
-          
+
           contactsSnapshot.forEach((doc) => {
             const data = doc.data() as any;
             const timestamp = data.submittedAt;
@@ -290,7 +290,7 @@ export class DashboardPage implements OnInit, OnDestroy {
                 return bTime - aTime;
               })
               .slice(0, 5);
-            
+
             contactsArray.forEach((item: any) => {
               const timestamp = item.submittedAt;
               if (timestamp) {
@@ -316,7 +316,7 @@ export class DashboardPage implements OnInit, OnDestroy {
             limit(5)
           );
           const subscribersSnapshot = await getDocs(subscribersQuery);
-          
+
           subscribersSnapshot.forEach((doc) => {
             const data = doc.data() as any;
             const timestamp = data.subscribedAt;
@@ -349,7 +349,7 @@ export class DashboardPage implements OnInit, OnDestroy {
                 return bTime - aTime;
               })
               .slice(0, 5);
-            
+
             subscribersArray.forEach((item: any) => {
               const timestamp = item.subscribedAt;
               if (timestamp) {
@@ -376,7 +376,7 @@ export class DashboardPage implements OnInit, OnDestroy {
             limit(3)
           );
           const draftsSnapshot = await getDocs(draftsQuery);
-          
+
           draftsSnapshot.forEach((doc) => {
             const content = doc.data() as any;
             const timestamp = content.updatedAt || content.createdAt;
@@ -404,14 +404,14 @@ export class DashboardPage implements OnInit, OnDestroy {
               .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
               .filter((item: any) => item.updatedAt || item.createdAt)
               .sort((a: any, b: any) => {
-                const aTime = a.updatedAt?.toDate ? a.updatedAt.toDate().getTime() : 
+                const aTime = a.updatedAt?.toDate ? a.updatedAt.toDate().getTime() :
                              (a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0);
-                const bTime = b.updatedAt?.toDate ? b.updatedAt.toDate().getTime() : 
+                const bTime = b.updatedAt?.toDate ? b.updatedAt.toDate().getTime() :
                              (b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0);
                 return bTime - aTime;
               })
               .slice(0, 3);
-            
+
             draftsArray.forEach((item: any) => {
               const timestamp = item.updatedAt || item.createdAt;
               if (timestamp) {
@@ -431,13 +431,13 @@ export class DashboardPage implements OnInit, OnDestroy {
 
       // Sort all activities by timestamp (most recent first) and limit to 10
       activities.sort((a, b) => {
-        const aTime = a.timestamp instanceof Date 
-          ? a.timestamp.getTime() 
-          : (a.timestamp as any)?.toDate ? (a.timestamp as any).toDate().getTime() 
+        const aTime = a.timestamp instanceof Date
+          ? a.timestamp.getTime()
+          : (a.timestamp as any)?.toDate ? (a.timestamp as any).toDate().getTime()
           : new Date(a.timestamp as any).getTime();
-        const bTime = b.timestamp instanceof Date 
-          ? b.timestamp.getTime() 
-          : (b.timestamp as any)?.toDate ? (b.timestamp as any).toDate().getTime() 
+        const bTime = b.timestamp instanceof Date
+          ? b.timestamp.getTime()
+          : (b.timestamp as any)?.toDate ? (b.timestamp as any).toDate().getTime()
           : new Date(b.timestamp as any).getTime();
         return bTime - aTime;
       });
@@ -453,7 +453,7 @@ export class DashboardPage implements OnInit, OnDestroy {
   formatTimeAgo(timestamp: Date | Timestamp | any): string {
     try {
       let date: Date;
-      
+
       if (timestamp instanceof Date) {
         date = timestamp;
       } else if (timestamp && typeof timestamp.toDate === 'function') {
@@ -565,15 +565,15 @@ export class DashboardPage implements OnInit, OnDestroy {
       try {
         // Use Promise.race for timeout
         const emailCheck = firstValueFrom(
-          this.http.get(environment.firebaseFunctionsUrl + '/testContactForm', { 
+          this.http.get(environment.firebaseFunctionsUrl + '/testContactForm', {
             observe: 'response',
             responseType: 'json'
           })
         );
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Timeout')), 5000)
         );
-        
+
         const emailTest = await Promise.race([emailCheck, timeoutPromise]) as any;
         if (emailTest && emailTest.status === 200) {
           const data = emailTest.body as any;
@@ -626,7 +626,7 @@ export class DashboardPage implements OnInit, OnDestroy {
     if (!bytes || bytes === 0) return '0 MB';
     const mb = bytes / (1024 * 1024);
     const gb = bytes / (1024 * 1024 * 1024);
-    
+
     if (gb >= 1) {
       return `${gb.toFixed(2)} GB`;
     } else {

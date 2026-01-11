@@ -229,7 +229,7 @@
         <div class="card-content">
           <div class="status-list">
             <div class="status-item">
-              <div class="status-indicator" 
+              <div class="status-indicator"
                    [ngClass]="{
                      'success': stats.databaseConnection === 'online',
                      'warning': stats.databaseConnection === 'checking',
@@ -243,7 +243,7 @@
               </ion-chip>
             </div>
             <div class="status-item">
-              <div class="status-indicator" 
+              <div class="status-indicator"
                    [ngClass]="{
                      'success': stats.emailService === 'active',
                      'warning': stats.emailService === 'checking',
@@ -267,7 +267,7 @@
               </ion-chip>
             </div>
             <div class="status-item">
-              <div class="status-indicator" 
+              <div class="status-indicator"
                    [ngClass]="{
                      'success': stats.sslCertificate === 'valid',
                      'warning': stats.sslCertificate === 'checking' || stats.sslCertificate === 'expiring',
