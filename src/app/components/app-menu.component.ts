@@ -1,6 +1,6 @@
-import { Component, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, ViewChild, AfterViewInit, OnDestroy, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonLabel, IonIcon } from '@ionic/angular/standalone';
+import { IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonLabel, IonIcon, IonButtons, IonButton } from '@ionic/angular/standalone';
 import { Router } from '@angular/router';
 import { MenuController } from '@ionic/angular/standalone';
 
@@ -15,6 +15,8 @@ import { MenuController } from '@ionic/angular/standalone';
     IonHeader,
     IonToolbar,
     IonTitle,
+    IonButtons,
+    IonButton,
     IonContent,
     IonList,
     IonItem,
@@ -22,8 +24,11 @@ import { MenuController } from '@ionic/angular/standalone';
     IonIcon
   ]
 })
-export class AppMenuComponent implements AfterViewInit {
+export class AppMenuComponent implements AfterViewInit, OnDestroy {
   @ViewChild(IonMenu) menu!: IonMenu;
+  @ViewChild('closeButton', { read: ElementRef }) closeButtonRef!: ElementRef<HTMLIonButtonElement>;
+  @ViewChild('firstMenuItem', { read: ElementRef }) firstMenuItemRef!: ElementRef<HTMLElement>;
+  private escapeKeyHandler?: (event: KeyboardEvent) => void;
 
   constructor(
     private router: Router,
@@ -35,9 +40,58 @@ export class AppMenuComponent implements AfterViewInit {
     try {
       await this.menuController.enable(true, 'main-menu');
       console.log('Menu enabled in AppMenuComponent');
+      
+      // Add document-level Escape key listener for accessibility
+      this.escapeKeyHandler = async (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          const isOpen = await this.menuController.isOpen('main-menu');
+          if (isOpen) {
+            await this.closeMenu();
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
+      };
+      document.addEventListener('keydown', this.escapeKeyHandler);
     } catch (error) {
       console.error('Error enabling menu:', error);
     }
+  }
+
+  ngOnDestroy() {
+    // Clean up escape key listener
+    if (this.escapeKeyHandler) {
+      document.removeEventListener('keydown', this.escapeKeyHandler);
+    }
+  }
+
+  onMenuOpen() {
+    // Focus the close button when menu opens (accessibility best practice)
+    setTimeout(() => {
+      if (this.closeButtonRef?.nativeElement) {
+        const button = this.closeButtonRef.nativeElement.querySelector('button');
+        if (button) {
+          (button as HTMLElement).focus();
+        }
+      }
+    }, 150);
+  }
+
+  onMenuClose() {
+    // Return focus to the menu trigger button when menu closes (accessibility best practice)
+    setTimeout(() => {
+      const menuButton = document.querySelector('ion-button.menu-button') as HTMLElement;
+      if (menuButton) {
+        const button = menuButton.shadowRoot?.querySelector('button') as HTMLElement;
+        if (button) {
+          button.focus();
+        }
+      }
+    }, 100);
+  }
+
+  async closeMenu() {
+    await this.menuController.close('main-menu');
   }
 
   async open() {
@@ -53,22 +107,22 @@ export class AppMenuComponent implements AfterViewInit {
   }
 
   async navigateToWelcome() {
-    await this.menuController.close('main-menu');
+    await this.closeMenu();
     this.router.navigate(['/welcome']);
   }
 
   async navigateToArticles() {
-    await this.menuController.close('main-menu');
+    await this.closeMenu();
     this.router.navigate(['/articles']);
   }
 
   async navigateToArchives() {
-    await this.menuController.close('main-menu');
+    await this.closeMenu();
     this.router.navigate(['/archives']);
   }
 
   async navigateToSupport() {
-    await this.menuController.close('main-menu');
+    await this.closeMenu();
     const currentUrl = this.router.url;
     if (currentUrl === '/welcome') {
       // Already on welcome page, scroll to section
@@ -81,7 +135,7 @@ export class AppMenuComponent implements AfterViewInit {
   }
 
   async navigateToContact() {
-    await this.menuController.close('main-menu');
+    await this.closeMenu();
     const currentUrl = this.router.url;
     if (currentUrl === '/welcome') {
       // Already on welcome page, scroll to section
