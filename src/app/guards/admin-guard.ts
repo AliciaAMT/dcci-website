@@ -51,7 +51,7 @@ export const adminGuard: CanActivateFn = (route, state) => {
         }),
         take(1)
       );
-      
+
       // Race between user data loading and timeout (3 seconds)
       const userData$ = race(
         userDataWithTimeout$,
@@ -67,7 +67,7 @@ export const adminGuard: CanActivateFn = (route, state) => {
           }
 
           // Allow users with Admin or Moderator role
-          if (user && user.isAdmin && user.emailVerified && 
+          if (user && user.isAdmin && user.emailVerified &&
               (user.userRole === 'Admin' || user.userRole === 'Moderator')) {
             return true;
           } else {

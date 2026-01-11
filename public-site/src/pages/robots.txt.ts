@@ -7,6 +7,11 @@ Allow: /
 Allow: /welcome/
 Allow: /articles/
 Allow: /articles/*
+Allow: /privacy/
+Allow: /terms-of-use/
+Allow: /disclaimer/
+Allow: /accessibility/
+Allow: /contact/
 
 # Disallow admin routes
 Disallow: /admin/
@@ -14,6 +19,9 @@ Disallow: /admin/*
 
 # Disallow API routes (if any)
 Disallow: /api/
+
+# Disallow report-problem (internal tool)
+Disallow: /report-problem/
 
 # Sitemap location
 Sitemap: ${absoluteUrl('/sitemap.xml')}
