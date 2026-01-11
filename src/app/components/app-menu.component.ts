@@ -40,7 +40,7 @@ export class AppMenuComponent implements AfterViewInit, OnDestroy {
     try {
       await this.menuController.enable(true, 'main-menu');
       console.log('Menu enabled in AppMenuComponent');
-      
+
       // Add document-level Escape key listener for accessibility
       this.escapeKeyHandler = async (event: KeyboardEvent) => {
         if (event.key === 'Escape') {
