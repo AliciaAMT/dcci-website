@@ -62,6 +62,8 @@ export class DraftsPage implements OnInit, OnDestroy {
   searchType: 'title' | 'content' | 'tags' | 'date' = 'title';
   sortBy: 'date' | 'title' = 'date';
   showYouTubeArticles = true; // Default to showing YouTube articles
+  showArchiveArticles = true; // Default to showing archived articles
+  showWrittenArticles = true; // Default to showing new written articles
 
   constructor(
     private router: Router,
@@ -107,13 +109,33 @@ export class DraftsPage implements OnInit, OnDestroy {
     return data.type === 'youtube' || !!data.youtubeVideoId || !!data.youtubeUrl;
   }
 
+  private isArchiveArticle(article: Content): boolean {
+    const data = article as any;
+    return data.archive === true;
+  }
+
+  private isWrittenArticle(article: Content): boolean {
+    // Written articles are those that are NOT YouTube and NOT archived
+    return !this.isYouTubeArticle(article) && !this.isArchiveArticle(article);
+  }
+
   applyFilters() {
     let filtered = [...this.drafts];
     
-    // Filter by YouTube status first
-    if (!this.showYouTubeArticles) {
-      filtered = filtered.filter(article => !this.isYouTubeArticle(article));
-    }
+    // Filter by content type checkboxes
+    filtered = filtered.filter(article => {
+      const isYouTube = this.isYouTubeArticle(article);
+      const isArchive = this.isArchiveArticle(article);
+      const isWritten = this.isWrittenArticle(article);
+      
+      // Show article if it matches any of the checked filter types
+      let shouldShow = false;
+      if (this.showYouTubeArticles && isYouTube) shouldShow = true;
+      if (this.showArchiveArticles && isArchive) shouldShow = true;
+      if (this.showWrittenArticles && isWritten) shouldShow = true;
+      
+      return shouldShow;
+    });
     
     // Apply search filter if search term exists
     if (this.searchTerm.trim()) {
@@ -139,10 +161,34 @@ export class DraftsPage implements OnInit, OnDestroy {
     }
     
     // Sort
+    const isOnlyShowingArchives = this.showArchiveArticles && !this.showYouTubeArticles && !this.showWrittenArticles;
+    
     if (this.sortBy === 'title') {
-      filtered.sort((a, b) => a.title.localeCompare(b.title));
+      filtered.sort((a, b) => {
+        const aIsArchive = this.isArchiveArticle(a);
+        const bIsArchive = this.isArchiveArticle(b);
+        
+        // If only showing archives, sort normally
+        // Otherwise, archives come last
+        if (!isOnlyShowingArchives) {
+          if (aIsArchive && !bIsArchive) return 1;
+          if (!aIsArchive && bIsArchive) return -1;
+        }
+        
+        return a.title.localeCompare(b.title);
+      });
     } else {
       filtered.sort((a, b) => {
+        const aIsArchive = this.isArchiveArticle(a);
+        const bIsArchive = this.isArchiveArticle(b);
+        
+        // If only showing archives, sort normally
+        // Otherwise, archives come last
+        if (!isOnlyShowingArchives) {
+          if (aIsArchive && !bIsArchive) return 1;
+          if (!aIsArchive && bIsArchive) return -1;
+        }
+        
         const aDate = a.updatedAt || a.createdAt;
         const bDate = b.updatedAt || b.createdAt;
         const aTime = aDate instanceof Date ? aDate.getTime() : new Date(aDate as any).getTime();
@@ -159,6 +205,14 @@ export class DraftsPage implements OnInit, OnDestroy {
   }
 
   onYouTubeFilterChange() {
+    this.applyFilters();
+  }
+
+  onArchiveFilterChange() {
+    this.applyFilters();
+  }
+
+  onWrittenArticlesFilterChange() {
     this.applyFilters();
   }
 

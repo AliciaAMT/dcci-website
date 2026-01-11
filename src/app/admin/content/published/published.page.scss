@@ -18,6 +18,9 @@
     .youtube-filter-row {
       margin-top: 12px;
       padding: 0 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
 
       .youtube-filter-label {
         display: flex;
