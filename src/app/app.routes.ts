@@ -124,6 +124,11 @@ export const routes: Routes = [
     canActivate: [maintenanceGuard]
   },
   {
+    path: 'report-problem',
+    loadComponent: () => import('./report-problem/report-problem.page').then( m => m.ReportProblemPage),
+    canActivate: [maintenanceGuard]
+  },
+  {
     path: 'privacy',
     loadComponent: () => import('./privacy/privacy.page').then( m => m.PrivacyPage),
     canActivate: [maintenanceGuard]
