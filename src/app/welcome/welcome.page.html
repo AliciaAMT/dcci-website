@@ -2,14 +2,16 @@
   <div class="welcome-container">
     <main id="main-content" role="main">
       <!-- Header Section -->
-      <div class="header-section">
-        <div class="logo-area">
-          <img src="assets/icon/icon-no-text.webp" alt="" class="brand-logo" aria-hidden="true">
-          <div class="ministry-text">
-            <h1 class="ministry-name">DCCI MINISTRIES</h1>
-            <p class="ministry-tagline">Defend Christ Critique Islam</p>
+      <div class="header-section" [class.collapsed]="isScrolled">
+        <a (click)="onLogoClick($event)" class="logo-area-link" [attr.aria-label]="'Go to top of page'">
+          <div class="logo-area">
+            <img src="assets/icon/icon-no-text.webp" alt="" class="brand-logo" aria-hidden="true">
+            <div class="ministry-text">
+              <h1 class="ministry-name">DCCI MINISTRIES</h1>
+              <p class="ministry-tagline" *ngIf="!isScrolled">Defend Christ Critique Islam</p>
+            </div>
           </div>
-        </div>
+        </a>
         <ion-button fill="clear" (click)="openMenu()" class="menu-button">
           <ion-icon name="menu-outline" slot="icon-only"></ion-icon>
         </ion-button>
@@ -100,7 +102,7 @@ Like the Apostle Paul, "we do not use deception, nor do we distort the Word of G
       </div>
 
       <!-- Support Section -->
-      <div class="support-section">
+      <div id="support-section" class="support-section">
         <div class="support-card">
           <ion-icon name="heart-outline" class="support-icon"></ion-icon>
           <h3>Support This Ministry</h3>
@@ -133,6 +135,14 @@ Like the Apostle Paul, "we do not use deception, nor do we distort the Word of G
 
       <!-- Footer -->
       <app-footer [version]="version"></app-footer>
+
+      <!-- Scroll to Top Link -->
+      <div class="scroll-to-top-container">
+        <a (click)="scrollToTop()" class="scroll-to-top-link">
+          <ion-icon name="arrow-up-outline"></ion-icon>
+          <span>Back to Top</span>
+        </a>
+      </div>
     </main>
   </div>
 </ion-content>

@@ -1,11 +1,13 @@
-<div class="header-section">
-  <div class="logo-area">
-    <img src="assets/icon/icon-no-text.webp" alt="" class="brand-logo" aria-hidden="true">
-    <div class="ministry-text">
-      <h1 class="ministry-name">DCCI MINISTRIES</h1>
-      <p class="ministry-tagline">Defend Christ Critique Islam</p>
+<div class="header-section" [class.collapsed]="isScrolled">
+  <a routerLink="/welcome" class="logo-area-link">
+    <div class="logo-area">
+      <img src="assets/icon/icon-no-text.webp" alt="" class="brand-logo" aria-hidden="true">
+      <div class="ministry-text">
+        <h1 class="ministry-name">DCCI MINISTRIES</h1>
+        <p class="ministry-tagline" *ngIf="!isScrolled">Defend Christ Critique Islam</p>
+      </div>
     </div>
-  </div>
+  </a>
   <ion-button fill="clear" (click)="openMenu()" class="menu-button">
     <ion-icon name="menu-outline" slot="icon-only"></ion-icon>
   </ion-button>

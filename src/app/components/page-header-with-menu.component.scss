@@ -8,11 +8,39 @@
   box-shadow: 0 4px 15px rgba(var(--ion-color-dark-rgb), 0.1);
   margin-left: calc(-50vw + 50%);
   margin-right: calc(-50vw + 50%);
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+  transition: padding 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease;
+
+  &.collapsed {
+    padding: 0.75rem 2rem;
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(var(--ion-color-dark-rgb), 0.15);
+    gap: 1rem;
+  }
+}
+
+.logo-area-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex: 1;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &:active {
+    opacity: 0.7;
+  }
 }
 
 .logo-area {
@@ -22,6 +50,10 @@
   gap: 1.5rem;
   flex-wrap: wrap;
   justify-content: center;
+  
+  .header-section.collapsed & {
+    gap: 1rem;
+  }
 }
 
 .menu-button {
@@ -30,9 +62,20 @@
   height: 48px;
   margin: 0;
   padding: 0;
+  transition: width 0.3s ease, height 0.3s ease;
 
   ion-icon {
     font-size: 2.4rem;
+    transition: font-size 0.3s ease;
+  }
+
+  .header-section.collapsed & {
+    width: 40px;
+    height: 40px;
+
+    ion-icon {
+      font-size: 2rem;
+    }
   }
 }
 
@@ -43,11 +86,25 @@
     justify-content: space-between;
     align-items: center;
     text-align: left;
+
+    &.collapsed {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      text-align: left;
+    }
+  }
+
+  .logo-area-link {
+    flex: 1;
   }
 
   .logo-area {
-    flex: 1;
     justify-content: flex-start;
+
+    .header-section.collapsed & {
+      justify-content: flex-start;
+    }
   }
 
   .menu-button {
@@ -60,12 +117,20 @@
   height: 120px;
   filter: drop-shadow(0 4px 8px rgba(var(--ion-color-dark-rgb), 0.3));
   flex-shrink: 0;
+  transition: width 0.3s ease, height 0.3s ease;
+
+  .header-section.collapsed & {
+    width: 50px;
+    height: 50px;
+    filter: drop-shadow(0 2px 4px rgba(var(--ion-color-dark-rgb), 0.2));
+  }
 }
 
 .ministry-text {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  transition: gap 0.3s ease;
 }
 
 .ministry-name {
@@ -76,6 +141,13 @@
   text-shadow: 0 2px 4px rgba(var(--ion-color-dark-rgb), 0.1);
   letter-spacing: 1px;
   line-height: 1.1;
+  transition: font-size 0.3s ease, text-shadow 0.3s ease;
+
+  .header-section.collapsed & {
+    font-size: 1.4rem !important;
+    text-shadow: 0 1px 2px rgba(var(--ion-color-dark-rgb), 0.1);
+    letter-spacing: 0.5px;
+  }
 }
 
 .ministry-tagline {
@@ -85,6 +157,7 @@
   margin: 0.5rem 0 0 0;
   letter-spacing: 0.5px;
   line-height: 1.2;
+  transition: opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease;
 }
 
 /* Responsive Design */
@@ -118,6 +191,11 @@
   .brand-logo {
     width: 80px;
     height: 80px;
+
+    .header-section.collapsed & {
+      width: 40px;
+      height: 40px;
+    }
   }
 }
 
@@ -143,6 +221,17 @@
   .brand-logo {
     width: 70px;
     height: 70px;
+
+    .header-section.collapsed & {
+      width: 35px;
+      height: 35px;
+    }
+  }
+
+  .ministry-name {
+    .header-section.collapsed & {
+      font-size: 1.2rem !important;
+    }
   }
 }
 

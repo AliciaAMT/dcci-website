@@ -66,5 +66,38 @@ export class AppMenuComponent implements AfterViewInit {
     await this.menuController.close('main-menu');
     this.router.navigate(['/archives']);
   }
+
+  async navigateToSupport() {
+    await this.menuController.close('main-menu');
+    const currentUrl = this.router.url;
+    if (currentUrl === '/welcome') {
+      // Already on welcome page, scroll to section
+      setTimeout(() => this.scrollToSection('support-section'), 100);
+    } else {
+      // Navigate to welcome page, then scroll after navigation
+      await this.router.navigate(['/welcome']);
+      setTimeout(() => this.scrollToSection('support-section'), 300);
+    }
+  }
+
+  async navigateToContact() {
+    await this.menuController.close('main-menu');
+    const currentUrl = this.router.url;
+    if (currentUrl === '/welcome') {
+      // Already on welcome page, scroll to section
+      setTimeout(() => this.scrollToSection('contact-form'), 100);
+    } else {
+      // Navigate to welcome page, then scroll after navigation
+      await this.router.navigate(['/welcome']);
+      setTimeout(() => this.scrollToSection('contact-form'), 300);
+    }
+  }
+
+  private scrollToSection(sectionId: string) {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
 }
 

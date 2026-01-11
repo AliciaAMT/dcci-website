@@ -7,6 +7,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
 import { FooterComponent } from '../components/footer.component';
 import { VersionService } from '../services/version.service';
+import { ScrollService } from '../services/scroll.service';
 
 @Component({
   selector: 'app-article',
@@ -16,6 +17,7 @@ import { VersionService } from '../services/version.service';
   imports: [CommonModule, IonContent, IonSpinner, IonIcon, PageHeaderWithMenuComponent, FooterComponent]
 })
 export class ArticlePage implements OnInit, AfterViewInit {
+  @ViewChild(IonContent) ionContent!: IonContent;
   @ViewChild('articleContent', { static: false }) articleContent!: ElementRef;
   content: Content | null = null;
   isLoading = true;
@@ -28,7 +30,8 @@ export class ArticlePage implements OnInit, AfterViewInit {
     private router: Router,
     private contentService: ContentService,
     private sanitizer: DomSanitizer,
-    private versionService: VersionService
+    private versionService: VersionService,
+    private scrollService: ScrollService
   ) {
     this.version = this.versionService.getVersion();
   }
@@ -44,7 +47,12 @@ export class ArticlePage implements OnInit, AfterViewInit {
     await this.loadContent(slug);
   }
 
-  ngAfterViewInit() {
+  async ngAfterViewInit() {
+    // Register scroll container for collapsing header
+    if (this.ionContent) {
+      await this.scrollService.registerScrollContainer(this.ionContent);
+    }
+    
     // Make videos responsive after view init
     setTimeout(() => this.makeVideosResponsive(), 100);
   }
