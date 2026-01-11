@@ -19,7 +19,7 @@ export class FooterComponent {
   }
 
   navigateToContact() {
-    this.router.navigate(['/contact'], { queryParams: { subject: 'Website Problem Report' } });
+    this.router.navigate(['/report-problem']);
   }
 }
 

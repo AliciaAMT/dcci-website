@@ -1,0 +1,18 @@
+.report-problem-page {
+  --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.report-problem-container {
+  max-width: 120rem;
+  margin: 0 auto;
+  padding: 2rem 3rem;
+  min-height: 100vh;
+}
+
+.report-problem-page-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 0;
+}

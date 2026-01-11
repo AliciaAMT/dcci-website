@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -7,6 +7,7 @@ import { ContentService, Content } from '../services/content.service';
 import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
 import { FooterComponent } from '../components/footer.component';
 import { VersionService } from '../services/version.service';
+import { ScrollService } from '../services/scroll.service';
 
 @Component({
   selector: 'app-articles',
@@ -25,7 +26,8 @@ import { VersionService } from '../services/version.service';
     FooterComponent
   ]
 })
-export class ArticlesPage implements OnInit, OnDestroy {
+export class ArticlesPage implements OnInit, OnDestroy, AfterViewInit {
+  @ViewChild(IonContent) content!: IonContent;
   articles: Content[] = [];
   filteredArticles: Content[] = [];
   isLoading = true;
@@ -41,9 +43,17 @@ export class ArticlesPage implements OnInit, OnDestroy {
     private contentService: ContentService,
     private router: Router,
     private route: ActivatedRoute,
-    private versionService: VersionService
+    private versionService: VersionService,
+    private scrollService: ScrollService
   ) {
     this.version = this.versionService.getVersion();
+  }
+
+  async ngAfterViewInit() {
+    // Register scroll container for collapsing header
+    if (this.content) {
+      await this.scrollService.registerScrollContainer(this.content);
+    }
   }
 
   async ngOnInit() {
@@ -72,7 +82,7 @@ export class ArticlesPage implements OnInit, OnDestroy {
         this.filterArticles();
       }
     });
-    
+
     await this.loadArticles();
   }
 

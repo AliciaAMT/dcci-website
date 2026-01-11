@@ -1,20 +1,22 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IonContent, IonIcon, IonSpinner } from '@ionic/angular/standalone';
-import { PageHeaderComponent } from '../components/page-header.component';
+import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
 import { FooterComponent } from '../components/footer.component';
 import { VersionService } from '../services/version.service';
 import { ContentService, Content } from '../services/content.service';
+import { ScrollService } from '../services/scroll.service';
 
 @Component({
   selector: 'app-archives',
   templateUrl: './archives.page.html',
   styleUrls: ['./archives.page.scss'],
   standalone: true,
-  imports: [CommonModule, IonContent, IonIcon, IonSpinner, PageHeaderComponent, FooterComponent]
+  imports: [CommonModule, IonContent, IonIcon, IonSpinner, PageHeaderWithMenuComponent, FooterComponent]
 })
-export class ArchivesPage implements OnInit {
+export class ArchivesPage implements OnInit, AfterViewInit {
+  @ViewChild(IonContent) content!: IonContent;
   version: string;
   archivedArticles: Content[] = [];
   isLoading = true;
@@ -22,9 +24,17 @@ export class ArchivesPage implements OnInit {
   constructor(
     private versionService: VersionService,
     private contentService: ContentService,
-    private router: Router
+    private router: Router,
+    private scrollService: ScrollService
   ) {
     this.version = this.versionService.getVersion();
+  }
+
+  async ngAfterViewInit() {
+    // Register scroll container for collapsing header
+    if (this.content) {
+      await this.scrollService.registerScrollContainer(this.content);
+    }
   }
 
   async ngOnInit() {

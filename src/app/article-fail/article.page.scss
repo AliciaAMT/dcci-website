@@ -327,13 +327,13 @@ article {
 
       h3 {
         font-size: 2rem;
-        color: var(--ion-color-warning-contrast);
+        color: var(--ion-color-yellow-contrast);
         margin: 0 0 1rem 0;
       }
 
       p {
         font-size: 1.4rem;
-        color: var(--ion-color-warning-contrast);
+        color: var(--ion-color-yellow-contrast);
         margin: 0.5rem 0;
         line-height: 1.6;
       }
@@ -345,7 +345,7 @@ article {
     }
 
     .dismiss-button {
-      --color: var(--ion-color-warning-contrast);
+      --color: var(--ion-color-yellow-contrast);
       --padding-start: 0.5rem;
       --padding-end: 0.5rem;
       flex-shrink: 0;

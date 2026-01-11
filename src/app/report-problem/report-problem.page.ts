@@ -3,22 +3,24 @@ import { CommonModule } from '@angular/common';
 import { IonContent } from '@ionic/angular/standalone';
 import { PageHeaderWithMenuComponent } from '../components/page-header-with-menu.component';
 import { FooterComponent } from '../components/footer.component';
+import { WebsiteProblemReportComponent } from '../components/website-problem-report.component';
 import { VersionService } from '../services/version.service';
 import { ScrollService } from '../services/scroll.service';
 
 @Component({
-  selector: 'app-disclaimer',
-  templateUrl: './disclaimer.page.html',
-  styleUrls: ['./disclaimer.page.scss'],
+  selector: 'app-report-problem',
+  templateUrl: './report-problem.page.html',
+  styleUrls: ['./report-problem.page.scss'],
   standalone: true,
   imports: [
     CommonModule,
     IonContent,
     PageHeaderWithMenuComponent,
-    FooterComponent
+    FooterComponent,
+    WebsiteProblemReportComponent
   ]
 })
-export class DisclaimerPage implements AfterViewInit {
+export class ReportProblemPage implements AfterViewInit {
   @ViewChild(IonContent) content!: IonContent;
   version: string;
 

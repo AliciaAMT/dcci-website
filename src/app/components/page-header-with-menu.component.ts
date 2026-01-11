@@ -1,17 +1,41 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
 import { MenuController } from '@ionic/angular/standalone';
+import { ScrollService } from '../services/scroll.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-page-header-with-menu',
   templateUrl: './page-header-with-menu.component.html',
   styleUrls: ['./page-header-with-menu.component.scss'],
   standalone: true,
-  imports: [CommonModule, IonButton, IonIcon]
+  imports: [CommonModule, RouterModule, IonButton, IonIcon]
 })
-export class PageHeaderWithMenuComponent {
-  constructor(private menuController: MenuController) {}
+export class PageHeaderWithMenuComponent implements OnInit, OnDestroy {
+  isScrolled = false;
+  private scrollSubscription?: Subscription;
+
+  constructor(
+    private menuController: MenuController,
+    private scrollService: ScrollService
+  ) {}
+
+  ngOnInit() {
+    // Subscribe to scroll state changes
+    this.scrollSubscription = this.scrollService.getScrollState().subscribe(
+      isScrolled => {
+        this.isScrolled = isScrolled;
+      }
+    );
+  }
+
+  ngOnDestroy() {
+    if (this.scrollSubscription) {
+      this.scrollSubscription.unsubscribe();
+    }
+  }
 
   async openMenu() {
     try {
