@@ -9,14 +9,14 @@ export const routes: Routes = [
     loadComponent: () => import('./admin/maintenance/maintenance.page').then((m) => m.MaintenancePage)
   },
   {
-    path: 'home',
-    loadComponent: () => import('./home/home.page').then((m) => m.HomePage),
-    canActivate: [maintenanceGuard]
+    path: '',
+    redirectTo: 'welcome',
+    pathMatch: 'full',
   },
   {
-    path: '',
-    redirectTo: 'home',
-    pathMatch: 'full',
+    path: 'home',
+    redirectTo: 'welcome',
+    pathMatch: 'full'
   },
   {
     path: 'welcome',

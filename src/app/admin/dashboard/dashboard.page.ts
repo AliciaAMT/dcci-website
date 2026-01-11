@@ -95,7 +95,7 @@ export class DashboardPage implements OnInit, OnDestroy {
       // Redirect if user is not admin/moderator or not verified
       if (!user || !user.isAdmin || !user.emailVerified ||
           (user.userRole !== 'Admin' && user.userRole !== 'Moderator')) {
-        this.router.navigate(['/home']);
+        this.router.navigate(['/welcome']);
       }
     });
 
@@ -645,11 +645,11 @@ export class DashboardPage implements OnInit, OnDestroy {
   async logout() {
     try {
       await this.authService.signOut();
-      this.router.navigate(['/home']);
+      this.router.navigate(['/welcome']);
     } catch (error) {
       console.error('Logout error:', error);
       // Force redirect even if logout fails
-      this.router.navigate(['/home']);
+      this.router.navigate(['/welcome']);
     }
   }
 }

@@ -131,7 +131,7 @@ export class ArticlePage implements OnInit, AfterViewInit {
   }
 
   goHome() {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/welcome']);
   }
 
   getThumbnailUrl(content: Content): string | null {
