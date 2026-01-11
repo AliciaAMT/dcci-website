@@ -177,6 +177,7 @@
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
+  align-items: stretch;
 }
 
 .content-card {
@@ -185,6 +186,9 @@
   overflow: hidden;
   box-shadow: var(--ion-box-shadow);
   border: 1px solid var(--ion-border-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .card-header {
@@ -194,6 +198,7 @@
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--ion-border-color);
+  flex-shrink: 0;
 
   ion-icon {
     font-size: 1.2rem;
@@ -210,6 +215,10 @@
 
 .card-content {
   padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .action-buttons {
@@ -234,6 +243,30 @@
 }
 
 .activity-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  max-height: 350px; // Fixed max height for scrollable content
+
+  // Custom scrollbar styling
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--ion-color-light);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--ion-color-medium);
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--ion-color-medium-shade);
+    }
+  }
+
   .activity-item {
     display: flex;
     align-items: center;
@@ -295,6 +328,111 @@
       margin: 0;
       font-size: 0.9rem;
     }
+  }
+}
+
+.usage-list {
+  .usage-item {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--ion-color-light-tint);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &.combined-usage {
+      background: var(--ion-color-light);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 8px;
+      border: 1px solid var(--ion-color-primary-tint);
+    }
+
+    .usage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      gap: 12px;
+
+      .usage-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .usage-label {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--ion-text-color);
+        }
+
+        .usage-details {
+          font-size: 0.85rem;
+          color: var(--ion-text-color);
+          opacity: 0.7;
+          font-weight: 500;
+        }
+      }
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background: var(--ion-color-light-tint);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      position: relative;
+
+      .progress-bar-fill {
+        height: 100%;
+        min-width: 2px;
+        background: var(--ion-color-primary);
+        border-radius: 4px;
+        transition: width 0.3s ease, background-color 0.3s ease;
+
+        &.warning {
+          background: var(--ion-color-warning);
+        }
+
+        &.danger {
+          background: var(--ion-color-danger);
+        }
+      }
+    }
+
+    .usage-footer {
+      .usage-free-tier {
+        font-size: 0.75rem;
+        color: var(--ion-text-color);
+        opacity: 0.6;
+        font-weight: 500;
+      }
+    }
+
+    .usage-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      color: var(--ion-color-medium);
+      font-size: 0.9rem;
+
+      ion-icon {
+        font-size: 1.2rem;
+        animation: spin 2s linear infinite;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

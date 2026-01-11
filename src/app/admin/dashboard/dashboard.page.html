@@ -144,8 +144,84 @@
         </div>
       </div>
 
-      <!-- System Status -->
+      <!-- Overall Usage -->
       <div class="content-card">
+        <div class="card-header">
+          <ion-icon name="pie-chart-outline"></ion-icon>
+          <h3>Overall Usage</h3>
+        </div>
+        <div class="card-content">
+          <div class="usage-list">
+            <!-- Storage Usage -->
+            <div class="usage-item">
+              <div class="usage-header">
+                <div class="usage-info">
+                  <span class="usage-label">Storage</span>
+                  <span class="usage-details">{{ formatBytes(stats.storageUsedBytes) }} / {{ formatBytes(stats.storageLimitBytes) }}</span>
+                </div>
+                <ion-chip [color]="stats.storagePercentUsed >= 80 ? 'warning' : 'primary'" size="small">
+                  <ion-label>{{ stats.storagePercentUsed | number:'1.0-0' }}%</ion-label>
+                </ion-chip>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" [style.width.%]="capPercentage(stats.storagePercentUsed)" [class.warning]="stats.storagePercentUsed >= 80" [class.danger]="stats.storagePercentUsed >= 95"></div>
+              </div>
+              <div class="usage-footer">
+                <span class="usage-free-tier">Free tier: {{ formatBytes(stats.storageLimitBytes) }}</span>
+              </div>
+            </div>
+
+            <!-- Firestore Usage -->
+            <div class="usage-item" *ngIf="stats.firestoreUsedBytes !== null">
+              <div class="usage-header">
+                <div class="usage-info">
+                  <span class="usage-label">Firestore Database</span>
+                  <span class="usage-details">{{ formatBytes(stats.firestoreUsedBytes!) }} / {{ formatBytes(stats.firestoreLimitBytes!) }}</span>
+                </div>
+                <ion-chip [color]="(stats.firestorePercentUsed ?? 0) >= 80 ? 'warning' : 'primary'" size="small">
+                  <ion-label>{{ (stats.firestorePercentUsed ?? 0) | number:'1.0-0' }}%</ion-label>
+                </ion-chip>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" [style.width.%]="capPercentage(stats.firestorePercentUsed)" [class.warning]="(stats.firestorePercentUsed ?? 0) >= 80" [class.danger]="(stats.firestorePercentUsed ?? 0) >= 95"></div>
+              </div>
+              <div class="usage-footer">
+                <span class="usage-free-tier">Free tier: {{ formatBytes(stats.firestoreLimitBytes!) }}</span>
+              </div>
+            </div>
+
+            <!-- Combined Usage (if Firestore is available) -->
+            <div class="usage-item combined-usage" *ngIf="stats.combinedUsedBytes !== null">
+              <div class="usage-header">
+                <div class="usage-info">
+                  <span class="usage-label">Combined Usage</span>
+                  <span class="usage-details">{{ formatBytes(stats.combinedUsedBytes!) }} / {{ formatBytes(stats.combinedLimitBytes!) }}</span>
+                </div>
+                <ion-chip [color]="(stats.combinedPercentUsed ?? 0) >= 80 ? 'warning' : 'primary'" size="small">
+                  <ion-label>{{ (stats.combinedPercentUsed ?? 0) | number:'1.0-0' }}%</ion-label>
+                </ion-chip>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" [style.width.%]="capPercentage(stats.combinedPercentUsed)" [class.warning]="(stats.combinedPercentUsed ?? 0) >= 80" [class.danger]="(stats.combinedPercentUsed ?? 0) >= 95"></div>
+              </div>
+              <div class="usage-footer">
+                <span class="usage-free-tier">Total free tier: {{ formatBytes(stats.combinedLimitBytes!) }}</span>
+              </div>
+            </div>
+
+            <!-- Loading state for Firestore -->
+            <div class="usage-item" *ngIf="stats.firestoreUsedBytes === null && stats.storageUsedBytes > 0">
+              <div class="usage-loading">
+                <ion-icon name="hourglass-outline"></ion-icon>
+                <span>Calculating Firestore usage...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Status -->
+      <!-- <div class="content-card">
         <div class="card-header">
           <ion-icon name="server-outline"></ion-icon>
           <h3>System Status</h3>
@@ -153,40 +229,60 @@
         <div class="card-content">
           <div class="status-list">
             <div class="status-item">
-              <div class="status-indicator success"></div>
+              <div class="status-indicator" 
+                   [ngClass]="{
+                     'success': stats.databaseConnection === 'online',
+                     'warning': stats.databaseConnection === 'checking',
+                     'danger': stats.databaseConnection === 'offline'
+                   }"></div>
               <span>Database Connection</span>
-              <ion-chip color="success" size="small">
-                <ion-label>Online</ion-label>
+              <ion-chip [color]="stats.databaseConnection === 'online' ? 'success' : (stats.databaseConnection === 'checking' ? 'warning' : 'danger')" size="small">
+                <ion-label>
+                  {{ stats.databaseConnection === 'online' ? 'Online' : (stats.databaseConnection === 'checking' ? 'Checking...' : 'Offline') }}
+                </ion-label>
               </ion-chip>
             </div>
             <div class="status-item">
-              <div class="status-indicator success"></div>
+              <div class="status-indicator" 
+                   [ngClass]="{
+                     'success': stats.emailService === 'active',
+                     'warning': stats.emailService === 'checking',
+                     'danger': stats.emailService === 'inactive'
+                   }"></div>
               <span>Email Service</span>
-              <ion-chip color="success" size="small">
-                <ion-label>Active</ion-label>
+              <ion-chip [color]="stats.emailService === 'active' ? 'success' : (stats.emailService === 'checking' ? 'warning' : 'danger')" size="small">
+                <ion-label>
+                  {{ stats.emailService === 'active' ? 'Active' : (stats.emailService === 'checking' ? 'Checking...' : 'Inactive') }}
+                </ion-label>
               </ion-chip>
             </div>
             <div class="status-item" [class.warning-text]="stats.storagePercentUsed >= 80">
               <div class="status-indicator" [ngClass]="stats.storagePercentUsed >= 80 ? 'warning' : 'success'"></div>
               <span>
                 Storage Usage
-                ({{ (stats.storageUsedBytes / (1024 * 1024 * 1024)) | number:'1.1-1' }} /
-                {{ (stats.storageLimitBytes / (1024 * 1024 * 1024)) | number:'1.1-1' }} GB)
+                ({{ formatBytes(stats.storageUsedBytes) }} / {{ (stats.storageLimitBytes / (1024 * 1024 * 1024)) | number:'1.1-1' }} GB)
               </span>
-              <ion-chip color="primary" size="small">
+              <ion-chip [color]="stats.storagePercentUsed >= 80 ? 'warning' : 'primary'" size="small">
                 <ion-label>{{ stats.storagePercentUsed | number:'1.0-0' }}%</ion-label>
               </ion-chip>
             </div>
             <div class="status-item">
-              <div class="status-indicator success"></div>
+              <div class="status-indicator" 
+                   [ngClass]="{
+                     'success': stats.sslCertificate === 'valid',
+                     'warning': stats.sslCertificate === 'checking' || stats.sslCertificate === 'expiring',
+                     'danger': stats.sslCertificate === 'invalid'
+                   }"></div>
               <span>SSL Certificate</span>
-              <ion-chip color="success" size="small">
-                <ion-label>Valid</ion-label>
+              <ion-chip [color]="stats.sslCertificate === 'valid' ? 'success' : (stats.sslCertificate === 'checking' ? 'warning' : (stats.sslCertificate === 'expiring' ? 'warning' : 'danger'))" size="small">
+                <ion-label>
+                  {{ stats.sslCertificate === 'valid' ? 'Valid' : (stats.sslCertificate === 'checking' ? 'Checking...' : (stats.sslCertificate === 'expiring' ? 'Expiring' : 'Invalid')) }}
+                </ion-label>
               </ion-chip>
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
 
       <!-- Security Alerts -->
       <!-- <div class="content-card">
@@ -227,11 +323,11 @@
     </div>
 
     <!-- Footer Info -->
-    <div class="dashboard-footer">
+    <!-- <div class="dashboard-footer">
       <div class="footer-content">
         <p>Last login: {{ currentUser?.lastLoginAt | date:'medium' }}</p>
         <p>Session expires in: 2 hours</p>
       </div>
-    </div>
+    </div> -->
   </div>
 </ion-content>

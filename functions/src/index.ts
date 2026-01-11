@@ -77,18 +77,45 @@ const to = functions.config().mail.to as string;
 // Cooldown period in milliseconds (5 minutes)
 const COOLDOWN_PERIOD = 5 * 60 * 1000;
 
-const FREE_TIER_STORAGE_BYTES = 1024 * 1024 * 1024; // 1 GB free tier
+const FREE_TIER_STORAGE_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB free tier for Firebase Storage
+const FREE_TIER_FIRESTORE_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB free tier for Firestore database
 
 function getDefaultBucketName(): string {
   const configuredBucket = admin.app().options.storageBucket;
   if (configuredBucket) {
-    if (configuredBucket.endsWith('.firebasestorage.app')) {
-      return configuredBucket.replace('.firebasestorage.app', '.appspot.com');
-    }
+    // Try the bucket name as-is first (works for both formats)
     return configuredBucket;
   }
   const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || 'unknown-project';
+  // Try both formats
   return `${projectId}.appspot.com`;
+}
+
+// Helper to try multiple bucket names
+async function tryGetBucketFiles(bucketName: string): Promise<{ files: any[]; totalBytes: number }> {
+  let totalBytes = 0;
+  const bucket = admin.storage().bucket(bucketName);
+  let files: any[] = [];
+  let nextQuery: { autoPaginate: false; pageToken?: string } = { autoPaginate: false };
+
+  try {
+    do {
+      const [filesBatch, queryResult] = await bucket.getFiles(nextQuery);
+      filesBatch.forEach(file => {
+        const size = Number(file.metadata?.size || 0);
+        if (!Number.isNaN(size) && size > 0) {
+          totalBytes += size;
+          files.push(file);
+        }
+      });
+      nextQuery.pageToken = queryResult?.pageToken;
+    } while (nextQuery.pageToken);
+  } catch (error: any) {
+    // If bucket doesn't exist or access denied, throw
+    throw error;
+  }
+
+  return { files, totalBytes };
 }
 
 const tx = nodemailer.createTransport({
@@ -430,14 +457,16 @@ export const submitWebsiteProblemReport = functions.https.onRequest((req, res) =
 
 // Test endpoint to verify function deployment
 export const testContactForm = functions.https.onRequest((req, res) => {
-  res.json({
-    message: "Contact form function is working!",
-    timestamp: new Date().toISOString(),
-    config: {
-      user: user ? "Configured" : "Not configured",
-      pass: pass ? "Configured" : "Not configured",
-      to: to ? "Configured" : "Not configured"
-    }
+  return cors(req, res, () => {
+    res.json({
+      message: "Contact form function is working!",
+      timestamp: new Date().toISOString(),
+      config: {
+        user: user ? "Configured" : "Not configured",
+        pass: pass ? "Configured" : "Not configured",
+        to: to ? "Configured" : "Not configured"
+      }
+    });
   });
 });
 
@@ -673,44 +702,170 @@ export const trackPageView = functions.https.onRequest((req, res) => {
   });
 });
 
-// Get Firebase Storage usage vs. free-tier allowance
+// Helper function to estimate Firestore document size (approximate)
+function estimateDocumentSize(data: any): number {
+  let size = 0;
+  // Base overhead for a document (approximately 32 bytes)
+  size += 32;
+  
+  for (const [key, value] of Object.entries(data)) {
+    // Field name size
+    size += Buffer.byteLength(key, 'utf8');
+    
+    // Value size estimation
+    if (value === null) {
+      size += 1; // null marker
+    } else if (typeof value === 'boolean') {
+      size += 1;
+    } else if (typeof value === 'number') {
+      size += 8; // 64-bit number
+    } else if (typeof value === 'string') {
+      size += Buffer.byteLength(value as string, 'utf8');
+    } else if (value instanceof Date || (value && typeof (value as any).toDate === 'function')) {
+      size += 8; // Timestamp
+    } else if (Array.isArray(value)) {
+      size += estimateDocumentSize(value as any);
+    } else if (typeof value === 'object') {
+      size += estimateDocumentSize(value);
+    }
+  }
+  
+  return size;
+}
+
+// Get Firebase Storage (files) and optionally Firestore (database) usage vs. free-tier allowance
 export const getStorageUsage = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
     try {
-      const bucket = admin.storage().bucket(getDefaultBucketName());
-      let totalBytes = 0;
-      let nextQuery: { autoPaginate: false; pageToken?: string } = { autoPaginate: false };
+      // Get Firebase Storage (files) usage
+      const configuredBucket = admin.app().options.storageBucket;
+      const primaryBucketName = configuredBucket || getDefaultBucketName();
+      let storageBytes = 0;
+      let filesFound = 0;
+      let bucketNameUsed = primaryBucketName;
+      let errorMessage: string | null = null;
 
-      do {
-        const [files, queryResult] = await bucket.getFiles(nextQuery);
-        files.forEach(file => {
-          const size = Number(file.metadata?.size || 0);
-          if (!Number.isNaN(size)) {
-            totalBytes += size;
+      try {
+        // Try primary bucket name first
+        const result = await tryGetBucketFiles(primaryBucketName);
+        storageBytes = result.totalBytes;
+        filesFound = result.files.length;
+      } catch (primaryError: any) {
+        errorMessage = primaryError.message;
+        console.log(`Failed to access bucket ${primaryBucketName}:`, primaryError.message);
+        
+        // If it's a .firebasestorage.app bucket, try .appspot.com version
+        if (primaryBucketName.endsWith('.firebasestorage.app')) {
+          const altBucketName = primaryBucketName.replace('.firebasestorage.app', '.appspot.com');
+          try {
+            console.log(`Trying alternative bucket name: ${altBucketName}`);
+            const result = await tryGetBucketFiles(altBucketName);
+            storageBytes = result.totalBytes;
+            filesFound = result.files.length;
+            bucketNameUsed = altBucketName;
+            errorMessage = null;
+          } catch (altError: any) {
+            console.error(`Also failed to access bucket ${altBucketName}:`, altError.message);
+            errorMessage = altError.message;
           }
-        });
-        nextQuery.pageToken = queryResult?.pageToken;
-      } while (nextQuery.pageToken);
+        }
+      }
 
-      const bytesRemaining = Math.max(0, FREE_TIER_STORAGE_BYTES - totalBytes);
-      const percentUsed = Math.min(
+      console.log(`Storage check: bucket=${bucketNameUsed}, files=${filesFound}, bytes=${storageBytes}`);
+
+      const storageBytesRemaining = Math.max(0, FREE_TIER_STORAGE_BYTES - storageBytes);
+      const storagePercentUsed = Math.min(
         100,
-        Number(((totalBytes / FREE_TIER_STORAGE_BYTES) * 100).toFixed(2))
+        Number(((storageBytes / FREE_TIER_STORAGE_BYTES) * 100).toFixed(2))
       );
 
+      // Get Firestore (database) usage estimation (optional, expensive operation)
+      // Check if client wants Firestore stats (via query param to avoid always calculating)
+      const includeFirestore = req.query.includeFirestore === 'true';
+      let firestoreBytes = 0;
+      let firestorePercentUsed = 0;
+      let firestoreBytesRemaining = FREE_TIER_FIRESTORE_BYTES;
+      let firestoreEstimation = false;
+
+      if (includeFirestore) {
+        try {
+          firestoreEstimation = true;
+          // Get all collections and estimate their sizes
+          // Note: This is an expensive operation and should be used sparingly
+          const collections = ['adminUsers', 'contacts', 'subscribers', 'content', 'stats', 'pageViews', 'websiteProblemReports', 'settings'];
+          
+          for (const collectionName of collections) {
+            try {
+              const snapshot = await db.collection(collectionName).get();
+              snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                firestoreBytes += estimateDocumentSize(data);
+              });
+            } catch (collectionError: any) {
+              // Collection might not exist or be inaccessible - skip it
+              console.log(`Skipping collection ${collectionName}:`, collectionError.message);
+            }
+          }
+          
+          firestoreBytesRemaining = Math.max(0, FREE_TIER_FIRESTORE_BYTES - firestoreBytes);
+          firestorePercentUsed = Math.min(
+            100,
+            Number(((firestoreBytes / FREE_TIER_FIRESTORE_BYTES) * 100).toFixed(2))
+          );
+        } catch (firestoreError) {
+          console.error('Error estimating Firestore usage:', firestoreError);
+          // Continue without Firestore stats if estimation fails
+        }
+      }
+
+      // Combine both storage types for total (if Firestore included)
+      const combinedBytes = storageBytes + (firestoreEstimation ? firestoreBytes : 0);
+      const combinedFreeTierBytes = FREE_TIER_STORAGE_BYTES + (firestoreEstimation ? FREE_TIER_FIRESTORE_BYTES : 0);
+      const combinedBytesRemaining = storageBytesRemaining + (firestoreEstimation ? firestoreBytesRemaining : 0);
+      const combinedPercentUsed = firestoreEstimation 
+        ? Math.min(100, Number(((combinedBytes / combinedFreeTierBytes) * 100).toFixed(2)))
+        : storagePercentUsed;
+
       res.json({
-        totalBytes,
+        // Firebase Storage (files) - primary focus
+        storageBytes,
+        storageFreeTierBytes: FREE_TIER_STORAGE_BYTES,
+        storageBytesRemaining,
+        storagePercentUsed,
+        filesFound: filesFound,
+        bucketName: bucketNameUsed,
+        error: errorMessage,
+        // Firestore (database) - optional/expensive
+        firestoreBytes: firestoreEstimation ? firestoreBytes : null,
+        firestoreFreeTierBytes: firestoreEstimation ? FREE_TIER_FIRESTORE_BYTES : null,
+        firestoreBytesRemaining: firestoreEstimation ? firestoreBytesRemaining : null,
+        firestorePercentUsed: firestoreEstimation ? firestorePercentUsed : null,
+        firestoreEstimation: firestoreEstimation,
+        // Combined totals (if Firestore included)
+        combinedBytes: firestoreEstimation ? combinedBytes : null,
+        combinedFreeTierBytes: firestoreEstimation ? combinedFreeTierBytes : null,
+        combinedBytesRemaining: firestoreEstimation ? combinedBytesRemaining : null,
+        combinedPercentUsed: firestoreEstimation ? combinedPercentUsed : null,
+        // Backward compatibility (these are the primary fields for Firebase Storage)
+        totalBytes: storageBytes,
         freeTierBytes: FREE_TIER_STORAGE_BYTES,
-        bytesRemaining,
-        percentUsed
+        bytesRemaining: storageBytesRemaining,
+        percentUsed: storagePercentUsed
       });
     } catch (error: any) {
       if (error?.code === 404 || error?.message?.includes('bucket does not exist')) {
         res.json({
+          storageBytes: 0,
+          storageFreeTierBytes: FREE_TIER_STORAGE_BYTES,
+          storageBytesRemaining: FREE_TIER_STORAGE_BYTES,
+          storagePercentUsed: 0,
           totalBytes: 0,
           freeTierBytes: FREE_TIER_STORAGE_BYTES,
           bytesRemaining: FREE_TIER_STORAGE_BYTES,
           percentUsed: 0,
+          filesFound: 0,
+          bucketName: getDefaultBucketName(),
+          error: error?.message || 'Bucket not found',
           note: 'Bucket not found; returning zero usage.'
         });
         return;

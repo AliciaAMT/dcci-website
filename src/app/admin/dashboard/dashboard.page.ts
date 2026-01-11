@@ -22,6 +22,15 @@ interface DashboardStats {
   storageUsedBytes: number;
   storageLimitBytes: number;
   storagePercentUsed: number;
+  firestoreUsedBytes: number | null;
+  firestoreLimitBytes: number | null;
+  firestorePercentUsed: number | null;
+  combinedUsedBytes: number | null;
+  combinedLimitBytes: number | null;
+  combinedPercentUsed: number | null;
+  databaseConnection: 'online' | 'offline' | 'checking';
+  emailService: 'active' | 'inactive' | 'checking';
+  sslCertificate: 'valid' | 'invalid' | 'expiring' | 'checking';
 }
 
 interface ActivityItem {
@@ -54,8 +63,17 @@ export class DashboardPage implements OnInit, OnDestroy {
     newsletterSubscribers: 0,
     totalViews: 0,
     storageUsedBytes: 0,
-    storageLimitBytes: 1024 * 1024 * 1024,
-    storagePercentUsed: 0
+    storageLimitBytes: 5 * 1024 * 1024 * 1024, // 5 GB free tier for Firebase Storage
+    storagePercentUsed: 0,
+    firestoreUsedBytes: null,
+    firestoreLimitBytes: 1 * 1024 * 1024 * 1024, // 1 GB free tier for Firestore
+    firestorePercentUsed: null,
+    combinedUsedBytes: null,
+    combinedLimitBytes: null,
+    combinedPercentUsed: null,
+    databaseConnection: 'checking',
+    emailService: 'checking',
+    sslCertificate: 'checking'
   };
   recentActivity: ActivityItem[] = [];
 
@@ -84,6 +102,7 @@ export class DashboardPage implements OnInit, OnDestroy {
     // Load dashboard data
     this.loadDashboardData();
     this.loadRecentActivity();
+    this.loadSystemStatus();
   }
 
   ngOnDestroy() {
@@ -102,7 +121,7 @@ export class DashboardPage implements OnInit, OnDestroy {
           return await getDocs(adminQuery);
         }),
         firstValueFrom(this.http.get(environment.firebaseFunctionsUrl + '/getContactStats')),
-        firstValueFrom(this.http.get(environment.firebaseFunctionsUrl + '/getStorageUsage')),
+        firstValueFrom(this.http.get(environment.firebaseFunctionsUrl + '/getStorageUsage?includeFirestore=true')),
         runInInjectionContext(this.injector, async () => {
           return await getDoc(doc(this.firestore, 'stats', 'siteStats'));
         })
@@ -110,9 +129,29 @@ export class DashboardPage implements OnInit, OnDestroy {
 
       const siteStatsData = siteStatsSnap.exists() ? (siteStatsSnap.data() as any) : null;
       const storageData = storageStats as any;
-      const storageLimitBytes = storageData?.freeTierBytes ?? this.stats.storageLimitBytes;
-      const storageUsedBytes = storageData?.totalBytes ?? 0;
-      const storagePercentUsed = storageData?.percentUsed ?? 0;
+      const storageLimitBytes = storageData?.storageFreeTierBytes ?? storageData?.freeTierBytes ?? this.stats.storageLimitBytes;
+      const storageUsedBytes = storageData?.storageBytes ?? storageData?.totalBytes ?? 0;
+      const storagePercentUsed = storageData?.storagePercentUsed ?? storageData?.percentUsed ?? 0;
+      
+      // Firestore usage (if available)
+      const firestoreUsedBytes = storageData?.firestoreBytes ?? null;
+      const firestoreLimitBytes = storageData?.firestoreFreeTierBytes ?? (firestoreUsedBytes !== null ? this.stats.firestoreLimitBytes : null);
+      const firestorePercentUsed = storageData?.firestorePercentUsed ?? null;
+      
+      // Combined usage (if Firestore is available)
+      const combinedUsedBytes = storageData?.combinedBytes ?? null;
+      const combinedLimitBytes = storageData?.combinedFreeTierBytes ?? null;
+      const combinedPercentUsed = storageData?.combinedPercentUsed ?? null;
+
+      // Log storage data for debugging
+      console.log('Storage usage data:', {
+        totalBytes: storageData?.totalBytes,
+        freeTierBytes: storageData?.freeTierBytes,
+        percentUsed: storageData?.percentUsed,
+        filesFound: storageData?.filesFound,
+        bucketName: storageData?.bucketName,
+        error: storageData?.error
+      });
 
       this.stats = {
         ...this.stats,
@@ -122,7 +161,17 @@ export class DashboardPage implements OnInit, OnDestroy {
         totalViews: siteStatsData?.totalUniqueVisitors ?? 0,
         storageUsedBytes,
         storageLimitBytes,
-        storagePercentUsed
+        storagePercentUsed,
+        firestoreUsedBytes,
+        firestoreLimitBytes,
+        firestorePercentUsed,
+        combinedUsedBytes,
+        combinedLimitBytes,
+        combinedPercentUsed,
+        // System status is loaded separately
+        databaseConnection: this.stats.databaseConnection || 'checking',
+        emailService: this.stats.emailService || 'checking',
+        sslCertificate: this.stats.sslCertificate || 'checking'
       };
     } catch (error) {
       console.error('Error loading admin user count:', error);
@@ -491,6 +540,106 @@ export class DashboardPage implements OnInit, OnDestroy {
    */
   isFullAdmin(): boolean {
     return this.authService.isFullAdmin();
+  }
+
+  async loadSystemStatus() {
+    try {
+      // Check database connection
+      this.stats.databaseConnection = 'checking';
+      try {
+        const dbResult = await runInInjectionContext(this.injector, async () => {
+          const testDoc = await getDoc(doc(this.firestore, 'stats', 'siteStats'));
+          // If we can read, database is online
+          return true;
+        });
+        if (dbResult) {
+          this.stats.databaseConnection = 'online';
+        }
+      } catch (dbError) {
+        console.error('Database connection check failed:', dbError);
+        this.stats.databaseConnection = 'offline';
+      }
+
+      // Check email service
+      this.stats.emailService = 'checking';
+      try {
+        // Use Promise.race for timeout
+        const emailCheck = firstValueFrom(
+          this.http.get(environment.firebaseFunctionsUrl + '/testContactForm', { 
+            observe: 'response',
+            responseType: 'json'
+          })
+        );
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        );
+        
+        const emailTest = await Promise.race([emailCheck, timeoutPromise]) as any;
+        if (emailTest && emailTest.status === 200) {
+          const data = emailTest.body as any;
+          // Check if email config is set
+          if (data?.config?.user === 'Configured' && data?.config?.pass === 'Configured') {
+            this.stats.emailService = 'active';
+          } else {
+            this.stats.emailService = 'inactive';
+          }
+        } else {
+          this.stats.emailService = 'inactive';
+        }
+      } catch (emailError) {
+        console.error('Email service check failed:', emailError);
+        this.stats.emailService = 'inactive';
+      }
+
+      // Check SSL certificate
+      this.stats.sslCertificate = 'checking';
+      if (typeof window !== 'undefined') {
+        if (window.location.protocol === 'https:') {
+          // If running on HTTPS, check certificate validity
+          // For client-side, we can only check if we're on HTTPS
+          // Actual certificate expiration would need server-side check
+          this.stats.sslCertificate = 'valid';
+        } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          // Local development - mark as valid
+          this.stats.sslCertificate = 'valid';
+        } else {
+          // Running on HTTP in production-like environment
+          this.stats.sslCertificate = 'invalid';
+        }
+      } else {
+        // Server-side rendering fallback
+        this.stats.sslCertificate = 'valid';
+      }
+    } catch (error) {
+      console.error('Error loading system status:', error);
+      // Set all to checking if there's a general error
+      this.stats.databaseConnection = 'checking';
+      this.stats.emailService = 'checking';
+      this.stats.sslCertificate = 'checking';
+    }
+  }
+
+  /**
+   * Format bytes to human-readable string (MB or GB)
+   */
+  formatBytes(bytes: number): string {
+    if (!bytes || bytes === 0) return '0 MB';
+    const mb = bytes / (1024 * 1024);
+    const gb = bytes / (1024 * 1024 * 1024);
+    
+    if (gb >= 1) {
+      return `${gb.toFixed(2)} GB`;
+    } else {
+      return `${mb.toFixed(2)} MB`;
+    }
+  }
+
+  /**
+   * Cap percentage at 100 for progress bar display
+   */
+  capPercentage(percent: number | null | undefined): number {
+    if (percent === null || percent === undefined) return 0;
+    return Math.min(100, Math.max(0, percent));
   }
 
   async logout() {
