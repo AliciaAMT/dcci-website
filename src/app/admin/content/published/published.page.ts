@@ -121,22 +121,22 @@ export class PublishedPage implements OnInit, OnDestroy {
 
   applyFilters() {
     let filtered = [...this.published];
-    
+
     // Filter by content type checkboxes
     filtered = filtered.filter(article => {
       const isYouTube = this.isYouTubeArticle(article);
       const isArchive = this.isArchiveArticle(article);
       const isWritten = this.isWrittenArticle(article);
-      
+
       // Show article if it matches any of the checked filter types
       let shouldShow = false;
       if (this.showYouTubeArticles && isYouTube) shouldShow = true;
       if (this.showArchiveArticles && isArchive) shouldShow = true;
       if (this.showWrittenArticles && isWritten) shouldShow = true;
-      
+
       return shouldShow;
     });
-    
+
     // Apply search filter if search term exists
     if (this.searchTerm.trim()) {
       const searchLower = this.searchTerm.toLowerCase().trim();
@@ -146,7 +146,7 @@ export class PublishedPage implements OnInit, OnDestroy {
             return article.title.toLowerCase().includes(searchLower);
           case 'content':
             const contentText = article.content?.replace(/<[^>]*>/g, '').toLowerCase() || '';
-            return contentText.includes(searchLower) || 
+            return contentText.includes(searchLower) ||
                    (article.excerpt && article.excerpt.toLowerCase().includes(searchLower));
           case 'tags':
             if (!article.tags || article.tags.length === 0) return false;
@@ -159,36 +159,36 @@ export class PublishedPage implements OnInit, OnDestroy {
         }
       });
     }
-    
+
     // Sort
     const isOnlyShowingArchives = this.showArchiveArticles && !this.showYouTubeArticles && !this.showWrittenArticles;
-    
+
     if (this.sortBy === 'title') {
       filtered.sort((a, b) => {
         const aIsArchive = this.isArchiveArticle(a);
         const bIsArchive = this.isArchiveArticle(b);
-        
+
         // If only showing archives, sort normally
         // Otherwise, archives come last
         if (!isOnlyShowingArchives) {
           if (aIsArchive && !bIsArchive) return 1;
           if (!aIsArchive && bIsArchive) return -1;
         }
-        
+
         return a.title.localeCompare(b.title);
       });
     } else {
       filtered.sort((a, b) => {
         const aIsArchive = this.isArchiveArticle(a);
         const bIsArchive = this.isArchiveArticle(b);
-        
+
         // If only showing archives, sort normally
         // Otherwise, archives come last
         if (!isOnlyShowingArchives) {
           if (aIsArchive && !bIsArchive) return 1;
           if (!aIsArchive && bIsArchive) return -1;
         }
-        
+
         const aDate = a.publishedAt || a.createdAt;
         const bDate = b.publishedAt || b.createdAt;
         const aTime = aDate instanceof Date ? aDate.getTime() : new Date(aDate as any).getTime();
@@ -196,7 +196,7 @@ export class PublishedPage implements OnInit, OnDestroy {
         return bTime - aTime;
       });
     }
-    
+
     this.filteredPublished = filtered;
   }
 

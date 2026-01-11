@@ -123,5 +123,10 @@ export const routes: Routes = [
     loadComponent: () => import('./contact/contact.page').then( m => m.ContactPage),
     canActivate: [maintenanceGuard]
   },
+  {
+    path: 'privacy',
+    loadComponent: () => import('./privacy/privacy.page').then( m => m.PrivacyPage),
+    canActivate: [maintenanceGuard]
+  },
 
 ];

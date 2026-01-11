@@ -43,24 +43,24 @@
 
       <div class="youtube-filter-row">
         <label class="youtube-filter-label">
-          <ion-checkbox 
-            [(ngModel)]="showYouTubeArticles" 
+          <ion-checkbox
+            [(ngModel)]="showYouTubeArticles"
             (ionChange)="onYouTubeFilterChange()"
             class="youtube-checkbox">
           </ion-checkbox>
           <span class="youtube-filter-text">YouTube Content</span>
         </label>
         <label class="youtube-filter-label">
-          <ion-checkbox 
-            [(ngModel)]="showArchiveArticles" 
+          <ion-checkbox
+            [(ngModel)]="showArchiveArticles"
             (ionChange)="onArchiveFilterChange()"
             class="youtube-checkbox">
           </ion-checkbox>
           <span class="youtube-filter-text">Archive content</span>
         </label>
         <label class="youtube-filter-label">
-          <ion-checkbox 
-            [(ngModel)]="showWrittenArticles" 
+          <ion-checkbox
+            [(ngModel)]="showWrittenArticles"
             (ionChange)="onWrittenArticlesFilterChange()"
             class="youtube-checkbox">
           </ion-checkbox>
@@ -96,9 +96,9 @@
             </span>
           </div>
         </div>
-        
+
         <p class="article-excerpt" *ngIf="draft.excerpt">{{ draft.excerpt }}</p>
-        
+
         <div class="article-tags" *ngIf="draft.tags && draft.tags.length > 0">
           <ion-chip *ngFor="let tag of draft.tags" color="primary" size="small">
             <ion-label>{{ tag }}</ion-label>

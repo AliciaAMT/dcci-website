@@ -1,0 +1,234 @@
+.privacy-page {
+  --background: linear-gradient(135deg, var(--ion-color-primary) 0%, var(--ion-color-primary-shade) 50%, var(--ion-color-primary-tint) 100%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.privacy-container {
+  max-width: 120rem;
+  margin: 0 auto;
+  padding: 2rem 3rem;
+  min-height: 100vh;
+}
+
+.privacy-page-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+.page-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  text-align: center;
+  margin: 0 0 2rem 0;
+  animation: fadeInUp 1s ease-out 0.2s both;
+}
+
+.privacy-content {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
+  padding: 3rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  animation: fadeInUp 1s ease-out 0.4s both;
+}
+
+.organization-info {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--ion-color-light-tint);
+
+  p {
+    margin: 0.5rem 0;
+    font-size: 1.4rem;
+    color: var(--ion-color-dark);
+  }
+
+  .last-updated {
+    color: var(--ion-color-medium);
+    font-size: 1.2rem;
+    font-weight: 500;
+  }
+}
+
+.privacy-section {
+  margin-bottom: 3rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--ion-color-primary);
+    margin: 0 0 1.5rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--ion-color-primary-tint);
+  }
+
+  h3 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--ion-color-dark);
+    margin: 1.5rem 0 1rem 0;
+  }
+
+  p {
+    font-size: 1.4rem;
+    line-height: 1.8;
+    color: var(--ion-color-dark);
+    margin: 0 0 1.5rem 0;
+  }
+
+  ul {
+    margin: 1rem 0 1.5rem 0;
+    padding-left: 2rem;
+    list-style-type: disc;
+
+    li {
+      font-size: 1.4rem;
+      line-height: 1.8;
+      color: var(--ion-color-dark);
+      margin: 0.8rem 0;
+
+      ul {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        list-style-type: circle;
+      }
+    }
+  }
+
+  a {
+    color: var(--ion-color-primary);
+    text-decoration: underline;
+    font-weight: 500;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--ion-color-primary-shade);
+    }
+  }
+}
+
+.data-category {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--ion-color-light);
+  border-radius: 8px;
+  border-left: 4px solid var(--ion-color-primary);
+}
+
+.contact-info-box {
+  background: var(--ion-color-light-tint);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+
+  p {
+    margin: 0.5rem 0;
+    font-size: 1.4rem;
+    color: var(--ion-color-dark);
+
+    strong {
+      color: var(--ion-color-primary-shade);
+    }
+  }
+
+  ul {
+    margin: 1rem 0 0 0;
+    list-style-type: none;
+    padding-left: 0;
+
+    li {
+      margin: 1rem 0;
+      padding-left: 0;
+
+      strong {
+        color: var(--ion-color-primary-shade);
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+
+      a {
+        color: var(--ion-color-primary);
+        text-decoration: underline;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .privacy-container {
+    padding: 1.5rem;
+  }
+
+  .page-title {
+    font-size: 2.5rem;
+  }
+
+  .privacy-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .privacy-section {
+    h2 {
+      font-size: 1.7rem;
+    }
+
+    h3 {
+      font-size: 1.4rem;
+    }
+
+    p {
+      font-size: 1.3rem;
+    }
+
+    ul {
+      li {
+        font-size: 1.3rem;
+      }
+    }
+  }
+
+  .organization-info {
+    p {
+      font-size: 1.3rem;
+    }
+
+    .last-updated {
+      font-size: 1.1rem;
+    }
+  }
+
+  .contact-info-box {
+    padding: 1.2rem;
+
+    p {
+      font-size: 1.3rem;
+    }
+
+    ul {
+      li {
+        font-size: 1.3rem;
+      }
+    }
+  }
+}
