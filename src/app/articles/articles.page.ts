@@ -82,7 +82,7 @@ export class ArticlesPage implements OnInit, OnDestroy, AfterViewInit {
         this.filterArticles();
       }
     });
-    
+
     await this.loadArticles();
   }
 

@@ -17,7 +17,7 @@ export class ScrollService {
   async registerScrollContainer(content: IonContent): Promise<void> {
     try {
       const scrollElement = await content.getScrollElement();
-      
+
       // Don't register the same element twice
       if (this.scrollElements.has(scrollElement)) {
         return;

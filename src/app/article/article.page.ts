@@ -52,7 +52,7 @@ export class ArticlePage implements OnInit, AfterViewInit {
     if (this.ionContent) {
       await this.scrollService.registerScrollContainer(this.ionContent);
     }
-    
+
     // Make videos responsive after view init
     setTimeout(() => this.makeVideosResponsive(), 100);
   }
@@ -148,7 +148,7 @@ export class ArticlePage implements OnInit, AfterViewInit {
     if (!this.isArchived(content)) return null;
     const data = content as any;
     if (!data.originalDate) return null;
-    
+
     // Handle Firestore Timestamp or Date
     if (data.originalDate instanceof Date) {
       return data.originalDate;
@@ -163,12 +163,12 @@ export class ArticlePage implements OnInit, AfterViewInit {
   formatOriginalDate(content: Content): string | null {
     const date = this.getOriginalDate(content);
     if (!date) return null;
-    
+
     try {
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       });
     } catch (error) {
       console.error('Error formatting date:', error);
