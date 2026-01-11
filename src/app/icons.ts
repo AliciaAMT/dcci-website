@@ -6,21 +6,13 @@ export function registerIonicons(): void {
   if (registered) return;
   registered = true;
 
-  // Set asset path - use static path for production builds
+  // Set asset path - use simple root path since icons are registered via addIcons
+  // This prevents "Invalid base URL" errors during icon loading
   try {
-    // Use document.baseURI if available, otherwise fall back to root path
-    // This prevents "Invalid base URL" errors during icon loading
-    const basePath = (typeof document !== 'undefined' && document.baseURI)
-      ? new URL(document.baseURI).pathname || '/'
-      : '/';
-    setAssetPath(basePath);
+    setAssetPath('/');
   } catch (error) {
-    // Fallback to root path if baseURI fails
-    try {
-      setAssetPath('/');
-    } catch (fallbackError) {
-      console.warn('Failed to set asset path:', fallbackError);
-    }
+    // Silently fail - icons are registered via addIcons anyway
+    console.warn('Failed to set asset path (non-fatal):', error);
   }
 
   addIcons({
@@ -90,6 +82,8 @@ export function registerIonicons(): void {
     'chevron-forward-outline': i.chevronForwardOutline,
     // Menu icons
     'menu-outline': i.menuOutline,
+    // Scroll to top icon
+    'arrow-up-outline': i.arrowUpOutline,
     // Emergency controls icons
     'warning': i.warning,
   });
