@@ -1,6 +1,7 @@
+@import '../../admin-layout';
+
 .published-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  @include admin-wide-container;
 
   .search-section {
     margin-bottom: 24px;
@@ -76,6 +77,8 @@
     @media (min-width: 1600px) {
       grid-template-columns: repeat(5, 1fr);
     }
+
+    @include admin-article-grid-large;
 
     .empty-state {
       grid-column: 1 / -1;
