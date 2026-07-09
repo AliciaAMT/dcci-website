@@ -33,7 +33,7 @@ See **[Admin Dashboard — Welcome Page](./admin-dashboard.md#welcome-page-edito
 1. Edit sections in the admin form
 2. **Save draft** — safe to leave; visitors still see the old page
 3. **Preview** — opens `/admin/welcome-preview` (admin-only, yellow banner)
-4. If it looks good, **Publish live** — updates `/welcome` and rebuilds the SEO page for Google
+4. If it looks good, **Publish live** — updates the live welcome page immediately; the search-engine (Astro) page refreshes automatically within **24 hours** (daily rebuild at 04:00 UTC)
 5. If you dislike the result, use **Previous versions** → **Load into editor** or **Publish** an older snapshot
 
 ### **What you can edit**
@@ -56,7 +56,7 @@ See **[Admin Dashboard — Welcome Page](./admin-dashboard.md#welcome-page-edito
 ### **How it works**
 - **Draft:** Save changes without affecting the live `/welcome` page
 - **Preview:** Opens an admin-only preview of your draft (`/admin/welcome-preview`)
-- **Publish live:** Replaces the public page and triggers an SEO rebuild
+- **Publish live:** Replaces the public page; Astro SEO HTML updates on the next daily rebuild (see [Auto rebuild setup](./auto-rebuild-setup.md))
 - **Version history:** Each publish archives the previous live page (last 10) — load into the editor or publish again
 
 ### **Storage**

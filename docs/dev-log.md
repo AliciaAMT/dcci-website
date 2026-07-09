@@ -10,7 +10,7 @@
 - **Storage:** Firestore `siteSettings/welcome` (public read for live page; full-admin write)
 - **Live site:** Angular welcome page loads content in real time; layout and styling unchanged
 - **SEO:** Astro `public-site/src/pages/welcome/index.astro` reads the same data at build time
-- **Auto-rebuild:** Cloud Function `onWelcomePageUpdate` triggers Astro redeploy when welcome content changes
+- **Auto-rebuild:** GitHub Actions daily at 04:00 UTC (see [auto-rebuild-setup.md](./auto-rebuild-setup.md)); optional instant trigger if `github.*` Firebase config is set
 - **Files added:**
   - `src/app/models/welcome-content.model.ts`
   - `src/app/services/welcome-content.service.ts`

@@ -164,7 +164,7 @@ Visitors only see changes after you **Publish live**. Until then, the public `/w
   (/admin/welcome-preview)
        │
        ▼
-  Publish live → visitors see changes + SEO page rebuilds
+  Publish live → visitors see changes immediately; search-engine HTML updates within 24h
        │
        └── previous live page saved in "Previous versions" (last 10)
 ```
@@ -173,7 +173,7 @@ Visitors only see changes after you **Publish live**. Until then, the public `/w
 |--------|--------|
 | **Save draft** | Stores work in `adminSettings/welcomeDraft`. **Live site unchanged.** |
 | **Preview** | Saves draft, opens admin-only preview with yellow banner. |
-| **Publish live** | Archives current live page, writes draft to live, triggers search-engine rebuild. |
+| **Publish live** | Archives current live page, writes draft to live. SEO pages rebuild on the daily schedule (04:00 UTC) if content changed. |
 | **Discard draft** | Deletes draft; editor reloads what is currently live. |
 
 ### Previous versions (rollback)

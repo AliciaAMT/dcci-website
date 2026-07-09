@@ -4,6 +4,10 @@ This directory contains comprehensive documentation for the DCCI Ministries webs
 
 ## 📚 Documentation Structure
 
+### 📋 **Priority & continuity (start here)**
+- **[Site priority roadmap](./site-priority-roadmap.md)** — **Work one step at a time:** Brevo contact form, welcome page test, privacy, legacy package, SEO rebuild, then features
+- **[DCCI Emergency Legacy README](./DCCI-EMERGENCY-LEGACY-README.md)** — Who owns what, who to call, site down / contact form broken, where secrets live (no keys in the doc)
+
 ### 🚀 **For Developers**
 - **[Project Overview](./project-overview.md)** - Project mission, scope, and development phases
 - **[Technical Architecture](./technical-architecture.md)** - System design, technology stack, and architecture patterns

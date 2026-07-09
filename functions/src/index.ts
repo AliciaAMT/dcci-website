@@ -2449,9 +2449,8 @@ export const onArticleUpdate = functions.firestore
     console.log(`Changes: newPublication=${isNewPublication}, slugChanged=${slugChanged}, contentChanged=${contentChanged}, titleChanged=${titleChanged}`);
 
     try {
-      // Option 1: Trigger GitHub Actions workflow (recommended)
       const githubToken = functions.config().github?.token;
-      const githubRepo = functions.config().github?.repo; // Format: "owner/repo"
+      const githubRepo = functions.config().github?.repo;
       const githubWorkflow = functions.config().github?.workflow || 'rebuild-astro.yml';
 
       if (githubToken && githubRepo) {
@@ -2460,14 +2459,12 @@ export const onArticleUpdate = functions.firestore
         return null;
       }
 
-      // Option 2: Direct Firebase Hosting deployment (fallback)
-      console.log('GitHub Actions not configured. Attempting direct Firebase Hosting deployment...');
-      await triggerFirebaseHostingDeploy(articleId);
-
+      console.log(
+        `Article ${articleId} updated. Daily scheduled Astro rebuild (04:00 UTC) will refresh SEO pages if needed.`
+      );
       return null;
     } catch (error) {
       console.error(`Error triggering rebuild for article ${articleId}:`, error);
-      // Don't throw - we don't want to retry indefinitely
       return null;
     }
   });
@@ -2525,8 +2522,9 @@ export const onWelcomePageUpdate = functions.firestore
         return null;
       }
 
-      console.log('GitHub Actions not configured. Attempting direct Firebase Hosting deployment...');
-      await triggerFirebaseHostingDeploy('welcome');
+      console.log(
+        'Welcome page updated. Daily scheduled Astro rebuild (04:00 UTC) will refresh SEO pages if needed.'
+      );
       return null;
     } catch (error) {
       console.error('Error triggering rebuild for welcome page:', error);
@@ -2602,24 +2600,4 @@ async function triggerGitHubActions(
     req.write(payload);
     req.end();
   });
-}
-
-/**
- * Trigger Firebase Hosting deployment directly
- * Note: This requires the Cloud Function to have Hosting Admin permissions
- */
-async function triggerFirebaseHostingDeploy(articleId: string): Promise<void> {
-  // This approach requires using Firebase Admin SDK to trigger a deployment
-  // However, Firebase Hosting doesn't have a direct API for this.
-  // Instead, we'll use the Firebase CLI via a Cloud Build trigger or
-  // create an HTTP-triggered function that can be called with proper auth.
-
-  // For now, log that we need GitHub Actions or manual deployment
-  console.warn('Direct Firebase Hosting deployment not implemented. Please configure GitHub Actions.');
-  console.warn(`Article ${articleId} was published but deployment was not triggered.`);
-  console.warn('Please manually rebuild and deploy, or configure GitHub Actions workflow.');
-
-  // Alternative: You could create an HTTP Cloud Function that runs the build
-  // and deploy commands, but this requires more setup and security considerations.
-  throw new Error('Firebase Hosting direct deployment not configured. Use GitHub Actions instead.');
 }
