@@ -496,7 +496,10 @@ export class WelcomeSettingsPage implements OnInit, OnDestroy {
       await this.welcomeContentService.publishContent(this.prepareContentForSave());
       this.hasDraft = true;
       await this.reloadEditorState();
-      await this.showToast('Welcome page published. SEO pages will rebuild shortly.', 'success');
+      await this.showToast(
+        'Welcome page published. Search-engine pages update automatically within 24 hours.',
+        'success'
+      );
     } catch (error) {
       console.error('Failed to publish welcome page:', error);
       await this.showToast('Failed to publish welcome page', 'danger');

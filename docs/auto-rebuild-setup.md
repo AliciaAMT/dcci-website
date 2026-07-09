@@ -1,169 +1,95 @@
-# Automatic Astro Rebuild Setup
+# Automatic Astro SEO Rebuild
 
-This document explains how to set up automatic rebuilds and redeployments of the Astro static site when Firestore articles are published or updated.
+The Astro static SEO layer (`/welcome/`, `/articles/`, etc.) is rebuilt from Firestore **once per day** by GitHub Actions. No GitHub personal access token (PAT) is required.
 
 ## Overview
 
-When an article in Firestore is published or updated (with changes to `slug`, `content`, or `title`), a Cloud Function automatically triggers a rebuild of the Astro site and redeploys it to Firebase Hosting.
+| What | Detail |
+|------|--------|
+| **Workflow** | `.github/workflows/rebuild-astro.yml` |
+| **Schedule** | Daily at **04:00 UTC** |
+| **Repo** | [DCCI-Ministries/dcci-website](https://github.com/DCCI-Ministries/dcci-website) |
+| **Cost** | **$0** for public repo (GitHub Actions + typical Firebase Hosting usage) |
 
-## Architecture
+When Hatun or an admin **publishes** the welcome page or a published article:
 
-1. **Firestore Trigger**: A Cloud Function (`onArticleUpdate`) watches the `content` collection
-2. **Change Detection**: Only triggers if:
-   - Article `status === 'published'`
-   - Article was just published (new publication), OR
-   - `slug`, `content`, or `title` fields changed
-3. **Deployment Trigger**: Calls GitHub Actions workflow via `repository_dispatch` API
+1. **Live app** updates immediately (Firestore → Angular).
+2. **SEO HTML** updates on the next scheduled run **if** content changed since the last successful build (usually within 24 hours).
 
-## Setup Instructions
+## How it works
 
-### Step 1: Configure GitHub Secrets
-
-In your GitHub repository, go to **Settings → Secrets and variables → Actions** and add:
-
-1. **`FIREBASE_SERVICE_ACCOUNT`**: Firebase service account JSON
-   - Go to Firebase Console → Project Settings → Service Accounts
-   - Click "Generate new private key"
-   - Copy the entire JSON content and paste as secret
-
-2. **`FIREBASE_PROJECT_ID`**: Your Firebase project ID (e.g., `dcci-ministries`)
-
-3. **`FIREBASE_CLIENT_EMAIL`**: From the service account JSON, the `client_email` field
-
-4. **`FIREBASE_PRIVATE_KEY`**: From the service account JSON, the `private_key` field (include the full key with `\n` characters)
-
-5. **`SITE_URL`**: Your site's canonical URL (e.g., `https://dcciministries.com`)
-
-### Step 2: Configure Firebase Functions Config
-
-Set the GitHub token and repository information:
-
-```bash
-firebase functions:config:set github.token="YOUR_GITHUB_PERSONAL_ACCESS_TOKEN" github.repo="YOUR_USERNAME/YOUR_REPO" github.workflow="rebuild-astro.yml"
+```
+  Publish welcome page or article
+           │
+           ▼
+  Firestore updated (live site immediate)
+           │
+           ▼
+  Daily 04:00 UTC — GitHub Actions "Rebuild Astro Site"
+           │
+           ├── Read adminSettings/seoRebuildState (last build time)
+           ├── Compare siteSettings/welcome + latest published article
+           │
+           ├── No changes → skip (fast, no deploy)
+           └── Changes → npm run build:all → deploy hosting → record new timestamp
 ```
 
-**To create a GitHub Personal Access Token:**
-1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Click "Generate new token (classic)"
-3. Give it a name (e.g., "Firebase Auto-Rebuild")
-4. Select scopes: `repo` (full control of private repositories)
-5. Copy the token and use it in the command above
+Scripts:
 
-**Important**: The token needs `repo` scope to trigger workflows via `repository_dispatch`.
+- `scripts/check-seo-rebuild-needed.js` — scheduled runs only rebuild when needed
+- `scripts/record-seo-rebuild-state.js` — writes `adminSettings/seoRebuildState` after success
 
-### Step 3: Deploy the Cloud Function
+## One-time setup (GitHub Secrets)
+
+On **DCCI-Ministries/dcci-website** → **Settings → Secrets and variables → Actions**, add:
+
+| Secret | Value |
+|--------|--------|
+| `FIREBASE_PROJECT_ID` | `dcci-ministries` |
+| `SITE_URL` | `https://dcciministries.com` |
+| `FIREBASE_SERVICE_ACCOUNT` | Full JSON from Firebase Console → Service accounts → Generate new private key |
+| `FIREBASE_CLIENT_EMAIL` | `client_email` from that JSON |
+| `FIREBASE_PRIVATE_KEY` | `private_key` from that JSON (keep `\n` line breaks) |
+
+No `github.token` or PAT is needed for the scheduled approach.
+
+## Verify
+
+1. **Actions** → **Rebuild Astro Site** → **Run workflow** (manual run always rebuilds by default).
+2. Confirm green checkmark and Firebase Hosting deploy.
+3. After Hatun publishes welcome content, wait for the next **04:00 UTC** run (or run workflow manually).
+4. **View source** on `https://dcciministries.com/welcome/` — confirm new title/text in HTML.
+
+## Manual rebuild
+
+**GitHub:** Actions → Rebuild Astro Site → Run workflow.
+
+**Local:**
 
 ```bash
-npm run deploy:functions
+npm run build:all
+npx firebase-tools deploy --only hosting
+node scripts/record-seo-rebuild-state.js   # optional — keeps scheduled skip logic accurate
 ```
 
-Or manually:
+(Local record step needs Firebase Admin env vars set.)
 
-```bash
-cd functions
-npm run build
-firebase deploy --only functions:onArticleUpdate
-```
+## Optional: instant rebuild via PAT (legacy)
 
-### Step 4: Verify Setup
-
-1. **Test the trigger**: Publish or update a published article in Firestore
-2. **Check Cloud Functions logs**:
-   ```bash
-   firebase functions:log --only onArticleUpdate
-   ```
-3. **Check GitHub Actions**: Go to your repository → Actions tab to see the workflow run
-
-## How It Works
-
-### Firestore Trigger Function
-
-The `onArticleUpdate` function:
-- Triggers on any write to `/content/{articleId}`
-- Checks if `status === 'published'`
-- Compares `before` and `after` snapshots to detect changes in:
-  - `slug` (affects URL)
-  - `content` (affects page content)
-  - `title` (affects SEO)
-- Only triggers rebuild if relevant fields changed
-
-### GitHub Actions Workflow
-
-The workflow (`rebuild-astro.yml`):
-1. Receives `repository_dispatch` event from Cloud Function
-2. Checks out the repository
-3. Installs dependencies (root and `public-site`)
-4. Sets up Firebase environment variables
-5. Builds Angular app (`npm run build:prod`)
-6. Builds Astro site (`npm run build` in `public-site`)
-7. Copies Astro output to `dist/app`
-8. Deploys to Firebase Hosting
+If you ever configure `github.token` + `github.repo` in Firebase Functions config, publish events can still trigger `repository_dispatch` immediately. This is **optional** — the daily schedule is the supported default.
 
 ## Troubleshooting
 
-### Function not triggering
+| Issue | Check |
+|-------|--------|
+| Scheduled run never appears | Workflow must be on default branch (`master`); cron only runs on default branch |
+| Workflow fails at build | Actions logs; verify all five secrets |
+| SEO page stale after publish | Wait until after 04:00 UTC, or run workflow manually |
+| Every scheduled run rebuilds | First run has no `seoRebuildState` — expected; later runs skip if unchanged |
 
-1. **Check function is deployed**:
-   ```bash
-   firebase functions:list
-   ```
+## Firestore
 
-2. **Check function logs**:
-   ```bash
-   firebase functions:log --only onArticleUpdate
-   ```
+- **`adminSettings/seoRebuildState`** — `lastSuccessfulBuildAt` (written by GitHub Actions Admin SDK)
+- Admins can **read** this doc in Firestore rules; clients cannot write it
 
-3. **Verify Firestore path**: Ensure articles are in `/content/{articleId}` collection
-
-### GitHub Actions not running
-
-1. **Check GitHub token has correct permissions**:
-   - Must have `repo` scope
-   - Must be a classic token (not fine-grained)
-
-2. **Verify repository name format**:
-   - Should be `owner/repo` (e.g., `username/dcci-website`)
-
-3. **Check GitHub Actions logs**:
-   - Go to repository → Actions tab
-   - Look for failed workflow runs
-
-### Build failures
-
-1. **Check environment variables**:
-   - Ensure all Firebase secrets are set in GitHub
-   - Verify `FIREBASE_PRIVATE_KEY` includes `\n` characters correctly
-
-2. **Check build logs**:
-   - Review GitHub Actions workflow logs
-   - Look for specific error messages
-
-## Security Notes
-
-- **GitHub Token**: Store securely in Firebase Functions config (not in code)
-- **Service Account**: Never commit service account JSON to repository
-- **Private Keys**: All secrets stored in GitHub Secrets (encrypted)
-- **Function Permissions**: Cloud Function only needs Firestore read access
-
-## Manual Rebuild
-
-If automatic rebuild fails, you can manually trigger:
-
-1. **Via GitHub Actions UI**:
-   - Go to repository → Actions → "Rebuild Astro Site"
-   - Click "Run workflow"
-
-2. **Via Firebase CLI**:
-   ```bash
-   npm run build:all
-   firebase deploy --only hosting
-   ```
-
-## Alternative: Direct Firebase Hosting Deployment
-
-If you prefer not to use GitHub Actions, you can modify the Cloud Function to:
-1. Use Cloud Build to run the build
-2. Or create an HTTP-triggered function that runs build commands
-3. Or use Firebase Hosting API directly (requires additional setup)
-
-However, GitHub Actions is recommended as it provides better logging, retry logic, and doesn't require additional Cloud Build setup.
+Deploy rules after pull: `firebase deploy --only firestore:rules`

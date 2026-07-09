@@ -44,8 +44,8 @@ firebase deploy --only functions
 | `getContactStats` | Admin dashboard message/subscriber counts |
 | `trackPageView` | Visitor analytics |
 | `getStorageUsage` | Admin storage stats |
-| `onArticleUpdate` | Triggers Astro rebuild when articles change |
-| `onWelcomePageUpdate` | Triggers Astro rebuild when welcome page content changes |
+| `onArticleUpdate` | Logs publish; optional instant GitHub rebuild if `github.*` config set; else daily scheduled rebuild |
+| `onWelcomePageUpdate` | Same for welcome page publishes |
 | `testContactForm` | Health check for mail config |
 
 Full contact form behaviour, security layers, and privacy: **[CONTACT_FORM_SETUP.md](../CONTACT_FORM_SETUP.md)**.

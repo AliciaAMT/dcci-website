@@ -209,6 +209,12 @@ service cloud.firestore {
       allow read, create, update, delete: if isFullAdmin();
     }
 
+    // SEO rebuild marker — written by GitHub Actions (Admin SDK); admins may read
+    match /adminSettings/seoRebuildState {
+      allow read: if isFullAdmin();
+      allow write: if false;
+    }
+
     // Content collection - articles and blog posts
     match /content/{contentId} {
       // READ RULES:
