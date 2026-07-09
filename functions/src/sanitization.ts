@@ -4,37 +4,17 @@ import * as validator from 'validator';
  * Sanitization utilities for contact form input
  */
 
-// Spam trigger words that will cause form submission to be rejected
-const spamTriggers = [
-  'seo',
-  'wikipedia',
-  'promotion',
-  'marketing',
-  'branding',
+/** Multi-word solicitation phrases — matched after normalizing punctuation/spacing. */
+const SPAM_PHRASES = [
+  'complimentary bid',
   'web design',
+  'digital marketing',
   'guest post',
-  'backlink',
-  'crypto',
-  'opt-out',
-  'bitcoin',
-  'forex',
-  'investment',
-  'loan',
-  'credit',
-  'debt',
-  'casino',
-  'gambling',
-  'viagra',
-  'pharmacy',
+  'church cleaning',
+  'respond with stop to opt out',
+  'opt out',
   'weight loss',
   'diet pill',
-  'supplement',
-  'insurance',
-  'mortgage',
-  'refinance',
-  'trading',
-  'stocks',
-  'profit',
   'earn money',
   'work from home',
   'make money',
@@ -46,6 +26,37 @@ const spamTriggers = [
   'free trial',
   'no obligation',
   'risk free'
+];
+
+/** Single-word or short tokens — word-boundary match on normalized text. */
+const SPAM_WORDS = [
+  'seo',
+  'wikipedia',
+  'promotion',
+  'marketing',
+  'branding',
+  'backlink',
+  'backlinks',
+  'crypto',
+  'bitcoin',
+  'forex',
+  'casino',
+  'gambling',
+  'whatsapp',
+  'telegram',
+  'viagra',
+  'pharmacy',
+  'supplement',
+  'insurance',
+  'mortgage',
+  'refinance',
+  'trading',
+  'stocks',
+  'profit',
+  'investment',
+  'loan',
+  'credit',
+  'debt'
 ];
 
 export interface SanitizedContactData {
@@ -241,19 +252,39 @@ function sanitizeEmail(input: string): string {
 }
 
 /**
- * Check for spam trigger words
+ * Normalize text for spam checks — lowercase, strip zero-width chars,
+ * turn punctuation/separators into spaces so "opt-out" and "opt out" match.
+ */
+function normalizeForSpamCheck(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[\u200b-\u200d\ufeff]/g, '')
+    .replace(/[-_/.,]+/g, ' ')
+    .replace(/[^\w\s@]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Check for spam trigger words and solicitation phrases (name, subject, message).
  */
 function containsSpamTriggers(input: string): boolean {
   if (!input || typeof input !== 'string') {
     return false;
   }
 
-  const lowerInput = input.toLowerCase();
+  const normalized = normalizeForSpamCheck(input);
+  if (!normalized) {
+    return false;
+  }
 
-  return spamTriggers.some(trigger => {
-    // Check for exact word matches (case insensitive)
-    const regex = new RegExp(`\\b${trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-    return regex.test(lowerInput);
+  if (SPAM_PHRASES.some((phrase) => normalized.includes(phrase))) {
+    return true;
+  }
+
+  return SPAM_WORDS.some((word) => {
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`, 'i').test(normalized);
   });
 }
 

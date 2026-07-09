@@ -1,72 +1,15 @@
 name: Rebuild Astro Site
 
 on:
-  # Daily overnight check — rebuilds only when welcome page or published articles changed
+  # Daily overnight UK — 03:00 UTC (03:00 GMT / 04:00 BST)
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '0 3 * * *'
   workflow_dispatch:
-    inputs:
-      force_rebuild:
-        description: 'Rebuild even if Firestore content unchanged (default true for manual runs)'
-        required: false
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
   repository_dispatch:
     types: [rebuild-astro]
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    outputs:
-      rebuild: ${{ steps.decide.outputs.rebuild }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install root dependencies
-        run: npm ci
-
-      - name: Install Astro dependencies
-        run: npm ci
-        working-directory: ./public-site
-
-      - name: Decide if rebuild is needed
-        id: decide
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-          run_check=false
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            run_check=true
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force_rebuild }}" = "false" ]; then
-            run_check=true
-          fi
-          if [ "$run_check" = "true" ]; then
-            node scripts/check-seo-rebuild-needed.js
-            if ! grep -qE '^rebuild=(true|false)$' "$GITHUB_OUTPUT"; then
-              echo "::error::check-seo-rebuild-needed.js did not set rebuild output"
-              exit 1
-            fi
-          else
-            echo "rebuild=true" >> "$GITHUB_OUTPUT"
-            echo "Manual or dispatch trigger — rebuild enabled."
-          fi
-
   rebuild-and-deploy:
-    needs: check
-    if: needs.check.result == 'success' && needs.check.outputs.rebuild == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -115,13 +58,5 @@ jobs:
         run: |
           echo "Astro site rebuilt and deployed successfully"
           if [ -n "${{ github.event.client_payload.articleId }}" ]; then
-            echo "Triggered by: ${{ github.event.client_payload.articleId }}"
+            echo "Triggered by article: ${{ github.event.client_payload.articleId }}"
           fi
-
-  skip:
-    needs: check
-    if: needs.check.result == 'success' && needs.check.outputs.rebuild == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - name: No content changes
-        run: echo "No welcome or article changes since last SEO build — skipped deploy."

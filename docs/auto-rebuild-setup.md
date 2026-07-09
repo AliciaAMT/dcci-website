@@ -1,43 +1,37 @@
 # Automatic Astro SEO Rebuild
 
-The Astro static SEO layer (`/welcome/`, `/articles/`, etc.) is rebuilt from Firestore **once per day** by GitHub Actions. No GitHub personal access token (PAT) is required.
+The Astro static SEO layer (`/welcome/`, `/articles/`, sitemap, etc.) is rebuilt from Firestore **once per day** by GitHub Actions. No GitHub personal access token (PAT) is required.
 
 ## Overview
 
 | What | Detail |
 |------|--------|
 | **Workflow** | `.github/workflows/rebuild-astro.yml` |
-| **Schedule** | Daily at **04:00 UTC** |
+| **Schedule** | Daily at **03:00 UTC** (03:00 GMT / 04:00 BST) |
 | **Repo** | [DCCI-Ministries/dcci-website](https://github.com/DCCI-Ministries/dcci-website) |
 | **Cost** | **$0** for public repo (GitHub Actions + typical Firebase Hosting usage) |
 
 When Hatun or an admin **publishes** the welcome page or a published article:
 
 1. **Live app** updates immediately (Firestore → Angular).
-2. **SEO HTML** updates on the next scheduled run **if** content changed since the last successful build (usually within 24 hours).
+2. **SEO HTML** updates on the next scheduled run (within ~24 hours).
 
 ## How it works
 
 ```
-  Publish welcome page or article
+  Daily 03:00 UTC — GitHub Actions "Rebuild Astro Site"
            │
-           ▼
-  Firestore updated (live site immediate)
-           │
-           ▼
-  Daily 04:00 UTC — GitHub Actions "Rebuild Astro Site"
-           │
-           ├── Read adminSettings/seoRebuildState (last build time)
-           ├── Compare siteSettings/welcome + latest published article
-           │
-           ├── No changes → skip (fast, no deploy)
-           └── Changes → npm run build:all → deploy hosting → record new timestamp
+           ├── Checkout current committed code (no auto-commit/push)
+           ├── npm ci (root + public-site)
+           ├── npm run build:all (Angular + Astro from Firestore)
+           ├── Deploy dist/app → Firebase Hosting (live)
+           └── Record adminSettings/seoRebuildState timestamp
 ```
 
 Scripts:
 
-- `scripts/check-seo-rebuild-needed.js` — scheduled runs only rebuild when needed
 - `scripts/record-seo-rebuild-state.js` — writes `adminSettings/seoRebuildState` after success
+- `scripts/check-seo-rebuild-needed.js` — legacy helper (not used by the workflow; optional for local checks)
 
 ## One-time setup (GitHub Secrets)
 
@@ -55,12 +49,12 @@ No `github.token` or PAT is needed for the scheduled approach.
 
 ## Verify
 
-1. **Actions** → **Rebuild Astro Site** → **Run workflow** (manual run always rebuilds by default).
+1. **Actions** → **Rebuild Astro Site** → **Run workflow**.
 2. Confirm green checkmark and Firebase Hosting deploy.
-3. After Hatun publishes welcome content, wait for the next **04:00 UTC** run (or run workflow manually).
+3. After Hatun publishes welcome content, wait for the next **03:00 UTC** run (or run workflow manually).
 4. **View source** on `https://dcciministries.com/welcome/` — confirm new title/text in HTML.
 
-## Manual rebuild
+## Manual rebuild (optional)
 
 **GitHub:** Actions → Rebuild Astro Site → Run workflow.
 
@@ -69,7 +63,7 @@ No `github.token` or PAT is needed for the scheduled approach.
 ```bash
 npm run build:all
 npx firebase-tools deploy --only hosting
-node scripts/record-seo-rebuild-state.js   # optional — keeps scheduled skip logic accurate
+node scripts/record-seo-rebuild-state.js   # optional — records last build time in Firestore
 ```
 
 (Local record step needs Firebase Admin env vars set.)
@@ -84,8 +78,8 @@ If you ever configure `github.token` + `github.repo` in Firebase Functions confi
 |-------|--------|
 | Scheduled run never appears | Workflow must be on default branch (`master`); cron only runs on default branch |
 | Workflow fails at build | Actions logs; verify all five secrets |
-| SEO page stale after publish | Wait until after 04:00 UTC, or run workflow manually |
-| Every scheduled run rebuilds | First run has no `seoRebuildState` — expected; later runs skip if unchanged |
+| SEO page stale after publish | Wait until after 03:00 UTC, or run workflow manually |
+| Deploy succeeds but site unchanged | Confirm Firestore content was published; view source on `/welcome/` |
 
 ## Firestore
 
