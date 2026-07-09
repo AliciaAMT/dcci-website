@@ -1,19 +1,17 @@
 name: Rebuild Astro Site
 
 on:
+  # Daily overnight UK — 03:00 UTC (03:00 GMT / 04:00 BST)
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
   repository_dispatch:
     types: [rebuild-astro]
-  workflow_dispatch:
-    inputs:
-      article_id:
-        description: 'Article ID that triggered rebuild (optional)'
-        required: false
-        type: string
 
 jobs:
   rebuild-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -47,9 +45,18 @@ jobs:
           projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'
           channelId: live
 
+      - name: Record successful SEO rebuild
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: node scripts/record-seo-rebuild-state.js
+
       - name: Log deployment
         run: |
-          echo "✅ Astro site rebuilt and deployed successfully"
+          echo "Astro site rebuilt and deployed successfully"
           if [ -n "${{ github.event.client_payload.articleId }}" ]; then
             echo "Triggered by article: ${{ github.event.client_payload.articleId }}"
           fi
