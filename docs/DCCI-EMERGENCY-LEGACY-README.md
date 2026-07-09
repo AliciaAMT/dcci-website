@@ -30,8 +30,10 @@
 |------|--------|-------|-----------------|
 | **Ministry lead** | Hatun | `hatun@dcciministries.com` | Content, theology, contact-form mail, ministry decisions |
 | **Public ministry inbox** | DCCI | `info@dcciministries.com` | Legal pages, general ministry inquiries |
-| **Technical maintainer** | `[name]` | `technicalAdminEmail` in site-contacts | Site down, deploy, Firebase, contact form *technical* failure |
-| **Previous developer** (succession) | Alicia (until handoff) | `technicalSuccessionContactEmail` in site-contacts | Architecture, “why was it built this way?”, urgent site emergencies |
+| **Technical maintainer** | Alicia (Accessible Web Media) | `admin@accessiblewebmedia.com` | Site down, deploy, Firebase, contact form *technical* failure |
+| **Previous developer** (succession) | Alicia (until next handoff) | `admin@accessiblewebmedia.com` | Architecture, “why was it built this way?”, urgent site emergencies |
+
+*Source of truth for technical emails:* [`config/site-contacts.json`](../config/site-contacts.json) (`technicalAdminEmail`, `technicalSuccessionContactEmail`). Update **this table** and both JSON copies when a new developer takes over.
 
 **Email subject for urgent dev help:** `Urgent: Hatun Website Question`  
 **Non-urgent:** `Hatun Website Question`
