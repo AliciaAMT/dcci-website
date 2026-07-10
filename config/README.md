@@ -2,6 +2,8 @@
 
 **Change contact addresses in one place:** [`site-contacts.json`](./site-contacts.json)
 
+> **IMPORTANT — GitHub Actions:** `site-contacts.json` is gitignored. The nightly SEO rebuild writes it from the GitHub secret `SITE_CONTACTS_JSON`. **If you change this file locally, also update that secret** (full file contents). Never put backend private keys in this file.
+
 ## New developer taking over the website?
 
 Read **[Technical Contact Handoff](../docs/technical-contact-handoff.md)** — step-by-step guide to replace the **website/technical** email safely (UK/EU compliance), without changing ministry content or contact-form inboxes.
@@ -22,6 +24,8 @@ Also maintain the human-readable history in **[`succession-chain.md`](./successi
 ---
 
 ## After editing `site-contacts.json`
+
+**IMPORTANT:** Also update GitHub Actions secret `SITE_CONTACTS_JSON` (full file contents) so the nightly SEO rebuild stays in sync.
 
 **Update both copies** (`config/site-contacts.json` and `functions/src/config/site-contacts.json`), then redeploy:
 

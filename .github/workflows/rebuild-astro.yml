@@ -60,6 +60,28 @@ jobs:
           echo "Angular environment files written (existence/size OK; contents not printed)."
           ls -la src/environments/environment.ts src/environments/environment.prod.ts
 
+      - name: Write site contacts JSON
+        env:
+          SITE_CONTACTS_JSON: ${{ secrets.SITE_CONTACTS_JSON }}
+        run: |
+          if [ -z "${SITE_CONTACTS_JSON}" ]; then
+            echo "ERROR: GitHub secret SITE_CONTACTS_JSON is missing or empty."
+            echo "Set it to the full contents of config/site-contacts.json"
+            exit 1
+          fi
+          mkdir -p config
+          printf '%s\n' "${SITE_CONTACTS_JSON}" > config/site-contacts.json
+          if ! test -s config/site-contacts.json; then
+            echo "ERROR: config/site-contacts.json was not created or is empty."
+            exit 1
+          fi
+          if ! node -e "const fs=require('fs'); JSON.parse(fs.readFileSync('config/site-contacts.json','utf8'));"; then
+            echo "ERROR: SITE_CONTACTS_JSON is not valid JSON (contents not printed)."
+            exit 1
+          fi
+          echo "config/site-contacts.json written (existence/size/JSON OK; contents not printed)."
+          ls -la config/site-contacts.json
+
       - name: Build all (Angular + Astro)
         run: npm run build:all
         env:

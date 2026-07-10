@@ -46,10 +46,13 @@ On **DCCI-Ministries/dcci-website** → **Settings → Secrets and variables →
 | `FIREBASE_PRIVATE_KEY` | `private_key` from that JSON (keep `\n` line breaks) |
 | `ENVIRONMENT_TS` | Full contents of local `src/environments/environment.ts` |
 | `ENVIRONMENT_PROD_TS` | Full contents of local `src/environments/environment.prod.ts` |
+| `SITE_CONTACTS_JSON` | Full contents of local `config/site-contacts.json` |
 
 No `github.token` or PAT is needed for the scheduled approach.
 
 **When local Angular env files change:** also update `ENVIRONMENT_TS` / `ENVIRONMENT_PROD_TS` in GitHub Secrets. Those files are gitignored; CI writes them from secrets before `build:all`. Never put backend private keys in the frontend env files.
+
+**When `config/site-contacts.json` changes:** also update `SITE_CONTACTS_JSON` in GitHub Secrets. That file is gitignored (via `*.json`); CI writes it before `build:all`. Never put backend private keys in it.
 
 ## Verify
 
