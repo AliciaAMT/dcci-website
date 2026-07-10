@@ -194,6 +194,7 @@ npm install -g firebase-tools
 - **File**: `src/environments/environment.prod.ts`
 - **Firebase Project**: `dcci-ministries`
 - **Production Flag**: `true`
+- **CI:** If this file (or `environment.ts`) changes, also update GitHub Actions secrets `ENVIRONMENT_PROD_TS` / `ENVIRONMENT_TS` — see [auto-rebuild-setup.md](./auto-rebuild-setup.md) and [DCCI-EMERGENCY-LEGACY-README.md](./DCCI-EMERGENCY-LEGACY-README.md). Never put backend private keys in frontend env files.
 - **Use Case**: Live website
 
 ## Security Notes
