@@ -47,8 +47,9 @@ Full succession history: [config/succession-chain.md](../config/succession-chain
 1. Check whether **only you** see it or **everyone** — try a phone on mobile data (not Wi‑Fi).
 2. Open [Firebase Console](https://console.firebase.google.com) → **dcci-ministries** → **Hosting** — last deploy time and errors.
 3. Open [GitHub Actions](https://github.com/DCCI-Ministries/dcci-website/actions) — failed **Rebuild Astro Site** or deploy?
-4. Follow **[Emergency Procedures](./emergency-procedures.md)** — read-only mode, maintenance message, nuclear lockdown (Super Admin only).
-5. Email **technical succession contact** with subject `Urgent: Hatun Website Question` if you cannot resolve in 30 minutes.
+4. Follow **[Emergency Procedures](./emergency-procedures.md)** — read-only mode, maintenance message, nuclear lockdown (Super Admin / Admin only).
+5. **If nuclear lockdown is on:** the admin panel cannot turn it off. A developer must open Firebase Console → Firestore → `siteSettings` / `emergency` → set `nuclearLockdown` to `false`. See [Nuclear Lockdown](./emergency-procedures.md#nuclear-lockdown-last-resort).
+6. Email **technical succession contact** with subject `Urgent: Hatun Website Question` if you cannot resolve in 30 minutes.
 
 **Do not** panic-delete Firebase or change DNS without documenting what you changed.
 

@@ -136,7 +136,13 @@
         <dt>Welcome Page</dt>
         <dd>Edit the home page visitors see first — text, images, social links, and giving buttons.</dd>
         <dt>Site Management</dt>
-        <dd>Emergency controls — read-only mode, maintenance message, and similar (use carefully).</dd>
+        <dd>
+          Emergency controls — maintenance message, read-only mode, and <strong>nuclear lockdown</strong>.
+          Nuclear lockdown blocks everyone (including admins).
+          <strong>Only a developer can turn nuclear lockdown off</strong>, in Firebase Console
+          (<code>siteSettings/emergency</code> → set <code>nuclearLockdown</code> to <code>false</code>).
+          Do not enable it unless you have already confirmed a developer can reverse it.
+        </dd>
       </dl>
       <p class="guide-note">Quick Actions marked for full admins are shown to <strong>Super Admin</strong> and <strong>Admin</strong>. Moderators see a smaller set.</p>
     </ion-card-content>

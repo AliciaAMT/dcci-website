@@ -148,6 +148,7 @@ This project has implemented the following fixes:
 3. **Firebase import errors** - Use ESM imports, not require()
 4. **Vite asset issues** - Verify SVG files are copied to build output
 5. **Cursor infinite loops** - Be specific about what you want and what not to do
+6. **Nuclear lockdown cannot be cleared from the admin UI** - Once enabled, only Firebase Console (Firestore `siteSettings/emergency` → `nuclearLockdown: false`) can reverse it. Client writes are rejected by security rules even for full admins. See [Emergency Procedures — Nuclear Lockdown](./emergency-procedures.md#nuclear-lockdown-last-resort).
 
 ## 📚 Related Documentation
 

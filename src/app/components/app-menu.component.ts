@@ -122,9 +122,9 @@ export class AppMenuComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  async navigateToWelcome() {
+  async navigateToHome() {
     await this.closeMenu();
-    this.router.navigate(['/welcome']);
+    this.router.navigate(['/home']);
   }
 
   async navigateToArticles() {
@@ -139,26 +139,22 @@ export class AppMenuComponent implements AfterViewInit, OnDestroy {
 
   async navigateToSupport() {
     await this.closeMenu();
-    const currentUrl = this.router.url;
-    if (currentUrl === '/welcome') {
-      // Already on welcome page, scroll to section
+    const currentUrl = this.router.url.split('?')[0];
+    if (currentUrl === '/home' || currentUrl === '/') {
       setTimeout(() => this.scrollToSection('support-section'), 100);
     } else {
-      // Navigate to welcome page, then scroll after navigation
-      await this.router.navigate(['/welcome']);
+      await this.router.navigate(['/home']);
       setTimeout(() => this.scrollToSection('support-section'), 300);
     }
   }
 
   async navigateToContact() {
     await this.closeMenu();
-    const currentUrl = this.router.url;
-    if (currentUrl === '/welcome') {
-      // Already on welcome page, scroll to section
+    const currentUrl = this.router.url.split('?')[0];
+    if (currentUrl === '/home' || currentUrl === '/') {
       setTimeout(() => this.scrollToSection('contact-form'), 100);
     } else {
-      // Navigate to welcome page, then scroll after navigation
-      await this.router.navigate(['/welcome']);
+      await this.router.navigate(['/home']);
       setTimeout(() => this.scrollToSection('contact-form'), 300);
     }
   }

@@ -87,6 +87,7 @@ firebase hosting:channel:list
    - [ ] **Document everything** - Time, symptoms, actions taken
    - [ ] **Isolate affected systems** if possible
    - [ ] **Change admin passwords** immediately
+   - [ ] Consider **Nuclear Lockdown** (below) if the site is under active attack
 
 2. **Investigation Steps**:
    - Check Firebase console for unusual activity
@@ -110,6 +111,62 @@ firebase hosting:channel:list
    - Secure all access points
    - Implement additional security measures
    - Review and update security policies
+
+---
+
+## Nuclear Lockdown (last resort)
+
+Nuclear lockdown is an emergency switch in **Admin Dashboard → Site Management** (`/admin/emergency-controls`).
+
+### What it does
+
+When `nuclearLockdown` is `true` on Firestore document `siteSettings/emergency`:
+
+- **All** site access is blocked, including admins (guards send people to maintenance)
+- New admin **signups** are blocked
+- Content writes and most client writes are blocked
+- The admin UI **cannot** turn it off (toggle is disabled)
+
+### Why Console-only reverse
+
+Firestore security rules **deny all client updates** to `siteSettings/emergency` once `nuclearLockdown` is already `true` — even for a Super Admin or Admin account.
+
+That is intentional: if an attacker somehow gained a full-admin account, they still **cannot** clear lockdown from the website. Only someone with **Firebase Console** (or Admin SDK) access can reverse it.
+
+### How to ENABLE (from the admin panel)
+
+1. Sign in as Super Admin or Admin.
+2. Open **Site Management**.
+3. Read the nuclear warning carefully.
+4. Confirm with a developer that they can access Firebase Console **before** enabling.
+5. Enable **Nuclear Lockdown** and confirm the dialog.
+6. You will be locked out of the admin UI until lockdown is reversed in Console.
+
+### How to REVERSE (Firebase Console only — developers)
+
+1. Open [Firebase Console](https://console.firebase.google.com) → project **`dcci-ministries`**.
+2. Go to **Firestore Database**.
+3. Open collection **`siteSettings`** → document **`emergency`**.
+4. Find field **`nuclearLockdown`**.
+5. Set it to **`false`** (boolean) and save.
+6. Wait a few seconds, then hard-refresh the site and sign in again as admin.
+7. Confirm Site Management shows nuclear lockdown **off**.
+8. Review admin users, Auth logs, and recent deploys for the original incident.
+
+**Do not** try to reverse lockdown by redeploying the Angular app alone — the flag lives in Firestore, not in the hosting build.
+
+**CLI alternative** (if you use `gcloud` / Admin SDK scripts): update the same document field; client SDK writes from the browser will still be rejected by rules while lockdown is on.
+
+### Related code
+
+| Piece | Location |
+|-------|----------|
+| Emergency UI | `src/app/admin/emergency-controls/` |
+| Client settings service | `src/app/services/site-settings.service.ts` |
+| Rules (block client clear) | `firestore.rules` → `siteSettings/{settingId}` update rule |
+| Guards | `admin-guard.ts`, `admin-only-guard.ts`, `maintenance-guard.ts` |
+
+---
 
 ## 💾 Data Loss Recovery
 
@@ -354,7 +411,7 @@ openssl s_client -connect your-domain.com:443
 
 ---
 
-**This document should be reviewed and updated regularly.**
-**Last Updated**: [Current Date]  
-**Next Review**: [Monthly]  
-**Emergency Contact**: [Primary Developer Contact] 
+**This document should be reviewed and updated regularly.**  
+**Last Updated**: July 2026  
+**Next Review**: Monthly  
+**Emergency Contact**: See [DCCI Emergency Legacy README](./DCCI-EMERGENCY-LEGACY-README.md) 

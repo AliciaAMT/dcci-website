@@ -64,7 +64,15 @@
     "rewrites": [
       {
         "source": "/",
-        "destination": "/welcome/index.html"
+        "destination": "/index.html"
+      },
+      {
+        "source": "/home",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/home/",
+        "destination": "/index.html"
       },
       {
         "source": "/welcome",
