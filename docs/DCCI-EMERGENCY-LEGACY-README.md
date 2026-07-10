@@ -71,7 +71,7 @@ Visitors see “message sent” but Hatun gets nothing:
 
 | Secret | Where it is set |
 |--------|-----------------|
-| Firebase Admin / deploy | GitHub Actions secrets on `DCCI-Ministries/dcci-website` · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
+| Firebase Admin / deploy | GitHub Actions secret `FIREBASE_SERVICE_ACCOUNT` (full service-account JSON) on `DCCI-Ministries/dcci-website` · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
 | Angular env files (CI) | GitHub Actions secrets `ENVIRONMENT_TS` and `ENVIRONMENT_PROD_TS` (full contents of local `src/environments/environment.ts` and `environment.prod.ts`) · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
 | Site contacts JSON (CI) | GitHub Actions secret `SITE_CONTACTS_JSON` (full contents of local `config/site-contacts.json`) · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) and [config/README.md](../config/README.md) |
 | Contact form SMTP | Firebase Functions config: `mail.user`, `mail.pass` |
