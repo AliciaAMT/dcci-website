@@ -28,6 +28,17 @@ This project supports multiple environment configurations for different deployme
 - **Use case**: Live production deployment
 - **Command**: `npm run start:prod` or `ionic serve --configuration production`
 
+## GitHub Actions / nightly rebuild
+
+`environment.ts` and `environment.prod.ts` are **gitignored**. The [Rebuild Astro Site](./auto-rebuild-setup.md) workflow creates them from GitHub Secrets before `npm run build:all`.
+
+| Local file | GitHub Actions secret |
+|------------|------------------------|
+| `src/environments/environment.ts` | `ENVIRONMENT_TS` |
+| `src/environments/environment.prod.ts` | `ENVIRONMENT_PROD_TS` |
+
+**IMPORTANT:** If either local file changes, update the matching GitHub Actions secret. Never place backend secrets or private keys in these frontend files.
+
 ## Firebase Project Switching
 
 Each environment can point to different Firebase projects:

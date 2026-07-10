@@ -72,11 +72,20 @@ Visitors see “message sent” but Hatun gets nothing:
 | Secret | Where it is set |
 |--------|-----------------|
 | Firebase Admin / deploy | GitHub Actions secrets on `DCCI-Ministries/dcci-website` · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
+| Angular env files (CI) | GitHub Actions secrets `ENVIRONMENT_TS` and `ENVIRONMENT_PROD_TS` (full contents of local `src/environments/environment.ts` and `environment.prod.ts`) · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
 | Contact form SMTP | Firebase Functions config: `mail.user`, `mail.pass` |
 | YouTube API | Firebase Functions config: `youtube.api_key` |
 | Brevo SMTP (after migration) | Firebase Functions config + Brevo dashboard (ministry account) |
 | Service account JSON | Password manager / **Package B** only |
 | GitHub / Firebase login | Ministry or maintainer password manager — document *who* has access in Package B |
+
+**Angular environment files (critical for nightly SEO rebuild):**
+
+Local `src/environments/environment.ts` and `environment.prod.ts` are **gitignored**. GitHub Actions recreates them from secrets before `npm run build:all`.
+
+- If you change either local file, **also update** the matching GitHub Actions secret (`ENVIRONMENT_TS` or `ENVIRONMENT_PROD_TS`).
+- Never put backend secrets or private keys in these frontend files (Firebase web config is public client config only).
+- Forgetting to update the secrets will make the next Actions build use stale config or fail.
 
 **Encrypted backups:**
 

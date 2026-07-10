@@ -1,3 +1,7 @@
+// IMPORTANT:
+// If this file changes, update the matching GitHub Actions secret (ENVIRONMENT_TS).
+// Never place backend secrets or private keys in this frontend file.
+
 export const environment = {
   production: false,
   version: '1.1.2',

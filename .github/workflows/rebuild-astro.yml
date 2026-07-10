@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: master
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,6 +31,18 @@ jobs:
         run: npm ci
         working-directory: ./public-site
 
+      - name: Write Angular environment files
+        env:
+          ENVIRONMENT_TS: ${{ secrets.ENVIRONMENT_TS }}
+          ENVIRONMENT_PROD_TS: ${{ secrets.ENVIRONMENT_PROD_TS }}
+        run: |
+          if [ -z "$ENVIRONMENT_TS" ] || [ -z "$ENVIRONMENT_PROD_TS" ]; then
+            echo "Missing ENVIRONMENT_TS and/or ENVIRONMENT_PROD_TS secrets."
+            exit 1
+          fi
+          printf '%s\n' "$ENVIRONMENT_TS" > src/environments/environment.ts
+          printf '%s\n' "$ENVIRONMENT_PROD_TS" > src/environments/environment.prod.ts
+
       - name: Build all (Angular + Astro)
         run: npm run build:all
         env:
@@ -36,6 +50,9 @@ jobs:
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
           FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
           SITE_URL: ${{ secrets.SITE_URL }}
+
+      - name: Validate hosting output before deploy
+        run: node scripts/validate-hosting-output.js
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
