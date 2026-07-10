@@ -39,14 +39,15 @@ On **DCCI-Ministries/dcci-website** → **Settings → Secrets and variables →
 
 | Secret | Value |
 |--------|--------|
-| `FIREBASE_PROJECT_ID` | `dcci-ministries` |
-| `SITE_URL` | `https://dcciministries.com` |
 | `FIREBASE_SERVICE_ACCOUNT` | Full JSON from Firebase Console → Service accounts → Generate new private key |
-| `FIREBASE_CLIENT_EMAIL` | `client_email` from that JSON |
-| `FIREBASE_PRIVATE_KEY` | `private_key` from that JSON (keep `\n` line breaks) |
+| `SITE_URL` | `https://dcciministries.com` |
 | `ENVIRONMENT_TS` | Full contents of local `src/environments/environment.ts` |
 | `ENVIRONMENT_PROD_TS` | Full contents of local `src/environments/environment.prod.ts` |
 | `SITE_CONTACTS_JSON` | Full contents of local `config/site-contacts.json` |
+
+The workflow uses **only** `FIREBASE_SERVICE_ACCOUNT` for Admin SDK + Hosting deploy (parses `project_id`, `client_email`, `private_key` from that JSON). Do **not** maintain separate `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, or `FIREBASE_PRIVATE_KEY` secrets for this workflow.
+
+**Local Astro builds** may still use the three split env vars as a fallback, or set `FIREBASE_SERVICE_ACCOUNT` to the same JSON string.
 
 No `github.token` or PAT is needed for the scheduled approach.
 

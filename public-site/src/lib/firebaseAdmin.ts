@@ -5,9 +5,15 @@
  * It is designed to work only in server-side contexts (Astro build-time, API routes).
  *
  * DO NOT import this in client-side code.
- * 
+ *
  * SECURITY: firebase-admin is a Node.js-only module and will fail if bundled for client.
  * Only import this in Astro frontmatter (server-side) or API routes.
+ *
+ * Credential preference:
+ * 1. FIREBASE_SERVICE_ACCOUNT — full service-account JSON (GitHub Actions)
+ * 2. FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY (local fallback)
+ *
+ * Never log credential values.
  */
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
@@ -15,62 +21,101 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
 let firestoreAdminInstance: Firestore | null = null;
 
+interface AdminCredentials {
+  projectId: string;
+  clientEmail: string;
+  privateKey: string;
+}
+
 /**
- * Initialize Firebase Admin SDK using credentials from process.env
- *
- * Reads from:
- * - FIREBASE_PROJECT_ID
- * - FIREBASE_CLIENT_EMAIL
- * - FIREBASE_PRIVATE_KEY (handles escaped newlines)
- *
- * Initializes only once (checks admin.apps.length)
+ * Resolve Admin credentials without logging secret values.
  */
-function initializeFirebaseAdmin(): Firestore {
-  // Return existing instance if already initialized
-  if (firestoreAdminInstance) {
-    return firestoreAdminInstance;
+function resolveAdminCredentials(): AdminCredentials {
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+  if (serviceAccountJson && serviceAccountJson.trim()) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(serviceAccountJson);
+    } catch {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON.');
+    }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT JSON must be an object.');
+    }
+
+    const obj = parsed as Record<string, unknown>;
+    const projectId = obj.project_id;
+    const clientEmail = obj.client_email;
+    const privateKeyRaw = obj.private_key;
+
+    if (typeof projectId !== 'string' || !projectId.trim()) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT is missing project_id.');
+    }
+    if (typeof clientEmail !== 'string' || !clientEmail.trim()) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT is missing client_email.');
+    }
+    if (typeof privateKeyRaw !== 'string' || !privateKeyRaw.trim()) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT is missing private_key.');
+    }
+
+    return {
+      projectId: projectId.trim(),
+      clientEmail: clientEmail.trim(),
+      privateKey: privateKeyRaw.replace(/\\n/g, '\n')
+    };
   }
 
-  // Check if Firebase Admin app is already initialized
-  const existingApps = getApps();
-  if (existingApps.length > 0) {
-    firestoreAdminInstance = getFirestore(existingApps[0]);
-    return firestoreAdminInstance;
-  }
-
-  // Read credentials from process.env
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(
-      'Firebase Admin credentials missing. Required environment variables: ' +
-      'FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY'
+      'Firebase Admin credentials missing. Set FIREBASE_SERVICE_ACCOUNT ' +
+        '(preferred), or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY for local use.'
     );
   }
 
-  // Handle escaped newlines in private key (common in .env files)
-  // Replace \\n with actual newlines
-  const unescapedPrivateKey = privateKey.replace(/\\n/g, '\n');
+  return {
+    projectId,
+    clientEmail,
+    privateKey: privateKey.replace(/\\n/g, '\n')
+  };
+}
+
+/**
+ * Initialize Firebase Admin SDK using credentials from process.env.
+ * Initializes only once (checks admin.apps.length).
+ */
+function initializeFirebaseAdmin(): Firestore {
+  if (firestoreAdminInstance) {
+    return firestoreAdminInstance;
+  }
+
+  const existingApps = getApps();
+  if (existingApps.length > 0) {
+    firestoreAdminInstance = getFirestore(existingApps[0]);
+    return firestoreAdminInstance;
+  }
+
+  const { projectId, clientEmail, privateKey } = resolveAdminCredentials();
 
   try {
     const app = initializeApp({
       credential: cert({
         projectId,
         clientEmail,
-        privateKey: unescapedPrivateKey,
+        privateKey
       }),
-      projectId,
+      projectId
     });
 
     firestoreAdminInstance = getFirestore(app);
     return firestoreAdminInstance;
-  } catch (error) {
-    console.error('Error initializing Firebase Admin SDK:', error);
-    throw new Error(
-      `Failed to initialize Firebase Admin SDK: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+  } catch {
+    throw new Error('Failed to initialize Firebase Admin SDK.');
   }
 }
 
@@ -79,7 +124,7 @@ function initializeFirebaseAdmin(): Firestore {
  *
  * This is initialized on first access and reused for subsequent calls.
  * Safe to import in Astro frontmatter and server-side contexts only.
- * 
+ *
  * Usage in Astro pages:
  * ---
  * import { getFirestoreAdmin } from '../lib/firebaseAdmin';
@@ -92,7 +137,7 @@ export function getFirestoreAdmin(): Firestore {
 
 /**
  * Exported Firestore Admin instance (for backward compatibility)
- * 
+ *
  * @deprecated Use getFirestoreAdmin() instead for explicit lazy loading
  */
 export const firestoreAdmin = initializeFirebaseAdmin();

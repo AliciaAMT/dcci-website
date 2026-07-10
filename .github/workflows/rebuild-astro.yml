@@ -82,12 +82,27 @@ jobs:
           echo "config/site-contacts.json written (existence/size/JSON OK; contents not printed)."
           ls -la config/site-contacts.json
 
+      - name: Resolve Firebase project from service account
+        id: firebase
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "${FIREBASE_SERVICE_ACCOUNT}" ]; then
+            echo "ERROR: GitHub secret FIREBASE_SERVICE_ACCOUNT is missing or empty."
+            exit 1
+          fi
+          PROJECT_ID="$(node -e "const { resolveFirebaseAdminCredentials } = require('./scripts/resolve-firebase-admin-credentials'); process.stdout.write(resolveFirebaseAdminCredentials().projectId);")"
+          if [ -z "${PROJECT_ID}" ]; then
+            echo "ERROR: Could not resolve project_id from FIREBASE_SERVICE_ACCOUNT."
+            exit 1
+          fi
+          echo "project_id=${PROJECT_ID}" >> "$GITHUB_OUTPUT"
+          echo "Resolved Firebase project_id for Hosting deploy (value is the project id only)."
+
       - name: Build all (Angular + Astro)
         run: npm run build:all
         env:
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           SITE_URL: ${{ secrets.SITE_URL }}
 
       - name: Validate hosting output before deploy
@@ -98,14 +113,12 @@ jobs:
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
-          projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'
+          projectId: ${{ steps.firebase.outputs.project_id }}
           channelId: live
 
       - name: Record successful SEO rebuild
         env:
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: node scripts/record-seo-rebuild-state.js

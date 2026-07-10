@@ -3,25 +3,18 @@
  * welcome page and published articles have not changed since the last SEO build.
  *
  * Requires public-site dependencies installed (firebase-admin).
- * Env: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
+ * Prefers FIREBASE_SERVICE_ACCOUNT; falls back to split env vars for local use.
  * Output: sets GITHUB_OUTPUT rebuild=true|false
  */
 
 const fs = require('fs');
 const path = require('path');
+const { resolveFirebaseAdminCredentials } = require('./resolve-firebase-admin-credentials');
 
 const admin = require(path.join(__dirname, '../public-site/node_modules/firebase-admin'));
 
 function initDb() {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(
-      'Missing Firebase Admin credentials (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY)'
-    );
-  }
+  const { projectId, clientEmail, privateKey } = resolveFirebaseAdminCredentials();
 
   if (!admin.apps.length) {
     admin.initializeApp({
