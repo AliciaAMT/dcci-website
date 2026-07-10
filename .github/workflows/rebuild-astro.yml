@@ -36,12 +36,29 @@ jobs:
           ENVIRONMENT_TS: ${{ secrets.ENVIRONMENT_TS }}
           ENVIRONMENT_PROD_TS: ${{ secrets.ENVIRONMENT_PROD_TS }}
         run: |
-          if [ -z "$ENVIRONMENT_TS" ] || [ -z "$ENVIRONMENT_PROD_TS" ]; then
-            echo "Missing ENVIRONMENT_TS and/or ENVIRONMENT_PROD_TS secrets."
+          if [ -z "${ENVIRONMENT_TS}" ]; then
+            echo "ERROR: GitHub secret ENVIRONMENT_TS is missing or empty."
+            echo "Set it to the full contents of src/environments/environment.ts"
             exit 1
           fi
-          printf '%s\n' "$ENVIRONMENT_TS" > src/environments/environment.ts
-          printf '%s\n' "$ENVIRONMENT_PROD_TS" > src/environments/environment.prod.ts
+          if [ -z "${ENVIRONMENT_PROD_TS}" ]; then
+            echo "ERROR: GitHub secret ENVIRONMENT_PROD_TS is missing or empty."
+            echo "Set it to the full contents of src/environments/environment.prod.ts"
+            exit 1
+          fi
+          mkdir -p src/environments
+          printf '%s\n' "${ENVIRONMENT_TS}" > src/environments/environment.ts
+          printf '%s\n' "${ENVIRONMENT_PROD_TS}" > src/environments/environment.prod.ts
+          if ! test -s src/environments/environment.ts; then
+            echo "ERROR: src/environments/environment.ts was not created or is empty."
+            exit 1
+          fi
+          if ! test -s src/environments/environment.prod.ts; then
+            echo "ERROR: src/environments/environment.prod.ts was not created or is empty."
+            exit 1
+          fi
+          echo "Angular environment files written (existence/size OK; contents not printed)."
+          ls -la src/environments/environment.ts src/environments/environment.prod.ts
 
       - name: Build all (Angular + Astro)
         run: npm run build:all
