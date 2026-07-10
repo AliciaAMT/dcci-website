@@ -227,6 +227,12 @@ If you're seeing this, nuclear lockdown may have been disabled in Firestore. Do 
     await loading.present();
 
     try {
+      const currentSettings = this.siteSettingsService.getCurrentSettings();
+      // Never allow client to clear nuclear lockdown — Firebase Console only
+      const nuclearLockdown = currentSettings.nuclearLockdown
+        ? true
+        : this.settings.nuclearLockdown;
+
       await this.siteSettingsService.updateSettings({
         maintenanceMode: this.settings.maintenanceMode,
         disableRegistrations: this.settings.disableRegistrations,
@@ -234,8 +240,10 @@ If you're seeing this, nuclear lockdown may have been disabled in Firestore. Do 
         disableContactForms: this.settings.disableContactForms,
         disableProblemReports: this.settings.disableProblemReports,
         readOnlyMode: this.settings.readOnlyMode,
-        nuclearLockdown: this.settings.nuclearLockdown
+        nuclearLockdown
       });
+
+      this.settings.nuclearLockdown = nuclearLockdown;
 
       await loading.dismiss();
       await this.showToast('Settings saved successfully', 'success');
@@ -244,8 +252,8 @@ If you're seeing this, nuclear lockdown may have been disabled in Firestore. Do 
       console.error('Error saving settings:', error);
       await this.showToast('Failed to save settings', 'danger');
       // Revert to saved settings on error
-      const currentSettings = this.siteSettingsService.getCurrentSettings();
-      this.settings = { ...currentSettings };
+      const reverted = this.siteSettingsService.getCurrentSettings();
+      this.settings = { ...reverted };
     } finally {
       this.isSaving = false;
     }

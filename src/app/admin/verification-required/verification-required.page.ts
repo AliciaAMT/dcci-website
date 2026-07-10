@@ -60,7 +60,7 @@ export class VerificationRequiredPage implements OnInit, OnDestroy {
         this.router.navigate(['/admin/dashboard']);
         } else if (user.emailVerified && !user.isAdmin) {
         // User is verified but not admin, redirect to welcome
-        this.router.navigate(['/welcome']);
+        this.router.navigate(['/home']);
         }
       } else {
         // No user logged in - if we have email from query params, that's fine

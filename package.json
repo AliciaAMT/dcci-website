@@ -1,6 +1,6 @@
 {
   "name": "dcci-website",
-  "version": "1.0.6",
+  "version": "1.1.2",
   "author": "Ionic Framework",
   "homepage": "https://ionicframework.com/",
   "scripts": {
@@ -24,6 +24,7 @@
     "deploy:staging": "node scripts/deploy.js staging",
     "deploy:production": "node scripts/deploy.js production",
     "deploy:functions": "node scripts/deploy-functions.js",
+    "deploy:welcome-cms": "node scripts/deploy-welcome-cms.js",
     "td:win": "scripts\\deploy-staging.bat",
     "ld:win": "scripts\\deploy-production.bat",
     "update-version": "node scripts/update-version.js",

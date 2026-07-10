@@ -10,15 +10,16 @@ export const routes: Routes = [
   },
   {
     path: '',
-    redirectTo: 'welcome',
+    redirectTo: 'home',
     pathMatch: 'full',
   },
   {
     path: 'home',
-    redirectTo: 'welcome',
-    pathMatch: 'full'
+    loadComponent: () => import('./home/home.page').then((m) => m.HomePage),
+    canActivate: [maintenanceGuard]
   },
   {
+    // Public interactive welcome (Astro no longer owns /welcome)
     path: 'welcome',
     loadComponent: () => import('./welcome/welcome.page').then( m => m.WelcomePage),
     canActivate: [maintenanceGuard]

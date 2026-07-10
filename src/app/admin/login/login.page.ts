@@ -71,7 +71,16 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
         this.router.navigate(['/admin/dashboard']);
       }
     });
-    
+
+    // Block signup UI when registrations are disabled or nuclear lockdown is on
+    this.settingsSubscription = this.siteSettingsService.settings$.subscribe(settings => {
+      this.registrationsDisabled =
+        settings.disableRegistrations === true || settings.nuclearLockdown === true;
+      if (this.registrationsDisabled && this.isSignUpMode) {
+        this.isSignUpMode = false;
+      }
+    });
+
     // Check for verified query parameter
     const verified = this.route.snapshot.queryParams['verified'];
     if (verified === '1') {
@@ -84,10 +93,10 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
         replaceUrl: true
       });
     }
-    
+
     // Check for existing lockouts when page loads
     this.checkForExistingLockout();
-    
+
     // Listen for email changes to check for lockouts
     this.loginForm.get('email')?.valueChanges.subscribe(() => {
       this.checkForExistingLockout();
@@ -111,6 +120,9 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }
+    if (this.settingsSubscription) {
+      this.settingsSubscription.unsubscribe();
+    }
   }
 
   async onSubmit() {
@@ -133,12 +145,15 @@ export class LoginPage implements OnInit, OnDestroy, AfterViewChecked {
       try {
         let result;
         if (this.isSignUpMode) {
-          // Check if registrations are disabled
-          const registrationsDisabled = await firstValueFrom(this.siteSettingsService.disableRegistrations$);
-          if (registrationsDisabled) {
+          // Check if registrations are disabled or nuclear lockdown is active
+          const settings = await firstValueFrom(this.siteSettingsService.settings$);
+          if (settings.disableRegistrations || settings.nuclearLockdown) {
+            this.registrationsDisabled = true;
             this.statusMessage = {
               success: false,
-              message: 'Registrations are temporarily disabled.'
+              message: settings.nuclearLockdown
+                ? 'The site is in lockdown. New registrations are not allowed.'
+                : 'Registrations are temporarily disabled.'
             };
             return;
           }

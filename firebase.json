@@ -19,60 +19,27 @@
         ]
       }
     ],
-    "redirects": [
-      {
-        "source": "/welcome",
-        "destination": "/welcome/",
-        "type": 301
-      },
-      {
-        "source": "/articles",
-        "destination": "/articles/",
-        "type": 301
-      },
-      {
-        "source": "/articles/:slug",
-        "destination": "/articles/:slug/",
-        "type": 301
-      },
-      {
-        "source": "/privacy",
-        "destination": "/privacy/",
-        "type": 301
-      },
-      {
-        "source": "/terms",
-        "destination": "/terms/",
-        "type": 301
-      },
-      {
-        "source": "/disclaimer",
-        "destination": "/disclaimer/",
-        "type": 301
-      },
-      {
-        "source": "/accessibility",
-        "destination": "/accessibility/",
-        "type": 301
-      },
-      {
-        "source": "/contact",
-        "destination": "/contact/",
-        "type": 301
-      }
-    ],
+    "redirects": [],
     "rewrites": [
       {
         "source": "/",
-        "destination": "/welcome/index.html"
+        "destination": "/index.html"
+      },
+      {
+        "source": "/home",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/home/",
+        "destination": "/index.html"
       },
       {
         "source": "/welcome",
-        "destination": "/welcome/index.html"
+        "destination": "/index.html"
       },
       {
         "source": "/welcome/",
-        "destination": "/welcome/index.html"
+        "destination": "/index.html"
       },
       {
         "source": "/articles",

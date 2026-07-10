@@ -91,6 +91,19 @@ service cloud.firestore {
              );
     }
 
+    // Helper function to check if registrations are disabled
+    // Returns true if disableRegistrations is enabled OR nuclearLockdown is enabled
+    // Used specifically for blocking new user signups
+    // Note: readOnlyMode does NOT block signups — it only blocks content modifications
+    // Handles case where document doesn't exist (fail-safe: registrations allowed)
+    function areRegistrationsDisabled() {
+      return exists(/databases/$(database)/documents/siteSettings/emergency) &&
+             (
+               get(/databases/$(database)/documents/siteSettings/emergency).data.nuclearLockdown == true ||
+               get(/databases/$(database)/documents/siteSettings/emergency).data.disableRegistrations == true
+             );
+    }
+
     // Helper function to validate content document fields
     // Allows all fields used by CMS and YouTube importer (tags, type, youtubeVideoId, etc.)
     // Also allows archive-specific fields (archive, originalDate, originalAuthor, archiveSource)
@@ -108,9 +121,10 @@ service cloud.firestore {
     // Admin users collection - for CMS authentication
     match /adminUsers/{userId} {
       // New sign-ups must start as Pending with no dashboard access (enforced server-side)
+      // Block only if registrations are explicitly disabled OR nuclear lockdown is active
       allow create: if request.auth != null &&
         request.auth.uid == userId &&
-        !siteIsReadOnly() &&
+        !areRegistrationsDisabled() &&
         request.resource.data.isAdmin == false &&
         request.resource.data.userRole == 'Pending' &&
         request.resource.data.email is string &&
@@ -179,16 +193,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Site settings collection - emergency site controls
+    // Site settings collection - emergency site controls + published welcome page
     match /siteSettings/{settingId} {
       // Public welcome + emergency settings; drafts/versions live under adminSettings
       allow read: if true;
 
-      // Only full admins can create/update emergency settings
-      // Must be full admin (not moderator) - these are critical settings
-      // Admins can always update (even in read-only mode, they need to turn it off)
-      // Note: We don't check siteIsReadOnly() here to allow admins to disable read-only mode
-      allow create, update: if isFullAdmin();
+      // Full admins can create settings (including enabling nuclear lockdown on a new doc)
+      allow create: if isFullAdmin();
+
+      // Full admins can update settings UNLESS nuclear lockdown is already active on
+      // the emergency document. Once nuclearLockdown is true, NO client (including a
+      // compromised full-admin account) may change that document — only Firebase
+      // Console / Admin SDK can set nuclearLockdown back to false.
+      allow update: if isFullAdmin() &&
+        !(settingId == 'emergency' && resource.data.nuclearLockdown == true);
 
       // Deny delete operations
       allow delete: if false;

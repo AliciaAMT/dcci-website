@@ -155,7 +155,7 @@
           <ion-toggle
             [(ngModel)]="settings.nuclearLockdown"
             (ionChange)="onToggleChange('nuclearLockdown', $event)"
-            [disabled]="isSaving"
+            [disabled]="isSaving || settings.nuclearLockdown"
             slot="end"
             color="danger">
           </ion-toggle>

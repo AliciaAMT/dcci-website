@@ -31,7 +31,7 @@ export const adminGuard: CanActivateFn = (route, state) => {
     switchMap((firebaseUser) => {
       // If no Firebase user, redirect to welcome
       if (!firebaseUser) {
-        return of(router.createUrlTree(['/welcome']));
+        return of(router.createUrlTree(['/home']));
       }
 
       // Wait for site settings (filter out null/undefined)
@@ -72,11 +72,11 @@ export const adminGuard: CanActivateFn = (route, state) => {
             return true;
           } else {
             // Redirect to welcome page if no dashboard role or email not verified
-            return router.createUrlTree(['/welcome']);
+            return router.createUrlTree(['/home']);
           }
         })
       );
     }),
-    catchError(() => of(router.createUrlTree(['/welcome'])))
+    catchError(() => of(router.createUrlTree(['/home'])))
   );
 };

@@ -1,0 +1,55 @@
+// Shared responsive layout for admin pages connected to the dashboard
+
+@mixin admin-wide-container {
+  max-width: min(1800px, 96vw);
+  margin: 0 auto;
+
+  @media (min-width: 1440px) {
+    max-width: min(2000px, 94vw);
+  }
+
+  @media (min-width: 1920px) {
+    max-width: min(2200px, 92vw);
+  }
+}
+
+@mixin admin-medium-container {
+  max-width: min(1200px, 96vw);
+  margin: 0 auto;
+
+  @media (min-width: 1440px) {
+    max-width: min(1400px, 94vw);
+  }
+
+  @media (min-width: 1920px) {
+    max-width: min(1600px, 92vw);
+  }
+}
+
+@mixin admin-page-headers-large {
+  @media (min-width: 1440px) {
+    h2 {
+      font-size: 32px;
+    }
+
+    .subtitle {
+      font-size: 18px;
+    }
+  }
+
+  @media (min-width: 1920px) {
+    h2 {
+      font-size: 36px;
+    }
+
+    .subtitle {
+      font-size: 20px;
+    }
+  }
+}
+
+@mixin admin-article-grid-large {
+  @media (min-width: 2000px) {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}

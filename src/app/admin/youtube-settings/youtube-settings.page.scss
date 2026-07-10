@@ -1,9 +1,11 @@
+@import '../admin-layout';
+
 .settings-container {
-  max-width: 800px;
-  margin: 0 auto;
+  @include admin-medium-container;
 
   .settings-header {
     margin-bottom: 32px;
+    @include admin-page-headers-large;
 
     h2 {
       margin: 0 0 8px 0;

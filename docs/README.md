@@ -26,7 +26,7 @@ This directory contains comprehensive documentation for the DCCI Ministries webs
 
 ### 🛠️ **For Operations & Maintenance**
 - **[Troubleshooting](./troubleshooting.md)** - Common issues and their solutions
-- **[Emergency Procedures](./emergency-procedures.md)** - Critical incident response procedures
+- **[Emergency Procedures](./emergency-procedures.md)** - Critical incident response; **[how to reverse nuclear lockdown](./emergency-procedures.md#nuclear-lockdown-last-resort)** (Firebase Console only)
 - **[Admin Access and Email Guard](./admin-access-and-email-guard.md)** - Roles (Super Admin, Admin, Moderator, User, Pending); email allowlist for User Management
 
 ### 📧 **Contact Form & Email**

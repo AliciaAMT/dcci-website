@@ -1,5 +1,8 @@
+@import '../admin-layout';
+
 .admin-guide {
-  --guide-max-width: 720px;
+  --guide-max-width: 100%;
+  @include admin-medium-container;
 
   .guide-intro {
     max-width: var(--guide-max-width);

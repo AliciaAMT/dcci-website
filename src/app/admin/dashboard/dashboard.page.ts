@@ -99,7 +99,7 @@ export class DashboardPage implements OnInit, OnDestroy {
 
       // Redirect if user has no dashboard role or email not verified
       if (!user || !user.isAdmin || !user.emailVerified || !hasDashboardAccess(user.userRole, user.isAdmin)) {
-        this.router.navigate(['/welcome']);
+        this.router.navigate(['/home']);
       }
     });
 
@@ -669,11 +669,11 @@ export class DashboardPage implements OnInit, OnDestroy {
   async logout() {
     try {
       await this.authService.signOut();
-      this.router.navigate(['/welcome']);
+      this.router.navigate(['/home']);
     } catch (error) {
       console.error('Logout error:', error);
       // Force redirect even if logout fails
-      this.router.navigate(['/welcome']);
+      this.router.navigate(['/home']);
     }
   }
 }

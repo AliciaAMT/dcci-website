@@ -1,7 +1,9 @@
+@import '../../admin-layout';
+
 .content-form {
-  max-width: 800px;
-  margin: 0 auto;
   padding: 20px 0;
+  @include admin-medium-container;
+  @include admin-page-headers-large;
 
   h2 {
     margin-bottom: 8px;

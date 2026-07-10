@@ -100,6 +100,25 @@ The **Messages** number is how many contact forms **successfully reached the ser
 | **Welcome Page** | `/admin/welcome-settings` | Super Admin + Admin | Edit the public home/welcome page (see below) |
 | **Site Management** | `/admin/emergency-controls` | Super Admin + Admin | Read-only mode, maintenance, nuclear lockdown |
 
+### Site Management & nuclear lockdown
+
+**Site Management** controls emergency flags stored in Firestore `siteSettings/emergency`.
+
+| Control | Effect | Who can turn off |
+|---------|--------|------------------|
+| Maintenance mode | Public site shows maintenance | Admin panel |
+| Read-only mode | Blocks content writes for non-admins | Admin panel |
+| Disable registrations | Blocks new admin signups | Admin panel |
+| **Nuclear lockdown** | Blocks **everyone**, including admins | **Firebase Console only** |
+
+**Nuclear lockdown reverse (developers):**
+
+1. Firebase Console → **dcci-ministries** → **Firestore** → `siteSettings` / `emergency`
+2. Set **`nuclearLockdown`** to **`false`**
+3. Refresh and sign in again
+
+Client apps (even full admins) **cannot** clear nuclear lockdown — Firestore rules reject those writes on purpose. Full steps: [Emergency Procedures — Nuclear Lockdown](./emergency-procedures.md#nuclear-lockdown-last-resort).
+
 ---
 
 ## Recent Activity
@@ -219,8 +238,8 @@ More detail: [Content Management — Welcome Page](./content-management.md#editi
 | Articles & Quill editor | [Content Management](./content-management.md) |
 | Welcome page (technical) | [Content Management — Welcome Page](./content-management.md#editing-the-welcome-page) |
 | Contact form & Hatun reporting | [Contact Form — Privacy and Reporting](./contact-form-privacy-and-reporting.md) |
-| Emergency / read-only mode | [Emergency Procedures](./emergency-procedures.md) |
+| Emergency / nuclear lockdown | [Emergency Procedures — Nuclear Lockdown](./emergency-procedures.md#️-nuclear-lockdown-last-resort) |
 | Admin login issues | [Admin Access and Email Guard](./admin-access-and-email-guard.md) |
 | Non-technical overview | [Owner's Guide](./owners-guide.md) |
 
-**Last updated:** June 2026
+**Last updated:** July 2026
