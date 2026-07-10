@@ -73,6 +73,7 @@ Visitors see “message sent” but Hatun gets nothing:
 |--------|-----------------|
 | Firebase Admin / deploy | GitHub Actions secrets on `DCCI-Ministries/dcci-website` · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
 | Angular env files (CI) | GitHub Actions secrets `ENVIRONMENT_TS` and `ENVIRONMENT_PROD_TS` (full contents of local `src/environments/environment.ts` and `environment.prod.ts`) · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
+| Site contacts JSON (CI) | GitHub Actions secret `SITE_CONTACTS_JSON` (full contents of local `config/site-contacts.json`) · see [auto-rebuild-setup.md](./auto-rebuild-setup.md) and [config/README.md](../config/README.md) |
 | Contact form SMTP | Firebase Functions config: `mail.user`, `mail.pass` |
 | YouTube API | Firebase Functions config: `youtube.api_key` |
 | Brevo SMTP (after migration) | Firebase Functions config + Brevo dashboard (ministry account) |
@@ -86,6 +87,13 @@ Local `src/environments/environment.ts` and `environment.prod.ts` are **gitignor
 - If you change either local file, **also update** the matching GitHub Actions secret (`ENVIRONMENT_TS` or `ENVIRONMENT_PROD_TS`).
 - Never put backend secrets or private keys in these frontend files (Firebase web config is public client config only).
 - Forgetting to update the secrets will make the next Actions build use stale config or fail.
+
+**Site contacts JSON (also required for nightly SEO rebuild):**
+
+Local `config/site-contacts.json` is **gitignored**. GitHub Actions recreates it from secret `SITE_CONTACTS_JSON` before `npm run build:all`.
+
+- If you change that file, **also update** `SITE_CONTACTS_JSON` in GitHub Actions secrets.
+- Never put backend secrets or private keys in it.
 
 **Encrypted backups:**
 

@@ -1,6 +1,8 @@
 import siteContactsJson = require('./config/site-contacts.json');
 
 export interface SiteContacts {
+  /** CI/docs reminder only — not used by the app. */
+  _comment?: string;
   technicalAdminEmail: string;
   ministryInfoEmail: string;
   contactFormRecipientEmail: string;
