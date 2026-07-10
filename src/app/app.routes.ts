@@ -19,7 +19,7 @@ export const routes: Routes = [
     canActivate: [maintenanceGuard]
   },
   {
-    // Kept for later public rollout; not the default entry until Hatun is ready
+    // Public interactive welcome (Astro no longer owns /welcome)
     path: 'welcome',
     loadComponent: () => import('./welcome/welcome.page').then( m => m.WelcomePage),
     canActivate: [maintenanceGuard]

@@ -72,6 +72,16 @@ function copyDir(src, dest) {
   }
 }
 
+// Public /welcome is the Angular interactive page. Do not deploy Astro's
+// welcome/index.html or Firebase would serve that static file instead of the SPA.
+const skipAstroDirs = new Set(['welcome']);
+
+function removeDirIfExists(dirPath) {
+  if (fs.existsSync(dirPath)) {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  }
+}
+
 // Copy all files from dist/public-site to dist/app
 try {
   const entries = fs.readdirSync(distPublicSitePath, { withFileTypes: true });
@@ -79,6 +89,12 @@ try {
   for (const entry of entries) {
     const srcPath = path.join(distPublicSitePath, entry.name);
     const destPath = path.join(distAppPath, entry.name);
+
+    if (entry.isDirectory() && skipAstroDirs.has(entry.name)) {
+      console.log(`⚠️  Skipping Astro /${entry.name}/ (Angular owns this route)`);
+      removeDirIfExists(destPath);
+      continue;
+    }
     
     if (entry.isDirectory()) {
       // If directory exists, merge contents
@@ -96,10 +112,13 @@ try {
       fs.copyFileSync(srcPath, destPath);
     }
   }
+
+  // Ensure a leftover Astro welcome folder never shadows Angular /welcome
+  removeDirIfExists(path.join(distAppPath, 'welcome'));
   
   console.log('✅ Astro files copied to dist/app\n');
   console.log('📋 Files copied:');
-  console.log('   - /welcome/ (Astro static page)');
+  console.log('   - /welcome/ skipped (Angular interactive page)');
   console.log('   - /articles/ (Astro static page)');
   console.log('   - /articles/[slug]/ (Astro static pages)');
   console.log('   - /sitemap.xml (Astro generated)');

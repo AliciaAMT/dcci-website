@@ -54,6 +54,15 @@ function copyAstroFiles(src, dest) {
     return;
   }
 
+  // Public /welcome is Angular. Never deploy Astro's welcome/index.html.
+  const skipDirs = new Set(['welcome']);
+
+  function removeDirIfExists(dirPath) {
+    if (fs.existsSync(dirPath)) {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+    }
+  }
+
   function copyDir(srcDir, destDir) {
     if (!fs.existsSync(destDir)) {
       fs.mkdirSync(destDir, { recursive: true });
@@ -66,6 +75,9 @@ function copyAstroFiles(src, dest) {
       const destPath = path.join(destDir, entry.name);
       
       if (entry.isDirectory()) {
+        if (skipDirs.has(entry.name)) {
+          continue;
+        }
         copyDir(srcPath, destPath);
       } else {
         // Skip Angular's index.html - we don't want to overwrite it
@@ -82,6 +94,12 @@ function copyAstroFiles(src, dest) {
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory() && skipDirs.has(entry.name)) {
+      log(`⚠️  Skipping Astro /${entry.name}/ (Angular owns this route)`, 'warning');
+      removeDirIfExists(destPath);
+      continue;
+    }
     
     if (entry.isDirectory()) {
       copyDir(srcPath, destPath);
@@ -93,6 +111,8 @@ function copyAstroFiles(src, dest) {
       fs.copyFileSync(srcPath, destPath);
     }
   }
+
+  removeDirIfExists(path.join(dest, 'welcome'));
 }
 
 function checkFirebaseCLI() {

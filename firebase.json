@@ -35,11 +35,11 @@
       },
       {
         "source": "/welcome",
-        "destination": "/welcome/index.html"
+        "destination": "/index.html"
       },
       {
         "source": "/welcome/",
-        "destination": "/welcome/index.html"
+        "destination": "/index.html"
       },
       {
         "source": "/articles",
