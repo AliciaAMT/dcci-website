@@ -72,10 +72,101 @@ interface YouTubeVideoSnippet {
 
 interface YouTubeVideoItem {
   snippet: YouTubeVideoSnippet;
+  status?: { privacyStatus?: string };
+  contentDetails?: { duration?: string };
 }
 
 interface YouTubeVideoResponse {
   items?: YouTubeVideoItem[];
+}
+
+/** Default uploads playlists: @DCCIMinistries and @HatunTashDCCIMinistries */
+const DCCI_UPLOADS_PLAYLIST_ID = 'UUf0MDB_oF7huA78BNADx9sQ';
+const DCCI_CHANNEL_ID = 'UCf0MDB_oF7huA78BNADx9sQ';
+const HATUN_UPLOADS_PLAYLIST_ID = 'UUy5H0uunC2qMk0iOF4SHKUw';
+const HATUN_CHANNEL_ID = 'UCy5H0uunC2qMk0iOF4SHKUw';
+/** Each playlist backfill run imports ~this many months of history (newest → oldest). */
+const YOUTUBE_BACKFILL_MONTHS_PER_RUN = 3;
+/** Safety cap so a dense upload period cannot blow past the Cloud Function timeout. */
+const YOUTUBE_BACKFILL_MAX_CREATE_PER_RUN = 300;
+const SHORTS_MAX_DURATION_SECONDS = 60;
+
+type YouTubeBackfillChannelKey = 'hatun' | 'dcci';
+
+interface YouTubeBackfillChannelConfig {
+  key: YouTubeBackfillChannelKey;
+  label: string;
+  channelId: string;
+  playlistId: string;
+  stateDocId: string;
+}
+
+const YOUTUBE_BACKFILL_CHANNELS: Record<YouTubeBackfillChannelKey, YouTubeBackfillChannelConfig> = {
+  hatun: {
+    key: 'hatun',
+    label: 'Hatun',
+    channelId: HATUN_CHANNEL_ID,
+    playlistId: HATUN_UPLOADS_PLAYLIST_ID,
+    stateDocId: 'youtubeHatunBackfill'
+  },
+  dcci: {
+    key: 'dcci',
+    label: 'DCCI',
+    channelId: DCCI_CHANNEL_ID,
+    playlistId: DCCI_UPLOADS_PLAYLIST_ID,
+    stateDocId: 'youtubeDcciBackfill'
+  }
+};
+
+function parsePlaylistIdList(raw: unknown): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((v) => String(v).trim()).filter(Boolean);
+  }
+  return String(raw)
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Resolve uploads playlist IDs.
+ * Prefer youtube.uploads_playlist_ids (array or comma-separated),
+ * then legacy youtube.uploads_playlist_id, then both channel defaults.
+ */
+function resolveUploadsPlaylistIds(): string[] {
+  const yt = functions.config().youtube || {};
+  const fromList = parsePlaylistIdList(
+    yt.uploads_playlist_ids || process.env.YOUTUBE_UPLOADS_PLAYLIST_IDS
+  );
+  if (fromList.length > 0) {
+    return Array.from(new Set(fromList));
+  }
+  const single = yt.uploads_playlist_id || process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || '';
+  if (single && String(single).trim()) {
+    return [String(single).trim()];
+  }
+  return [DCCI_UPLOADS_PLAYLIST_ID, HATUN_UPLOADS_PLAYLIST_ID];
+}
+
+function parseIso8601DurationSeconds(duration: string | undefined): number | null {
+  if (!duration || typeof duration !== 'string') return null;
+  const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!match) return null;
+  const hours = parseInt(match[1] || '0', 10);
+  const minutes = parseInt(match[2] || '0', 10);
+  const seconds = parseInt(match[3] || '0', 10);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function isYouTubeShort(video: YouTubeVideoItem): boolean {
+  const title = (video.snippet?.title || '').toLowerCase();
+  const description = (video.snippet?.description || '').toLowerCase();
+  if (title.includes('#shorts') || description.includes('#shorts')) {
+    return true;
+  }
+  const seconds = parseIso8601DurationSeconds(video.contentDetails?.duration);
+  return seconds !== null && seconds > 0 && seconds <= SHORTS_MAX_DURATION_SECONDS;
 }
 
 admin.initializeApp();
@@ -1503,7 +1594,7 @@ export const syncYouTubeUploads = functions.pubsub
 
       // Get config from functions config or environment variables
       const youtubeApiKey = functions.config().youtube?.api_key || process.env.YOUTUBE_API_KEY;
-      const playlistId = functions.config().youtube?.uploads_playlist_id || process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || 'UUf0MDB_oF7huA78BNADx9sQ';
+      const playlistIds = resolveUploadsPlaylistIds();
       const authorEmail = functions.config().youtube?.author_email || process.env.YOUTUBE_AUTHOR_EMAIL || '';
       const authorId = functions.config().youtube?.author_id || process.env.YOUTUBE_AUTHOR_ID || '';
 
@@ -1513,49 +1604,54 @@ export const syncYouTubeUploads = functions.pubsub
         return null;
       }
 
+      console.log(`Syncing uploads playlists: ${playlistIds.join(', ')}`);
+
       let createdCount = 0;
       let skippedCount = 0;
       let deletedCount = 0;
-      let nextPageToken: string | undefined = undefined;
-      const MAX_VIDEOS_TO_CHECK = 50; // Check up to 50 videos per run (safety limit)
+      let draftCount = 0;
+      const MAX_VIDEOS_TO_CHECK = 50; // Check up to 50 videos per playlist per run (safety limit)
+      const MAX_PAGES_TO_COLLECT = 10; // Collect up to 10 pages (500 videos) per playlist for removal check
 
-      // Step 1: Collect all video IDs currently in the playlist (for removal check)
+      // Step 1: Collect video IDs from ALL configured playlists (union for removal check)
       const playlistVideoIds = new Set<string>();
-      let collectNextPageToken: string | undefined = undefined;
-      let collectedPages = 0;
-      const MAX_PAGES_TO_COLLECT = 10; // Collect up to 10 pages (500 videos) for removal check
 
-      while (collectedPages < MAX_PAGES_TO_COLLECT) {
-        let collectPlaylistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
-        if (collectNextPageToken) {
-          collectPlaylistUrl += `&pageToken=${collectNextPageToken}`;
-        }
+      for (const playlistId of playlistIds) {
+        let collectNextPageToken: string | undefined = undefined;
+        let collectedPages = 0;
 
-        let collectPlaylistData: YouTubePlaylistResponse;
-        try {
-          const collectResponseText = await httpsGet(collectPlaylistUrl);
-          collectPlaylistData = JSON.parse(collectResponseText) as YouTubePlaylistResponse;
-        } catch (error: any) {
-          console.error('Error collecting playlist video IDs:', error.message);
-          break; // If we can't collect, continue with new video processing
-        }
-
-        if (collectPlaylistData.items && collectPlaylistData.items.length > 0) {
-          for (const item of collectPlaylistData.items) {
-            const videoId = item.snippet.resourceId.videoId;
-            playlistVideoIds.add(videoId);
+        while (collectedPages < MAX_PAGES_TO_COLLECT) {
+          let collectPlaylistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
+          if (collectNextPageToken) {
+            collectPlaylistUrl += `&pageToken=${collectNextPageToken}`;
           }
-        }
 
-        if (collectPlaylistData.nextPageToken) {
-          collectNextPageToken = collectPlaylistData.nextPageToken;
-          collectedPages++;
-        } else {
-          break; // No more pages
+          let collectPlaylistData: YouTubePlaylistResponse;
+          try {
+            const collectResponseText = await httpsGet(collectPlaylistUrl);
+            collectPlaylistData = JSON.parse(collectResponseText) as YouTubePlaylistResponse;
+          } catch (error: any) {
+            console.error(`Error collecting playlist ${playlistId} video IDs:`, error.message);
+            break; // If we can't collect, continue with other playlists / new video processing
+          }
+
+          if (collectPlaylistData.items && collectPlaylistData.items.length > 0) {
+            for (const item of collectPlaylistData.items) {
+              const videoId = item.snippet.resourceId.videoId;
+              playlistVideoIds.add(videoId);
+            }
+          }
+
+          if (collectPlaylistData.nextPageToken) {
+            collectNextPageToken = collectPlaylistData.nextPageToken;
+            collectedPages++;
+          } else {
+            break; // No more pages
+          }
         }
       }
 
-      console.log(`Collected ${playlistVideoIds.size} video IDs from playlist for removal check`);
+      console.log(`Collected ${playlistVideoIds.size} video IDs from ${playlistIds.length} playlist(s) for removal check`);
 
       // Step 2: Check for removed videos and delete their articles
       const existingYouTubeArticles = await db.collection('content')
@@ -1572,9 +1668,9 @@ export const syncYouTubeUploads = functions.pubsub
           continue; // Skip if no video ID
         }
 
-        // Check if video is still in the playlist
+        // Check if video is still in any configured uploads playlist
         if (!playlistVideoIds.has(articleVideoId)) {
-          console.log(`Video ${articleVideoId} not found in playlist, checking if it still exists...`);
+          console.log(`Video ${articleVideoId} not found in any configured playlist, checking if it still exists...`);
 
           // Check if video still exists via YouTube API
           const videoCheckUrl = `https://www.googleapis.com/youtube/v3/videos?part=id,status&id=${articleVideoId}&key=${youtubeApiKey}`;
@@ -1591,7 +1687,7 @@ export const syncYouTubeUploads = functions.pubsub
                 // Video is public but not in playlist
                 // For livestreams that get removed and turned into new videos, we still want to remove the old article
                 // So we delete it even if it's public but not in the uploads playlist
-                console.log(`Video ${articleVideoId} exists and is public, but not in uploads playlist. Removing article (likely replaced livestream).`);
+                console.log(`Video ${articleVideoId} exists and is public, but not in uploads playlists. Removing article (likely replaced livestream).`);
                 shouldDelete = true;
               } else {
                 // Video exists but is private/unlisted - definitely remove
@@ -1622,203 +1718,220 @@ export const syncYouTubeUploads = functions.pubsub
         }
       }
 
-      // Step 3: Fetch multiple videos from uploads playlist (process all new ones)
-      // We'll process videos until we find one that already exists
-      while (createdCount + skippedCount < MAX_VIDEOS_TO_CHECK) {
-        // Build playlist URL - fetch multiple videos at once
-        let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
-        if (nextPageToken) {
-          playlistUrl += `&pageToken=${nextPageToken}`;
-        }
+      // Step 3: Fetch new videos from each uploads playlist (newest → oldest until existing ID)
+      for (const playlistId of playlistIds) {
+        let nextPageToken: string | undefined = undefined;
+        let playlistCreated = 0;
+        let playlistSkipped = 0;
 
-        let playlistData: YouTubePlaylistResponse;
-        try {
-          const playlistResponseText = await httpsGet(playlistUrl);
-          playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
-        } catch (error: any) {
-          console.error('YouTube API playlistItems error:', error.message);
-          throw new Error(`YouTube API error: ${error.message}`);
-        }
+        while (playlistCreated + playlistSkipped < MAX_VIDEOS_TO_CHECK) {
+          // Build playlist URL - fetch multiple videos at once
+          let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
+          if (nextPageToken) {
+            playlistUrl += `&pageToken=${nextPageToken}`;
+          }
 
-        if (!playlistData.items || playlistData.items.length === 0) {
-          console.log('No videos found in uploads playlist');
-          break;
-        }
+          let playlistData: YouTubePlaylistResponse;
+          try {
+            const playlistResponseText = await httpsGet(playlistUrl);
+            playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
+          } catch (error: any) {
+            console.error(`YouTube API playlistItems error for ${playlistId}:`, error.message);
+            throw new Error(`YouTube API error: ${error.message}`);
+          }
 
-        // Process each video in this page
-        let foundExistingVideo = false;
-        for (const item of playlistData.items) {
-          if (createdCount + skippedCount >= MAX_VIDEOS_TO_CHECK) {
-            console.log(`Reached safety cap of ${MAX_VIDEOS_TO_CHECK} videos`);
+          if (!playlistData.items || playlistData.items.length === 0) {
+            console.log(`No videos found in uploads playlist ${playlistId}`);
             break;
           }
 
-          const videoId = item.snippet.resourceId.videoId;
-          console.log(`Processing video: ${videoId}`);
-
-          // Check if this video already exists in Firestore
-          const existingVideoQuery = await db.collection('content')
-            .where('youtubeVideoId', '==', videoId)
-            .limit(1)
-            .get();
-
-          if (!existingVideoQuery.empty) {
-            console.log(`Video ${videoId} already exists in Firestore, stopping (all older videos are already processed)`);
-            foundExistingVideo = true;
-            skippedCount++;
-            break; // Stop processing since videos are ordered by date
-          }
-
-          // Get full video details from YouTube API (include status to check if public)
-          const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${videoId}&key=${youtubeApiKey}`;
-
-          let videoData: YouTubeVideoResponse;
-          try {
-            const videoResponseText = await httpsGet(videoUrl);
-            videoData = JSON.parse(videoResponseText) as YouTubeVideoResponse;
-          } catch (error: any) {
-            console.error(`Error fetching video ${videoId}:`, error.message);
-            skippedCount++;
-            continue;
-          }
-
-          if (!videoData.items || videoData.items.length === 0) {
-            console.log(`Video ${videoId} not found in YouTube API`);
-            skippedCount++;
-            continue;
-          }
-
-          // Check if video is public (ignore private/unlisted)
-          const videoStatus = (videoData.items[0] as any).status;
-          if (videoStatus?.privacyStatus !== 'public') {
-            console.log(`Video ${videoId} is not public (${videoStatus?.privacyStatus}), skipping`);
-            skippedCount++;
-            continue;
-          }
-
-          const snippet = videoData.items[0].snippet;
-          const title = snippet.title;
-          const rawDescription = snippet.description || '';
-          const thumbnails = snippet.thumbnails;
-          const videoPublishedAtStr = snippet.publishedAt;
-          const channelIdFromVideo = snippet.channelId;
-          const videoTags = snippet.tags || []; // YouTube video tags (preferred source)
-
-          // Step 1: Strip boilerplate from description (before tag extraction)
-          const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
-
-          // Step 2: Extract tags from cleaned description (hashtags and comma-separated blocks)
-          const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
-
-          // Step 3: Use YouTube video tags if available, otherwise use extracted tags
-          // Normalize: lowercase, trim, remove leading '#', deduplicate
-          const allTags = new Set<string>();
-          if (videoTags && videoTags.length > 0) {
-            // Prefer YouTube video tags
-            videoTags.forEach(tag => {
-              const normalized = tag.toLowerCase().trim();
-              if (normalized.length > 0) {
-                allTags.add(normalized);
-              }
-            });
-          } else {
-            // Fallback to extracted tags from description
-            extractedTags.forEach(tag => {
-              const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
-              if (normalized.length > 0) {
-                allTags.add(normalized);
-              }
-            });
-          }
-          const finalTags = Array.from(allTags).slice(0, 50);
-
-          // Generate slug
-          const baseSlug = slugify(title);
-          const uniqueSlug = await getUniqueSlug(baseSlug);
-
-          // Generate excerpt (first 160 chars of cleaned description, plain text)
-          const excerpt = cleanedDescription
-            .replace(/\n/g, ' ')
-            .replace(/<[^>]*>/g, '')
-            .trim()
-            .substring(0, 160) || '';
-
-          // Generate content HTML from cleaned description (without boilerplate and tag block)
-          // Escape HTML and convert newlines to <br> within a single <p> tag
-          const escapedDescription = cleanedDescription
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\n/g, '<br>');
-
-          const descriptionHtml = `<p>${escapedDescription}</p>`;
-
-          const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-
-          const content = `${descriptionHtml}\n\n${embedHtml}`;
-
-          // Get thumbnail URL
-          const thumbnailUrl = getThumbnailUrl(thumbnails);
-
-          // Convert YouTube publishedAt to Firestore Timestamp (use video's actual publishedAt)
-          const videoPublishedAtDate = new Date(videoPublishedAtStr);
-          const publishedAtTimestamp = admin.firestore.Timestamp.fromDate(videoPublishedAtDate);
-
-          // Create Firestore document
-          const contentData: any = {
-            title,
-            slug: uniqueSlug,
-            status: 'published',
-            content,
-            excerpt,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            publishedAt: publishedAtTimestamp, // Use video's actual published date
-            authorEmail: authorEmail || '',
-            authorId: authorId || '',
-            type: 'youtube',
-            youtubeVideoId: videoId,
-            youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
-            thumbnailUrl,
-            // Source metadata
-            source: {
-              type: 'youtube',
-              videoId: videoId,
-              channelId: channelIdFromVideo,
-              publishedAt: publishedAtTimestamp,
-              backfilled: false
-            },
-            // Store raw and cleaned descriptions for reference
-            youtube: {
-              descriptionRaw: rawDescription,
-              descriptionClean: cleanedDescription
+          // Process each video in this page
+          let foundExistingVideo = false;
+          for (const item of playlistData.items) {
+            if (playlistCreated + playlistSkipped >= MAX_VIDEOS_TO_CHECK) {
+              console.log(`Reached safety cap of ${MAX_VIDEOS_TO_CHECK} videos for playlist ${playlistId}`);
+              break;
             }
-          };
 
-          // Store tags at top level (only if tags exist)
-          if (finalTags.length > 0) {
-            contentData.tags = finalTags;
+            const videoId = item.snippet.resourceId.videoId;
+            console.log(`Processing video: ${videoId} (playlist ${playlistId})`);
+
+            // Check if this video already exists in Firestore
+            const existingVideoQuery = await db.collection('content')
+              .where('youtubeVideoId', '==', videoId)
+              .limit(1)
+              .get();
+
+            if (!existingVideoQuery.empty) {
+              console.log(`Video ${videoId} already exists in Firestore, stopping this playlist (older videos already processed)`);
+              foundExistingVideo = true;
+              playlistSkipped++;
+              skippedCount++;
+              break; // Stop this playlist since videos are ordered by date
+            }
+
+            // Get full video details from YouTube API (include status + duration for Shorts)
+            const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status,contentDetails&id=${videoId}&key=${youtubeApiKey}`;
+
+            let videoData: YouTubeVideoResponse;
+            try {
+              const videoResponseText = await httpsGet(videoUrl);
+              videoData = JSON.parse(videoResponseText) as YouTubeVideoResponse;
+            } catch (error: any) {
+              console.error(`Error fetching video ${videoId}:`, error.message);
+              playlistSkipped++;
+              skippedCount++;
+              continue;
+            }
+
+            if (!videoData.items || videoData.items.length === 0) {
+              console.log(`Video ${videoId} not found in YouTube API`);
+              playlistSkipped++;
+              skippedCount++;
+              continue;
+            }
+
+            // Check if video is public (ignore private/unlisted)
+            const videoItem = videoData.items[0];
+            const videoStatus = videoItem.status || (videoItem as any).status;
+            if (videoStatus?.privacyStatus !== 'public') {
+              console.log(`Video ${videoId} is not public (${videoStatus?.privacyStatus}), skipping`);
+              playlistSkipped++;
+              skippedCount++;
+              continue;
+            }
+
+            const snippet = videoItem.snippet;
+            const title = snippet.title;
+            const rawDescription = snippet.description || '';
+            const thumbnails = snippet.thumbnails;
+            const videoPublishedAtStr = snippet.publishedAt;
+            const channelIdFromVideo = snippet.channelId;
+            const videoTags = snippet.tags || []; // YouTube video tags (preferred source)
+            const short = isYouTubeShort(videoItem);
+            const articleStatus = short ? 'draft' : 'published';
+
+            // Step 1: Strip boilerplate from description (before tag extraction)
+            const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
+
+            // Step 2: Extract tags from cleaned description (hashtags and comma-separated blocks)
+            const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
+
+            // Step 3: Use YouTube video tags if available, otherwise use extracted tags
+            // Normalize: lowercase, trim, remove leading '#', deduplicate
+            const allTags = new Set<string>();
+            if (videoTags && videoTags.length > 0) {
+              // Prefer YouTube video tags
+              videoTags.forEach(tag => {
+                const normalized = tag.toLowerCase().trim();
+                if (normalized.length > 0) {
+                  allTags.add(normalized);
+                }
+              });
+            } else {
+              // Fallback to extracted tags from description
+              extractedTags.forEach(tag => {
+                const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
+                if (normalized.length > 0) {
+                  allTags.add(normalized);
+                }
+              });
+            }
+            const finalTags = Array.from(allTags).slice(0, 50);
+
+            // Generate slug
+            const baseSlug = slugify(title);
+            const uniqueSlug = await getUniqueSlug(baseSlug);
+
+            // Generate excerpt (first 160 chars of cleaned description, plain text)
+            const excerpt = cleanedDescription
+              .replace(/\n/g, ' ')
+              .replace(/<[^>]*>/g, '')
+              .trim()
+              .substring(0, 160) || '';
+
+            // Generate content HTML from cleaned description (without boilerplate and tag block)
+            // Escape HTML and convert newlines to <br> within a single <p> tag
+            const escapedDescription = cleanedDescription
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/\n/g, '<br>');
+
+            const descriptionHtml = `<p>${escapedDescription}</p>`;
+
+            const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+
+            const content = `${descriptionHtml}\n\n${embedHtml}`;
+
+            // Get thumbnail URL
+            const thumbnailUrl = getThumbnailUrl(thumbnails);
+
+            // Convert YouTube publishedAt to Firestore Timestamp (use video's actual publishedAt)
+            const videoPublishedAtDate = new Date(videoPublishedAtStr);
+            const publishedAtTimestamp = admin.firestore.Timestamp.fromDate(videoPublishedAtDate);
+
+            // Create Firestore document
+            const contentData: any = {
+              title,
+              slug: uniqueSlug,
+              status: articleStatus,
+              content,
+              excerpt,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              publishedAt: publishedAtTimestamp, // Use video's actual published date
+              authorEmail: authorEmail || '',
+              authorId: authorId || '',
+              type: 'youtube',
+              youtubeVideoId: videoId,
+              youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+              thumbnailUrl,
+              // Source metadata
+              source: {
+                type: 'youtube',
+                videoId: videoId,
+                channelId: channelIdFromVideo,
+                publishedAt: publishedAtTimestamp,
+                backfilled: false,
+                playlistId,
+                ...(short ? { isShort: true } : {})
+              },
+              // Store raw and cleaned descriptions for reference
+              youtube: {
+                descriptionRaw: rawDescription,
+                descriptionClean: cleanedDescription,
+                ...(short ? { isShort: true } : {})
+              }
+            };
+
+            // Store tags at top level (only if tags exist)
+            if (finalTags.length > 0) {
+              contentData.tags = finalTags;
+            }
+
+            const docRef = await db.collection('content').add(contentData);
+            playlistCreated++;
+            createdCount++;
+            if (short) draftCount++;
+            console.log(`Created new YouTube post: ${docRef.id} for video: ${videoId} (status=${articleStatus})`);
           }
 
-          const docRef = await db.collection('content').add(contentData);
-          createdCount++;
-          console.log(`Created new YouTube post: ${docRef.id} for video: ${videoId}`);
-        }
+          // If we found an existing video, we can stop this playlist (all older videos are already processed)
+          if (foundExistingVideo) {
+            break;
+          }
 
-        // If we found an existing video, we can stop (all older videos are already processed)
-        if (foundExistingVideo) {
-          break;
-        }
-
-        // Check if there are more pages
-        if (playlistData.nextPageToken) {
-          nextPageToken = playlistData.nextPageToken;
-        } else {
-          break; // No more pages
+          // Check if there are more pages
+          if (playlistData.nextPageToken) {
+            nextPageToken = playlistData.nextPageToken;
+          } else {
+            break; // No more pages
+          }
         }
       }
 
-      console.log(`YouTube sync complete. Created: ${createdCount}, Skipped: ${skippedCount}, Deleted: ${deletedCount}`);
+      console.log(`YouTube sync complete. Created: ${createdCount} (drafts: ${draftCount}), Skipped: ${skippedCount}, Deleted: ${deletedCount}`);
       return null;
     } catch (error) {
       console.error('Error syncing YouTube uploads:', error);
@@ -2091,6 +2204,470 @@ export const backfillYouTubeUploads = functions.https.onRequest(async (req, res)
     res.status(500).json({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
+
+/**
+ * Shared paginated uploads-playlist backfill (Hatun or DCCI).
+ * Each run imports about YOUTUBE_BACKFILL_MONTHS_PER_RUN months of history
+ * (newest → oldest), with a create safety cap. Persists playlist pageToken (+ mid-page cursor).
+ *
+ * Query params:
+ *   token (required) — youtube.backfill_token / YOUTUBE_BACKFILL_TOKEN
+ *   action — run (default) | status | stop | reset
+ */
+async function handleYouTubePlaylistBackfill(
+  req: functions.https.Request,
+  res: functions.Response,
+  channel: YouTubeBackfillChannelConfig
+): Promise<void> {
+  try {
+    const providedToken = req.query.token as string;
+    const expectedToken = functions.config().youtube?.backfill_token || process.env.YOUTUBE_BACKFILL_TOKEN;
+    const action = String(req.query.action || 'run').toLowerCase();
+    const label = channel.label;
+
+    if (!expectedToken) {
+      res.status(500).json({ error: 'Backfill token not configured (youtube.backfill_token)' });
+      return;
+    }
+    if (!providedToken || providedToken !== expectedToken) {
+      res.status(403).json({ error: 'Unauthorized: Invalid or missing token' });
+      return;
+    }
+
+    const stateRef = db.collection('settings').doc(channel.stateDocId);
+    const stateSnap = await stateRef.get();
+    const state = stateSnap.exists ? (stateSnap.data() || {}) : {};
+
+    if (action === 'status') {
+      res.status(200).json({
+        ok: true,
+        channel: channel.key,
+        channelId: channel.channelId,
+        playlistId: channel.playlistId,
+        batchMonths: YOUTUBE_BACKFILL_MONTHS_PER_RUN,
+        maxCreatePerRun: YOUTUBE_BACKFILL_MAX_CREATE_PER_RUN,
+        state: {
+          status: state.status || 'idle',
+          nextPageToken: state.nextPageToken || null,
+          resumeAfterVideoId: state.resumeAfterVideoId || null,
+          processedCount: state.processedCount || 0,
+          createdCount: state.createdCount || 0,
+          skippedCount: state.skippedCount || 0,
+          draftCount: state.draftCount || 0,
+          lastVideoId: state.lastVideoId || null,
+          lastWindowAnchorPublishedAt: state.lastWindowAnchorPublishedAt || null,
+          lastWindowEndPublishedAt: state.lastWindowEndPublishedAt || null,
+          lastRunAt: state.lastRunAt || null,
+          completedAt: state.completedAt || null,
+          updatedAt: state.updatedAt || null
+        }
+      });
+      return;
+    }
+
+    if (action === 'stop') {
+      await stateRef.set({
+        status: 'stopped',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      res.status(200).json({
+        ok: true,
+        message: `${label} backfill stopped. Cursor preserved. Use action=reset to clear and restart.`
+      });
+      return;
+    }
+
+    if (action === 'reset') {
+      await stateRef.set({
+        status: 'idle',
+        nextPageToken: null,
+        resumeAfterVideoId: null,
+        processedCount: 0,
+        createdCount: 0,
+        skippedCount: 0,
+        draftCount: 0,
+        lastVideoId: null,
+        lastWindowAnchorPublishedAt: null,
+        lastWindowEndPublishedAt: null,
+        completedAt: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        resetAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      res.status(200).json({
+        ok: true,
+        message: `${label} backfill reset. Next run starts from the newest playlist page.`
+      });
+      return;
+    }
+
+    if (action !== 'run') {
+      res.status(400).json({ error: 'Unknown action. Use run, status, stop, or reset.' });
+      return;
+    }
+
+    if (state.status === 'completed') {
+      res.status(200).json({
+        ok: true,
+        message: `${label} backfill already completed. Use action=reset to start over.`,
+        state
+      });
+      return;
+    }
+
+    if (state.status === 'stopped') {
+      res.status(409).json({
+        error: `${label} backfill is stopped. Use action=reset to clear and restart.`,
+        state
+      });
+      return;
+    }
+
+    const youtubeApiKey = functions.config().youtube?.api_key || process.env.YOUTUBE_API_KEY;
+    const authorEmail = functions.config().youtube?.author_email || process.env.YOUTUBE_AUTHOR_EMAIL || '';
+    const authorId = functions.config().youtube?.author_id || process.env.YOUTUBE_AUTHOR_ID || '';
+    const playlistId = channel.playlistId;
+
+    if (!youtubeApiKey) {
+      res.status(500).json({ error: 'YouTube API key not configured' });
+      return;
+    }
+
+    let pageToken: string | null = state.nextPageToken || null;
+    let resumeAfterVideoId: string | null = state.resumeAfterVideoId || null;
+    let createdCount = 0;
+    let skippedCount = 0;
+    let draftCount = 0;
+    let processedThisRun = 0;
+    let lastVideoId: string | null = state.lastVideoId || null;
+    let completed = false;
+    let nextPageTokenToSave: string | null = pageToken;
+    let resumeAfterToSave: string | null = resumeAfterVideoId;
+    const MAX_PAGES_PER_RUN = 40;
+    let pagesFetched = 0;
+    let hitCreateCap = false;
+    let hitWindowEnd = false;
+    let windowAnchorPublishedAt: string | null = null;
+    let windowEndMs: number | null = null;
+    let windowEndPublishedAt: string | null = null;
+
+    console.log(
+      `Starting ${label} backfill batch (~${YOUTUBE_BACKFILL_MONTHS_PER_RUN} months, ` +
+      `pageToken=${pageToken || 'START'}, resumeAfter=${resumeAfterVideoId || 'none'})`
+    );
+
+    await stateRef.set({
+      status: 'in_progress',
+      playlistId,
+      channelId: channel.channelId,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastRunAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    while (
+      !hitWindowEnd &&
+      !hitCreateCap &&
+      createdCount < YOUTUBE_BACKFILL_MAX_CREATE_PER_RUN &&
+      pagesFetched < MAX_PAGES_PER_RUN
+    ) {
+      let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&order=date&key=${youtubeApiKey}`;
+      if (pageToken) {
+        playlistUrl += `&pageToken=${pageToken}`;
+      }
+
+      let playlistData: YouTubePlaylistResponse;
+      try {
+        const playlistResponseText = await httpsGet(playlistUrl);
+        playlistData = JSON.parse(playlistResponseText) as YouTubePlaylistResponse;
+      } catch (error: any) {
+        console.error(`${label} backfill playlistItems error:`, error.message);
+        res.status(500).json({ error: `YouTube API error: ${error.message}` });
+        return;
+      }
+
+      pagesFetched++;
+
+      if (!playlistData.items || playlistData.items.length === 0) {
+        completed = true;
+        nextPageTokenToSave = null;
+        resumeAfterToSave = null;
+        break;
+      }
+
+      let skippingUntilResume = !!resumeAfterVideoId;
+
+      for (const item of playlistData.items) {
+        const videoId = item.snippet.resourceId.videoId;
+
+        if (skippingUntilResume) {
+          if (videoId === resumeAfterVideoId) {
+            skippingUntilResume = false;
+            resumeAfterVideoId = null;
+          }
+          continue;
+        }
+
+        const itemPublishedAtStr = item.snippet.publishedAt;
+        const itemPublishedMs = new Date(itemPublishedAtStr).getTime();
+
+        if (windowEndMs === null) {
+          const anchor = new Date(itemPublishedAtStr);
+          windowAnchorPublishedAt = anchor.toISOString();
+          const end = new Date(anchor);
+          end.setMonth(end.getMonth() - YOUTUBE_BACKFILL_MONTHS_PER_RUN);
+          windowEndMs = end.getTime();
+          windowEndPublishedAt = end.toISOString();
+          console.log(
+            `${label} backfill window: ${windowAnchorPublishedAt} → ${windowEndPublishedAt} ` +
+            `(${YOUTUBE_BACKFILL_MONTHS_PER_RUN} months)`
+          );
+        } else if (itemPublishedMs < windowEndMs) {
+          hitWindowEnd = true;
+          nextPageTokenToSave = pageToken;
+          resumeAfterToSave = lastVideoId;
+          console.log(
+            `${label} backfill reached ${YOUTUBE_BACKFILL_MONTHS_PER_RUN}-month window end at ${itemPublishedAtStr}`
+          );
+          break;
+        }
+
+        if (createdCount >= YOUTUBE_BACKFILL_MAX_CREATE_PER_RUN) {
+          hitCreateCap = true;
+          nextPageTokenToSave = pageToken;
+          resumeAfterToSave = lastVideoId;
+          break;
+        }
+
+        lastVideoId = videoId;
+        processedThisRun++;
+
+        const existingVideoQuery = await db.collection('content')
+          .where('youtubeVideoId', '==', videoId)
+          .limit(1)
+          .get();
+
+        if (!existingVideoQuery.empty) {
+          console.log(`${label} backfill skip existing video ${videoId}`);
+          skippedCount++;
+          continue;
+        }
+
+        const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status,contentDetails&id=${videoId}&key=${youtubeApiKey}`;
+        let videoData: YouTubeVideoResponse;
+        try {
+          const videoResponseText = await httpsGet(videoUrl);
+          videoData = JSON.parse(videoResponseText) as YouTubeVideoResponse;
+        } catch (error: any) {
+          console.error(`${label} backfill fetch error ${videoId}:`, error.message);
+          skippedCount++;
+          continue;
+        }
+
+        if (!videoData.items || videoData.items.length === 0) {
+          skippedCount++;
+          continue;
+        }
+
+        const videoItem = videoData.items[0];
+        const videoStatus = videoItem.status || (videoItem as any).status;
+        if (videoStatus?.privacyStatus !== 'public') {
+          skippedCount++;
+          continue;
+        }
+
+        const snippet = videoItem.snippet;
+        const title = snippet.title;
+        const rawDescription = snippet.description || '';
+        const thumbnails = snippet.thumbnails;
+        const videoPublishedAtStr = snippet.publishedAt;
+        const channelIdFromVideo = snippet.channelId;
+        const videoTags = snippet.tags || [];
+        const short = isYouTubeShort(videoItem);
+        const articleStatus = short ? 'draft' : 'published';
+
+        const descriptionWithoutBoilerplate = stripBoilerplateFromDescription(rawDescription);
+        const { description: cleanedDescription, tags: extractedTags } = extractTagsFromDescription(descriptionWithoutBoilerplate);
+
+        const allTags = new Set<string>();
+        if (videoTags && videoTags.length > 0) {
+          videoTags.forEach(tag => {
+            const normalized = tag.toLowerCase().trim();
+            if (normalized.length > 0) allTags.add(normalized);
+          });
+        } else {
+          extractedTags.forEach(tag => {
+            const normalized = tag.toLowerCase().trim().replace(/^#+/, '');
+            if (normalized.length > 0) allTags.add(normalized);
+          });
+        }
+        const finalTags = Array.from(allTags).slice(0, 50);
+
+        const baseSlug = slugify(title);
+        const uniqueSlug = await getUniqueSlug(baseSlug);
+        const excerpt = cleanedDescription
+          .replace(/\n/g, ' ')
+          .replace(/<[^>]*>/g, '')
+          .trim()
+          .substring(0, 160) || '';
+        const escapedDescription = cleanedDescription
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br>');
+        const descriptionHtml = `<p>${escapedDescription}</p>`;
+        const embedHtml = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        const content = `${descriptionHtml}\n\n${embedHtml}`;
+        const thumbnailUrl = getThumbnailUrl(thumbnails);
+        const publishedAtTimestamp = admin.firestore.Timestamp.fromDate(new Date(videoPublishedAtStr));
+
+        const contentData: any = {
+          title,
+          slug: uniqueSlug,
+          status: articleStatus,
+          content,
+          excerpt,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          publishedAt: publishedAtTimestamp,
+          authorEmail: authorEmail || '',
+          authorId: authorId || '',
+          type: 'youtube',
+          youtubeVideoId: videoId,
+          youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          thumbnailUrl,
+          source: {
+            type: 'youtube',
+            videoId,
+            channelId: channelIdFromVideo,
+            publishedAt: publishedAtTimestamp,
+            backfilled: true,
+            playlistId,
+            ...(short ? { isShort: true } : {})
+          },
+          youtube: {
+            descriptionRaw: rawDescription,
+            descriptionClean: cleanedDescription,
+            ...(short ? { isShort: true } : {})
+          }
+        };
+        if (finalTags.length > 0) {
+          contentData.tags = finalTags;
+        }
+
+        const docRef = await db.collection('content').add(contentData);
+        createdCount++;
+        if (short) draftCount++;
+        console.log(`${label} backfill created ${docRef.id} for ${videoId} (status=${articleStatus})`);
+      }
+
+      if (hitWindowEnd || hitCreateCap) {
+        break;
+      }
+
+      resumeAfterVideoId = null;
+      resumeAfterToSave = null;
+      if (playlistData.nextPageToken) {
+        pageToken = playlistData.nextPageToken;
+        nextPageTokenToSave = pageToken;
+      } else {
+        completed = true;
+        nextPageTokenToSave = null;
+        break;
+      }
+    }
+
+    const prevProcessed = state.processedCount || 0;
+    const prevCreated = state.createdCount || 0;
+    const prevSkipped = state.skippedCount || 0;
+    const prevDraft = state.draftCount || 0;
+
+    const newState: any = {
+      status: completed ? 'completed' : 'in_progress',
+      nextPageToken: completed ? null : nextPageTokenToSave,
+      resumeAfterVideoId: completed ? null : resumeAfterToSave,
+      lastVideoId,
+      lastWindowAnchorPublishedAt: windowAnchorPublishedAt,
+      lastWindowEndPublishedAt: windowEndPublishedAt,
+      processedCount: prevProcessed + processedThisRun,
+      createdCount: prevCreated + createdCount,
+      skippedCount: prevSkipped + skippedCount,
+      draftCount: prevDraft + draftCount,
+      playlistId,
+      channelId: channel.channelId,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastRunAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    if (completed) {
+      newState.completedAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+
+    await stateRef.set(newState, { merge: true });
+
+    let message: string;
+    if (completed) {
+      message = `${label} backfill completed — playlist fully processed.`;
+    } else if (hitCreateCap) {
+      message =
+        `${label} backfill hit safety cap (${YOUTUBE_BACKFILL_MAX_CREATE_PER_RUN} creates). ` +
+        `Created ${createdCount}. Call again to continue the same date window.`;
+    } else if (hitWindowEnd) {
+      message =
+        `${label} backfill batch done (~${YOUTUBE_BACKFILL_MONTHS_PER_RUN} months). ` +
+        `Created ${createdCount} (skipped ${skippedCount}). Call again for the next ${YOUTUBE_BACKFILL_MONTHS_PER_RUN} months.`;
+    } else {
+      message = `${label} backfill batch done. Created ${createdCount}. Call again to continue.`;
+    }
+
+    res.status(200).json({
+      ok: true,
+      channel: channel.key,
+      message,
+      batch: {
+        created: createdCount,
+        drafts: draftCount,
+        skipped: skippedCount,
+        processed: processedThisRun,
+        pagesFetched,
+        monthsPerRun: YOUTUBE_BACKFILL_MONTHS_PER_RUN,
+        windowAnchorPublishedAt,
+        windowEndPublishedAt,
+        hitWindowEnd,
+        hitCreateCap
+      },
+      cursor: {
+        nextPageToken: newState.nextPageToken,
+        resumeAfterVideoId: newState.resumeAfterVideoId,
+        completed
+      },
+      totals: {
+        processedCount: newState.processedCount,
+        createdCount: newState.createdCount,
+        skippedCount: newState.skippedCount,
+        draftCount: newState.draftCount,
+        status: newState.status
+      }
+    });
+  } catch (error) {
+    console.error(`Error in ${channel.label} YouTube backfill:`, error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/** Paginated backfill for @HatunTashDCCIMinistries (~3 months per run). */
+export const backfillHatunYouTubeUploads = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .https.onRequest(async (req, res) => {
+    await handleYouTubePlaylistBackfill(req, res, YOUTUBE_BACKFILL_CHANNELS.hatun);
+  });
+
+/** Paginated backfill for @DCCIMinistries older uploads (~3 months per run). */
+export const backfillDcciYouTubeUploads = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .https.onRequest(async (req, res) => {
+    await handleYouTubePlaylistBackfill(req, res, YOUTUBE_BACKFILL_CHANNELS.dcci);
+  });
 
 /**
  * Update emailVerified in Firestore after email verification
