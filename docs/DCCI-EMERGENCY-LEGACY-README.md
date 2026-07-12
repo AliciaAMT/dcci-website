@@ -4,7 +4,7 @@
 
 **This file contains no passwords or API keys.** Secrets live in **Package B** (encrypted backup) or the services listed below.
 
-**Last updated:** June 2026 — fill in `[brackets]` as you complete handoff steps.
+**Last updated:** July 2026 — YouTube dual-channel sync + historical backfills complete. Next: Brevo + stop storing contact PII + finish legacy package. Fill in `[brackets]` as you complete handoff steps.
 
 ---
 
@@ -18,7 +18,7 @@
 | **Domain / DNS** | `[registrar name]` | `dcciministries.com` |
 | **Cloudflare** (if used) | `[account holder]` | `[dash.cloudflare.com login]` |
 | **Contact form sending** | **Target:** Brevo (ministry-owned) · **Current:** Gmail SMTP via Firebase until migrated | See [meeting-agenda-hatun-email-setup.md](./meeting-agenda-hatun-email-setup.md) |
-| **YouTube sync** | Firebase Functions config | `youtube.api_key` in Firebase |
+| **YouTube sync** | Firebase Functions config | `youtube.api_key`, `youtube.uploads_playlist_ids` (DCCI + Hatun). Docs: [YOUTUBE_SETUP.md](../functions/YOUTUBE_SETUP.md) |
 
 **Rule:** Ministry owns ministry inboxes and public-facing email. The **technical maintainer** owns `technicalAdminEmail` (website bugs, accessibility, deploy). See [config/site-contacts.json](../config/site-contacts.json).
 
@@ -134,11 +134,11 @@ Full checklist: [technical-contact-handoff.md](./technical-contact-handoff.md) �
 Work in order — do not add features until these are safe:
 
 1. Contact form → **Brevo**, ministry-owned, no developer Workspace in the path  
-2. Welcome page editor tested after each publish  
-3. Contact messages **not** stored in Firestore (metadata only)  
-4. This legacy package + encrypted backups current  
+2. Contact messages **not** stored in Firestore (email/message only to Hatun)  
+3. This legacy package + encrypted backups current  
+4. Welcome page editor tested after each publish  
 5. Daily Astro SEO rebuild (GitHub secrets + workflow on `master`)  
-6. New content features (Quran/Hadith, Bible verse, extra YouTube, etc.)
+6. New content features (Quran/Hadith, Bible verse, etc.) — Hatun YouTube channel already wired
 
 Living checklist: **[site-priority-roadmap.md](./site-priority-roadmap.md)**
 
