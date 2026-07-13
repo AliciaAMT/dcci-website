@@ -9,19 +9,20 @@ This guide covers the DCCI Ministries contact form: email delivery, privacy, sec
 | **Component** | `src/app/components/contact-form.component.*` |
 | **Service** | `src/app/services/contact.service.ts` |
 | **Cloud Function** | `submitContactForm` in `functions/src/index.ts` |
-| **Recipient** | `config/site-contacts.json` → `contactFormRecipientEmail` |
-| **Sender (SMTP)** | Gmail via `mail.user` / `mail.pass` in Firebase config |
-| **Problem reports** | Separate function → `config/site-contacts.json` → `technicalAdminEmail` |
+| **Recipient** | `hatun@dcciministries.com` (`config/site-contacts.json` → `contactFormRecipientEmail`) |
+| **Sender (Brevo)** | `contact@dcciministries.com` / `DCCI Ministries` via Secret `BREVO_API_KEY` |
+| **Problem reports / recovery / newsletter** | Still Gmail SMTP (`mail.user` / `mail.pass`) — not migrated yet |
 
 ## Email flow
 
 1. Visitor submits the form on `/welcome` or `/contact`
 2. Cloud Function validates and sanitizes input
-3. Email is sent to **Hatun** with `Reply-To` set to the visitor's address
-4. A **metadata-only** record is written to Firestore (`contacts` collection)
-5. Hatun replies using **Reply** in her mail client
+3. Full contact fields are stored in Firestore (`contacts`) — same as before this Brevo migration (privacy strip is a separate follow-up)
+4. Email is sent via **Brevo** to **Hatun** with `Reply-To` set to the visitor's address
+5. Delivery metadata (`emailProvider`, `providerMessageId`, etc.) is written on **new** contact docs only
+6. Hatun replies using **Reply** in her mail client
 
-**No admin/monitor inbox shield** — messages go straight to Hatun.
+**No admin/monitor inbox** — contact-form messages go straight to Hatun (no CC/BCC).
 
 ## Design philosophy: privacy, access, and the “bind”
 
@@ -29,7 +30,7 @@ The contact form balances three goals:
 
 1. **Global access** — Visitors in restrictive countries may need VPNs or strict privacy tools; we do not block them for that.
 2. **Direct ministry contact** — Mail goes to Hatun; the site manager does not read her inbox.
-3. **Minimal data retention** — Full message text is **not** stored in Firestore (only timestamps for counts). Storing messages in the database would help spam review but creates a privacy risk if the database is ever accessed wrongly.
+3. **Minimal data retention (target)** — Full message text should eventually leave Firestore (only timestamps for counts). **This Brevo release still stores the message** so recovery and repeat-message checks keep working; a separate privacy redesign removes it.
 
 **Hatun is the front line.** She reports spam, abuse, or form failures to the site manager. See **[Contact Form — Privacy and Reporting](./docs/contact-form-privacy-and-reporting.md)** for her training guide.
 
@@ -41,24 +42,28 @@ reCAPTCHA and Firebase App Check (reCAPTCHA v3) can block or frustrate legitimat
 
 Blanket VPN blocking was removed in June 2026. It rejected many legitimate visitors who use VPNs for safety. See deprecated [IP_BLOCKING_SETUP.md](./IP_BLOCKING_SETUP.md).
 
-## Firestore logging (privacy)
+## Firestore logging (current release)
 
-Message content is **not** stored. Each successful submission creates:
+**This Brevo migration does not change what personal fields are stored.** New contact docs still include name, email, subject, message, IP, etc. (needed for recovery + repeat-message detection until the privacy redesign).
+
+New delivery fields on **new** records only:
 
 ```json
 {
-  "submittedAt": "<timestamp>",
-  "newsletterOptIn": true | false
+  "emailProvider": "brevo",
+  "emailDeliveryAttemptedAt": "<timestamp>",
+  "emailDelivered": true,
+  "emailDeliveredAt": "<timestamp>",
+  "providerMessageId": "<brevo-message-id>"
 }
 ```
 
-- **Dashboard → Messages** counts documents in `contacts`
-- **Recent Activity** shows “Contact form submission received” (no names or message text)
-- **Newsletter opt-ins** from the contact form still save to `subscribers` when checked
+On failure, sanitized fields such as `failureCategory` / `failureStatus` / `emailDeliveryErrorSummary` are set (no API key, no raw Brevo payloads).
 
-Rate-limit metadata (no message content) uses:
-- `contactRateLimits` — per-IP cooldown
-- `contactEmailRateLimits` — per-email daily cap
+**Follow-up (not this release):** strip message bodies and PII after recovery is redesigned.
+
+- **Newsletter opt-ins** from the contact form still save to `subscribers` when checked
+- Rate-limit metadata uses existing cooldown / repeat checks against `contacts`
 
 ## Setup
 
@@ -68,22 +73,30 @@ Rate-limit metadata (no message content) uses:
 cd functions && npm install
 ```
 
-### 2. Configure Gmail SMTP
+### 2. Configure Brevo (contact form only)
 
-Generate a [Google App Password](https://myaccount.google.com/) (requires 2FA), then:
+1. In Brevo, create an API key with **Transactional email** send permission.
+2. Ensure sender `contact@dcciministries.com` is verified in Brevo.
+3. Set the Firebase secret (do **not** put the key in git or chat):
+
+```bash
+firebase functions:secrets:set BREVO_API_KEY --project dcci-ministries
+```
+
+4. Deploy only the contact form function:
+
+```bash
+cd functions && npm run build
+firebase deploy --only functions:submitContactForm --project dcci-ministries
+```
+
+### 3. Gmail SMTP (still required for other functions)
+
+`recoverContactEmails`, `submitWebsiteProblemReport`, and `subscribeToNewsletter` still use Nodemailer + `mail.user` / `mail.pass`. Leave those credentials in place until a separate migration.
 
 ```bash
 firebase functions:config:set mail.user="your-sender@gmail.com"
 firebase functions:config:set mail.pass="your-app-password"
-```
-
-Only `mail.user` and `mail.pass` are required. There is no `mail.to` for the contact form.
-
-### 3. Deploy
-
-```bash
-npm run deploy:functions
-firebase deploy --only firestore:rules   # if rules changed
 ```
 
 ### 4. Environment files
@@ -98,14 +111,12 @@ appCheckRecaptchaSiteKey: "your-recaptcha-v3-site-key",
 
 ## Email format Hatun receives
 
-- **To:** `config/site-contacts.json` → `contactFormRecipientEmail`
-- **From:** `DCCI Ministries Website <mail.user>`
+- **To:** `hatun@dcciministries.com`
+- **From:** `DCCI Ministries <contact@dcciministries.com>` (Brevo)
 - **Reply-To:** Visitor's name and email
 - **Subject:** `Contact Form: {visitor subject}`
-- **Body:** Name, email, subject, and message (plain + HTML-escaped)
+- **Body:** Name, email, subject, IP, and message (plain + HTML-escaped)
 - **Footer for Hatun:** Two mailto links to the current `technicalAdminEmail` — report suspicious or solicitation/spam (pre-filled subject `Urgent: Hatun Website Question — …`). Implemented in `functions/src/contact-dev-report.ts`.
-
-IP addresses are **not** included in the email body.
 
 ## Security features
 

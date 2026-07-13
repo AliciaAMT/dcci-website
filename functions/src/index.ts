@@ -5,9 +5,11 @@ import * as corsLib from "cors";
 import * as https from "https";
 import { createMailTransport, getSmtpSettings } from "./mail-transport";
 import { sanitizeContactForm, escapeHtmlForEmail, sanitizeNewsletterForm } from "./sanitization";
-import { logContactDeliveryFailure } from "./contact-delivery-log";
+import { logBrevoContactDeliveryFailure } from "./contact-delivery-log";
 import { buildHatunDeveloperReportLinks } from "./contact-dev-report";
 import { recoverContacts, parseRecoveryDate } from "./contact-recovery";
+import { sendBrevoTransactionalEmail } from "./brevo-mail";
+import { BREVO_SENDER_EMAIL, getContactRecipientEmail } from "./brevo-config";
 import {
   isBlockedSender,
   isRepeatMessage,
@@ -227,7 +229,9 @@ async function tryGetBucketFiles(bucketName: string): Promise<{ files: any[]; to
 
 const tx = createMailTransport({ user, pass }, smtpSettings);
 
-export const submitContactForm = functions.https.onRequest((req, res) => {
+export const submitContactForm = functions
+  .runWith({ secrets: ["BREVO_API_KEY"] })
+  .https.onRequest((req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
 
@@ -371,16 +375,21 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
         }
       }
 
-      // Contact form recipient from site-contacts.json
-      const recipientEmail = contactFormRecipientEmail;
+      const recipientEmail = getContactRecipientEmail();
+      const brevoApiKey = process.env.BREVO_API_KEY || '';
 
-      console.log('Sending contact form email:', {
+      console.log('Sending contact form email via Brevo:', {
         subject: sanitizedSubject,
         to: recipientEmail,
-        from: user
+        from: BREVO_SENDER_EMAIL,
+        provider: 'brevo'
       });
 
-      // Send email notification (using sanitized data and escaped HTML)
+      await contactRef.update({
+        emailDeliveryAttemptedAt: admin.firestore.FieldValue.serverTimestamp(),
+        emailProvider: 'brevo'
+      });
+
       const devReport = buildHatunDeveloperReportLinks({
         visitorName: sanitizedName,
         visitorEmail: sanitizedEmail,
@@ -392,13 +401,14 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
       });
 
       try {
-        const emailResult = await tx.sendMail({
-          from: `"DCCI Ministries Website" <${user}>`,
-          to: recipientEmail,
-          replyTo: `${sanitizedName} <${sanitizedEmail}>`,
+        const emailResult = await sendBrevoTransactionalEmail({
+          apiKey: brevoApiKey,
+          toEmail: recipientEmail,
+          replyToEmail: sanitizedEmail,
+          replyToName: sanitizedName,
           subject: `Contact Form: ${sanitizedSubject}`,
-          text: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nIP: ${clientIP}\n\n${sanitizedMessage}\n\n${devReport.textFooter}`,
-          html: `
+          textContent: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nIP: ${clientIP}\n\n${sanitizedMessage}\n\n${devReport.textFooter}`,
+          htmlContent: `
             <h3>New Contact Form Submission</h3>
             <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
             <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
@@ -414,7 +424,7 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
           `
         });
 
-        console.log('Email sent successfully:', {
+        console.log('Contact form email sent via Brevo:', {
           messageId: emailResult.messageId,
           to: recipientEmail,
           subject: `Contact Form: ${sanitizedSubject}`
@@ -422,21 +432,23 @@ export const submitContactForm = functions.https.onRequest((req, res) => {
 
         await contactRef.update({
           emailDelivered: true,
-          emailDeliveredAt: admin.firestore.FieldValue.serverTimestamp()
+          emailDeliveredAt: admin.firestore.FieldValue.serverTimestamp(),
+          emailProvider: 'brevo',
+          providerMessageId: emailResult.messageId
         });
       } catch (emailError: any) {
-        console.error('Error sending email:', {
-          error: emailError.message,
-          stack: emailError.stack,
+        console.error('Error sending contact form email via Brevo:', {
+          error: emailError?.message || String(emailError),
+          failureCategory: emailError?.failureCategory,
+          httpStatus: emailError?.httpStatus,
           to: recipientEmail,
-          from: user
+          from: BREVO_SENDER_EMAIL
         });
 
         try {
-          await logContactDeliveryFailure(db, {
+          await logBrevoContactDeliveryFailure(db, {
             contactId: contactRef.id,
             recipientEmail,
-            smtpUser: user,
             error: emailError
           });
         } catch (logError) {

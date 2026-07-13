@@ -13,7 +13,7 @@
 | Area | Status | Notes |
 |------|--------|--------|
 | Contact form delivery | ☑ Working ☐ Broken ☐ Unknown | Still via Gmail SMTP (`mail.*`); delivers to Hatun from site-contacts. **Not** Brevo yet. |
-| Contact form → Brevo | ☑ Not started ☐ In progress ☐ Done | Hatun must own Brevo account; see meeting agenda Part 4. |
+| Contact form → Brevo | ☐ Not started ☑ **In progress** ☐ Done | Code ready (`submitContactForm` + `BREVO_API_KEY`). Set secret + deploy, then live test. Gmail left for recovery/newsletter/problem reports. |
 | Workspace removed from Hatun’s comms | ☑ No ☐ Partial ☐ Yes | Still depends on developer/ministry Gmail App Password path until Brevo. |
 | Welcome page editor tested | ☐ No ☐ Yes | What you changed: |
 | Contact content in Firestore/logs | ☑ **Still stored (full)** ☐ Metadata only | Live `submitContactForm` still saves name, email, subject, message, IP to `contacts`. **Must change** for persecuted visitors. |
