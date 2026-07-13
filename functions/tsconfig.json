@@ -20,6 +20,9 @@
     "src/contact-recovery.ts",
     "src/contact-blocklist.ts",
     "src/contact-security.ts",
-    "src/site-contacts.ts"
+    "src/site-contacts.ts",
+    "src/brevo-config.ts",
+    "src/brevo-mail.ts",
+    "src/mail-transport.ts"
   ]
 }
