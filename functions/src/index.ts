@@ -13,12 +13,47 @@ import { BREVO_SENDER_EMAIL, getContactRecipientEmail } from "./brevo-config";
 import {
   isBlockedSender,
   isRepeatMessage,
+  isRepeatMessageFingerprint,
   buildCooldownRejection,
   buildRepeatMessageRejection,
   getLatestSubmissionMs,
   CONTACT_COOLDOWN_MS,
+  verifyAppCheckToken,
 } from "./contact-security";
+import {
+  createContactDeliveryEvent,
+  markDeliveryAttempted,
+  markDeliverySuccess,
+  maybeCreateDeliveryHealthAlert,
+  CONTACT_DELIVERY_EVENTS,
+} from "./contact-delivery-events";
+import {
+  writeContactRetryPayload,
+  markRetryPayloadRecovered,
+  cleanupExpiredRetryPayloads,
+  decryptRetryPayload,
+  claimPendingRetryPayload,
+  releaseRetryPayloadToPending,
+  CONTACT_RETRY_PAYLOADS,
+  FORM_VERSION,
+  MAX_CONTACT_RETRY_ATTEMPTS,
+} from "./contact-retry";
+import {
+  hashContactEmail,
+  hashContactIp,
+  hashMessageFingerprint,
+} from "./contact-hash";
+import {
+  ContactSecretConfigError,
+  sanitizedSecretConfigMessage,
+} from "./contact-secrets";
 import { SITE_CONTACTS } from "./site-contacts";
+
+const CONTACT_FORM_SECRETS = [
+  "BREVO_API_KEY",
+  "CONTACT_HASH_SECRET",
+  "CONTACT_RETRY_ENCRYPTION_KEY",
+] as const;
 
 // Load environment variables from .env file for local development
 // This only runs in local/emulator environment, not in production
@@ -230,13 +265,43 @@ async function tryGetBucketFiles(bucketName: string): Promise<{ files: any[]; to
 const tx = createMailTransport({ user, pass }, smtpSettings);
 
 export const submitContactForm = functions
-  .runWith({ secrets: ["BREVO_API_KEY"] })
+  .runWith({ secrets: [...CONTACT_FORM_SECRETS] })
   .https.onRequest((req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") { res.status(405).send("Method not allowed"); return; }
 
-    const { name, email, subject, message, newsletter, website, formLoadTime, submissionTime } = req.body || {};
-    // Get client IP from various sources
+    // App Check: verify when token present; reject invalid tokens.
+    // Missing token allowed unless security.enforce_app_check=true (compatibility).
+    // Strict later: firebase functions:config:set security.enforce_app_check="true" then redeploy
+    // (test Home + Welcome first). Do not enable in this deployment without that test.
+    const appCheck = await verifyAppCheckToken(req);
+    if (!appCheck.ok) {
+      res.status(401).json({
+        error: 'app_check_failed',
+        message: 'Unable to verify this request. Please refresh the page and try again.',
+        delivered: false,
+        errorType: 'app_check_failed',
+      });
+      return;
+    }
+
+    const {
+      name,
+      email,
+      subject,
+      message,
+      newsletter,
+      website,
+      formLoadTime,
+      submissionTime,
+      sourcePage: rawSourcePage,
+    } = req.body || {};
+
+    const sourcePage =
+      typeof rawSourcePage === 'string' && rawSourcePage.trim()
+        ? rawSourcePage.trim().slice(0, 64)
+        : 'unknown';
+
     const forwardedFor = req.headers['x-forwarded-for'];
     const firstForwardedIP = Array.isArray(forwardedFor)
       ? forwardedFor[0]?.trim()
@@ -249,21 +314,11 @@ export const submitContactForm = functions
                     (Array.isArray(req.headers['x-real-ip']) ? req.headers['x-real-ip'][0] : req.headers['x-real-ip']) ||
                     'unknown';
 
-    console.log('Client IP detected:', clientIP);
-    console.log('Request headers:', {
-      'x-forwarded-for': req.headers['x-forwarded-for'],
-      'x-real-ip': req.headers['x-real-ip'],
-      'req.ip': req.ip,
-      'remoteAddress': req.connection?.remoteAddress
-    });
-
-    // Honeypot check - if website field is filled, it's likely a bot
     if (website) {
       console.log('Bot detected via honeypot');
-      res.status(204).end(); return; // Silently fail
+      res.status(204).end(); return;
     }
 
-    // Sanitize and validate all input data
     const validation = sanitizeContactForm({ name, email, subject, message, newsletter, formLoadTime, submissionTime });
 
     if (!validation.isValid) {
@@ -272,25 +327,57 @@ export const submitContactForm = functions
       res.status(400).json({
         error: "invalid_input",
         message: primaryMessage,
-        details: validation.errors
+        details: validation.errors,
+        delivered: false,
+        errorType: 'invalid_input',
       });
       return;
     }
 
-    const { name: sanitizedName, email: sanitizedEmail, subject: sanitizedSubject, message: sanitizedMessage, newsletter: sanitizedNewsletter, formLoadTime: sanitizedFormLoadTime, submissionTime: sanitizedSubmissionTime } = validation.sanitizedData!;
+    const {
+      name: sanitizedName,
+      email: sanitizedEmail,
+      subject: sanitizedSubject,
+      message: sanitizedMessage,
+      newsletter: sanitizedNewsletter,
+    } = validation.sanitizedData!;
 
     const blocked = isBlockedSender(sanitizedEmail, clientIP);
     if (blocked) {
-      console.log('Blocked contact form sender:', { email: sanitizedEmail, clientIP, code: blocked.code });
+      console.log('Blocked contact form sender:', { code: blocked.code });
       res.status(403).json({
         error: blocked.code,
         message: blocked.message,
+        delivered: false,
+        errorType: blocked.code,
+      });
+      return;
+    }
+
+    let emailHash: string;
+    let ipHash: string;
+    let messageFingerprint: string;
+    try {
+      emailHash = hashContactEmail(sanitizedEmail);
+      ipHash = hashContactIp(clientIP);
+      messageFingerprint = hashMessageFingerprint(sanitizedSubject, sanitizedMessage);
+    } catch (secretErr) {
+      console.error('Contact form secret configuration error:', sanitizedSecretConfigMessage(secretErr));
+      res.status(500).json({
+        error: 'server_error',
+        message: 'We could not send your message right now. Please try again in a few minutes.',
+        delivered: false,
+        errorType: 'server_error',
       });
       return;
     }
 
     try {
-      const [emailMatches, ipMatches] = await Promise.all([
+      const [eventEmailMatches, eventIpMatches, legacyEmailMatches, legacyIpMatches] = await Promise.all([
+        db.collection(CONTACT_DELIVERY_EVENTS).where('emailHash', '==', emailHash).limit(25).get(),
+        clientIP !== 'unknown'
+          ? db.collection(CONTACT_DELIVERY_EVENTS).where('ipHash', '==', ipHash).limit(25).get()
+          : Promise.resolve(null),
         db.collection('contacts').where('email', '==', sanitizedEmail).limit(25).get(),
         clientIP !== 'unknown'
           ? db.collection('contacts').where('ipAddress', '==', clientIP).limit(25).get()
@@ -298,8 +385,10 @@ export const submitContactForm = functions
       ]);
 
       const cooldownDocs = [
-        ...emailMatches.docs,
-        ...(ipMatches?.docs || []),
+        ...eventEmailMatches.docs,
+        ...(eventIpMatches?.docs || []),
+        ...legacyEmailMatches.docs,
+        ...(legacyIpMatches?.docs || []),
       ];
 
       const lastSubmissionTime = getLatestSubmissionMs(cooldownDocs);
@@ -308,87 +397,85 @@ export const submitContactForm = functions
       if (lastSubmissionTime && currentTime - lastSubmissionTime < COOLDOWN_PERIOD) {
         const retryAfter = Math.ceil((COOLDOWN_PERIOD - (currentTime - lastSubmissionTime)) / 1000);
         const rejection = buildCooldownRejection(retryAfter);
-        console.log('Cooldown period active:', { email: sanitizedEmail, clientIP, retryAfter });
+        console.log('Cooldown period active:', { retryAfter });
         res.status(429).json({
           error: rejection.code,
           message: rejection.message,
           retryAfter: rejection.retryAfter,
+          delivered: false,
+          errorType: rejection.code,
         });
         return;
       }
 
-      if (isRepeatMessage(sanitizedSubject, sanitizedMessage, emailMatches.docs)) {
+      if (
+        isRepeatMessageFingerprint(messageFingerprint, eventEmailMatches.docs) ||
+        isRepeatMessage(sanitizedSubject, sanitizedMessage, legacyEmailMatches.docs)
+      ) {
         const rejection = buildRepeatMessageRejection();
-        console.log('Repeat message blocked:', { email: sanitizedEmail, subject: sanitizedSubject });
+        console.log('Repeat message blocked');
         res.status(409).json({
           error: rejection.code,
           message: rejection.message,
+          delivered: false,
+          errorType: rejection.code,
         });
         return;
       }
 
-      // Store contact form data in Firestore (using sanitized data)
-      const contactData = {
-        name: sanitizedName,
-        email: sanitizedEmail,
-        subject: sanitizedSubject,
-        message: sanitizedMessage,
-        newsletter: sanitizedNewsletter,
-        formLoadTime: sanitizedFormLoadTime,
-        submissionTime: sanitizedSubmissionTime,
-        timeToFill: sanitizedSubmissionTime - sanitizedFormLoadTime,
-        submittedAt: admin.firestore.FieldValue.serverTimestamp(),
-        ipAddress: clientIP,
-        userAgent: req.get('User-Agent') || 'Unknown'
-      };
+      // Audit log only — no message body / email / IP plaintext
+      const contactRef = await createContactDeliveryEvent(db, {
+        emailHash,
+        ipHash,
+        messageFingerprint,
+        sourcePage,
+        newsletterOptIn: sanitizedNewsletter === true,
+        formVersion: FORM_VERSION,
+      });
+      console.log('Contact delivery event created:', contactRef.id);
 
-      // Add to contacts collection
-      const contactRef = await db.collection('contacts').add(contactData);
-      console.log('Contact stored with ID:', contactRef.id);
-
-      // If they want newsletter updates, add to subscribers collection
       if (sanitizedNewsletter) {
-        // Check if email already exists in subscribers
         const existingSubscriber = await db.collection('subscribers')
           .where('email', '==', sanitizedEmail)
           .limit(1)
           .get();
 
         if (existingSubscriber.empty) {
-          // Generate unique unsubscribe token
           const crypto = require('crypto');
           const unsubscribeToken = crypto.randomBytes(32).toString('hex');
-
-          const subscriberData = {
+          await db.collection('subscribers').add({
             email: sanitizedEmail,
             name: sanitizedName,
             subscribedAt: admin.firestore.FieldValue.serverTimestamp(),
             source: 'contact_form',
             status: 'active',
-            unsubscribeToken: unsubscribeToken
-          };
-
-          await db.collection('subscribers').add(subscriberData);
-          console.log('Added to newsletter subscribers:', sanitizedEmail);
-        } else {
-          console.log('Email already subscribed:', sanitizedEmail);
+            unsubscribeToken,
+          });
         }
       }
 
       const recipientEmail = getContactRecipientEmail();
       const brevoApiKey = process.env.BREVO_API_KEY || '';
+      if (!brevoApiKey) {
+        console.error('Contact form secret configuration error: BREVO_API_KEY is missing');
+        res.status(500).json({
+          error: 'server_error',
+          message: 'We could not send your message right now. Please try again in a few minutes.',
+          delivered: false,
+          errorType: 'server_error',
+        });
+        return;
+      }
 
       console.log('Sending contact form email via Brevo:', {
-        subject: sanitizedSubject,
         to: recipientEmail,
         from: BREVO_SENDER_EMAIL,
-        provider: 'brevo'
+        provider: 'brevo',
+        contactId: contactRef.id,
+        sourcePage,
       });
 
-      await contactRef.update({
-        emailDeliveryAttemptedAt: admin.firestore.FieldValue.serverTimestamp(),
-        emailProvider: 'brevo'
-      });
+      await markDeliveryAttempted(db, contactRef.id);
 
       const devReport = buildHatunDeveloperReportLinks({
         visitorName: sanitizedName,
@@ -407,13 +494,13 @@ export const submitContactForm = functions
           replyToEmail: sanitizedEmail,
           replyToName: sanitizedName,
           subject: `Contact Form: ${sanitizedSubject}`,
-          textContent: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nIP: ${clientIP}\n\n${sanitizedMessage}\n\n${devReport.textFooter}`,
+          textContent: `Name: ${sanitizedName}\nEmail: ${sanitizedEmail}\nSubject: ${sanitizedSubject}\nSource: ${sourcePage}\n\n${sanitizedMessage}\n\n${devReport.textFooter}`,
           htmlContent: `
             <h3>New Contact Form Submission</h3>
             <p><b>Name:</b> ${escapeHtmlForEmail(sanitizedName)}</p>
             <p><b>Email:</b> ${escapeHtmlForEmail(sanitizedEmail)}</p>
             <p><b>Subject:</b> ${escapeHtmlForEmail(sanitizedSubject)}</p>
-            <p><b>IP Address:</b> ${escapeHtmlForEmail(clientIP)}</p>
+            <p><b>Source page:</b> ${escapeHtmlForEmail(sourcePage)}</p>
             <hr>
             <p><b>Message:</b></p>
             <p>${escapeHtmlForEmail(sanitizedMessage)}</p>
@@ -426,23 +513,23 @@ export const submitContactForm = functions
 
         console.log('Contact form email sent via Brevo:', {
           messageId: emailResult.messageId,
-          to: recipientEmail,
-          subject: `Contact Form: ${sanitizedSubject}`
+          contactId: contactRef.id,
         });
 
-        await contactRef.update({
-          emailDelivered: true,
-          emailDeliveredAt: admin.firestore.FieldValue.serverTimestamp(),
-          emailProvider: 'brevo',
-          providerMessageId: emailResult.messageId
+        await markDeliverySuccess(db, contactRef.id, emailResult.messageId);
+
+        res.status(200).json({
+          success: true,
+          delivered: true,
+          contactId: contactRef.id,
+          errorType: null,
+          message: 'Your message was sent successfully.',
         });
       } catch (emailError: any) {
         console.error('Error sending contact form email via Brevo:', {
-          error: emailError?.message || String(emailError),
           failureCategory: emailError?.failureCategory,
           httpStatus: emailError?.httpStatus,
-          to: recipientEmail,
-          from: BREVO_SENDER_EMAIL
+          contactId: contactRef.id,
         });
 
         try {
@@ -455,24 +542,183 @@ export const submitContactForm = functions
           console.error('Failed to log contact delivery failure:', logError);
         }
 
-        // Still return success to user, but log the error
-        // The contact is already stored in Firestore
-      }
+        try {
+          await writeContactRetryPayload(db, contactRef.id, {
+            name: sanitizedName,
+            email: sanitizedEmail,
+            subject: sanitizedSubject,
+            message: sanitizedMessage,
+            newsletter: sanitizedNewsletter === true,
+            clientIP,
+            sourcePage,
+          });
+        } catch (retryWriteError) {
+          console.error(
+            'Failed to store encrypted retry payload:',
+            sanitizedSecretConfigMessage(retryWriteError)
+          );
+        }
 
-      res.status(200).json({
-        success: true,
-        message: "Email sent successfully",
-        contactId: contactRef.id
-      });
+        try {
+          await maybeCreateDeliveryHealthAlert(db);
+        } catch (alertError) {
+          console.error('Failed to evaluate delivery health alert:', alertError);
+        }
+
+        // HTTP 200: request accepted; delivery explicitly failed
+        res.status(200).json({
+          success: true,
+          delivered: false,
+          contactId: contactRef.id,
+          errorType: 'delivery_failed',
+          message:
+            'Your message could not be delivered right now. Please try again later.',
+        });
+      }
     } catch (e) {
-      console.error('Contact form error:', e);
+      console.error(
+        'Contact form error:',
+        e instanceof ContactSecretConfigError ? sanitizedSecretConfigMessage(e) : e
+      );
       res.status(500).json({
         error: 'server_error',
         message: 'We could not send your message right now. Please try again in a few minutes.',
+        delivered: false,
+        errorType: 'server_error',
       });
     }
   });
 });
+
+/** Retry pending encrypted payloads (disaster recovery). Max 5 docs/run; claim prevents duplicates. */
+export const retryFailedContactEmails = functions
+  .runWith({
+    secrets: [...CONTACT_FORM_SECRETS],
+    timeoutSeconds: 120,
+  })
+  .pubsub.schedule('every 15 minutes')
+  .onRun(async () => {
+    const recipientEmail = getContactRecipientEmail();
+    const brevoApiKey = process.env.BREVO_API_KEY || '';
+    if (!brevoApiKey) {
+      console.error('retryFailedContactEmails: BREVO_API_KEY missing');
+      return null;
+    }
+
+    const snap = await db
+      .collection(CONTACT_RETRY_PAYLOADS)
+      .where('status', '==', 'pending')
+      .limit(5)
+      .get();
+
+    let recovered = 0;
+    for (const doc of snap.docs) {
+      const contactId = doc.id;
+
+      const eventSnap = await db.collection(CONTACT_DELIVERY_EVENTS).doc(contactId).get();
+      if (eventSnap.exists && eventSnap.data()?.emailDelivered === true) {
+        await markRetryPayloadRecovered(db, contactId);
+        continue;
+      }
+
+      // Skip expired payloads before claim so attemptCount is never incremented for them
+      const pendingData = doc.data();
+      const pendingExpiresAt = pendingData.expiresAt as admin.firestore.Timestamp | undefined;
+      if (pendingExpiresAt && pendingExpiresAt.toMillis() < Date.now()) {
+        await doc.ref.update({ status: 'expired' });
+        continue;
+      }
+
+      const claimed = await claimPendingRetryPayload(db, contactId);
+      if (!claimed) {
+        continue;
+      }
+
+      try {
+        const plaintext = decryptRetryPayload({
+          ciphertext: claimed.ciphertext,
+          iv: claimed.iv,
+          authTag: claimed.authTag,
+          keyVersion: claimed.keyVersion,
+        });
+        await markDeliveryAttempted(db, contactId);
+        const devReport = buildHatunDeveloperReportLinks({
+          visitorName: plaintext.name,
+          visitorEmail: plaintext.email,
+          visitorSubject: plaintext.subject,
+          visitorMessage: plaintext.message,
+          contactId,
+          clientIP: plaintext.clientIP,
+          newsletterOptIn: plaintext.newsletter === true,
+        });
+        const emailResult = await sendBrevoTransactionalEmail({
+          apiKey: brevoApiKey,
+          toEmail: recipientEmail,
+          replyToEmail: plaintext.email,
+          replyToName: plaintext.name,
+          subject: `Contact Form: ${plaintext.subject}`,
+          textContent: `Name: ${plaintext.name}\nEmail: ${plaintext.email}\nSubject: ${plaintext.subject}\nSource: ${plaintext.sourcePage}\n\n${plaintext.message}\n\n${devReport.textFooter}\n\n(Automatic retry)`,
+          htmlContent: `
+            <h3>New Contact Form Submission (retry)</h3>
+            <p><b>Name:</b> ${escapeHtmlForEmail(plaintext.name)}</p>
+            <p><b>Email:</b> ${escapeHtmlForEmail(plaintext.email)}</p>
+            <p><b>Subject:</b> ${escapeHtmlForEmail(plaintext.subject)}</p>
+            <p><b>Source page:</b> ${escapeHtmlForEmail(plaintext.sourcePage)}</p>
+            <hr>
+            <p>${escapeHtmlForEmail(plaintext.message)}</p>
+            <p><small>Contact ID: ${contactId}</small></p>
+            ${devReport.htmlFooter}
+          `,
+        });
+        await markDeliverySuccess(db, contactId, emailResult.messageId, {
+          recovered: true,
+          incrementRetry: true,
+        });
+        await markRetryPayloadRecovered(db, contactId);
+        recovered += 1;
+      } catch (err: any) {
+        console.error(
+          'Retry send failed for contact payload:',
+          contactId,
+          err instanceof ContactSecretConfigError
+            ? sanitizedSecretConfigMessage(err)
+            : (err?.failureCategory || err?.message || 'unknown')
+        );
+        try {
+          await releaseRetryPayloadToPending(db, contactId);
+          await logBrevoContactDeliveryFailure(db, {
+            contactId,
+            recipientEmail,
+            error: err,
+          });
+          await db.collection(CONTACT_DELIVERY_EVENTS).doc(contactId).update({
+            retryCount: admin.firestore.FieldValue.increment(1),
+            lastRetryAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } catch (logErr) {
+          console.error('Failed to log retry failure:', logErr);
+        }
+      }
+    }
+    console.log('retryFailedContactEmails finished', {
+      attempted: snap.size,
+      recovered,
+      maxAttemptsPerPayload: MAX_CONTACT_RETRY_ATTEMPTS,
+    });
+    return null;
+  });
+
+/**
+ * Cleanup: delete retry payloads where deleteAfter <= now
+ * (recovered + 1h retention, or pending past 48h TTL).
+ */
+export const cleanupContactRetryPayloads = functions.pubsub
+  .schedule('every 60 minutes')
+  .onRun(async () => {
+    const result = await cleanupExpiredRetryPayloads(db, 100);
+    console.log('cleanupContactRetryPayloads deleted:', result.deleted);
+    return null;
+  });
 
 // Website problem reports → technicalAdminEmail from site-contacts.json
 export const submitWebsiteProblemReport = functions.https.onRequest((req, res) => {
@@ -866,13 +1112,19 @@ export const unsubscribeFromNewsletter = functions.https.onRequest((req, res) =>
 export const getContactStats = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
     try {
-      const contactsSnapshot = await db.collection('contacts').get();
-      const subscribersSnapshot = await db.collection('subscribers').get();
-      const deliveryFailuresSnapshot = await db.collection('contactDeliveryFailures').get();
+      const [contactsSnapshot, eventsSnapshot, subscribersSnapshot, deliveryFailuresSnapshot] = await Promise.all([
+        db.collection('contacts').get(),
+        db.collection(CONTACT_DELIVERY_EVENTS).get(),
+        db.collection('subscribers').get(),
+        db.collection('contactDeliveryFailures').get(),
+      ]);
 
-      const totalContacts = contactsSnapshot.size;
+      // Legacy contacts + new audit events (historical records not deleted this release)
+      const totalContacts = contactsSnapshot.size + eventsSnapshot.size;
       const totalSubscribers = subscribersSnapshot.size;
-      const undeliveredEmailCount = deliveryFailuresSnapshot.size;
+      const undeliveredEmailCount = eventsSnapshot.docs.filter(
+        (d) => d.data().emailDelivered === false
+      ).length;
 
       let latestDeliveryFailureAt: string | null = null;
       deliveryFailuresSnapshot.docs.forEach((doc) => {
@@ -883,10 +1135,7 @@ export const getContactStats = functions.https.onRequest((req, res) => {
         }
       });
 
-      // Count newsletter subscribers from contacts
-      const newsletterSubscribers = contactsSnapshot.docs.filter(doc =>
-        doc.data().newsletter === true
-      ).length;
+      const newsletterSubscribers = subscribersSnapshot.size;
 
       res.json({
         totalContacts,
@@ -894,6 +1143,8 @@ export const getContactStats = functions.https.onRequest((req, res) => {
         newsletterSubscribers,
         undeliveredEmailCount,
         latestDeliveryFailureAt,
+        deliveryEventCount: eventsSnapshot.size,
+        legacyContactCount: contactsSnapshot.size,
         timestamp: new Date().toISOString()
       });
     } catch (error) {

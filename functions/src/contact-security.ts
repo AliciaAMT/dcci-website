@@ -68,12 +68,34 @@ export function isRepeatMessage(
     const data = doc.data();
     const submittedAt = data.submittedAt as admin.firestore.Timestamp | undefined;
     const submittedMs = submittedAt?.toMillis?.() ?? 0;
-    if (submittedMs && submittedMs < cutoff) {
+    // Missing/invalid timestamps must not participate in repeat detection
+    if (!submittedMs || submittedMs < cutoff) {
       return false;
     }
     const priorSubject = (data.subject as string) || '';
     const priorMessage = (data.message as string) || '';
     return normalizeForRepeatCheck(priorSubject, priorMessage) === fingerprint;
+  });
+}
+
+/** Repeat check against hashed fingerprints on contactDeliveryEvents (no plaintext). */
+export function isRepeatMessageFingerprint(
+  messageFingerprint: string,
+  priorEventDocs: FirebaseFirestore.QueryDocumentSnapshot[]
+): boolean {
+  if (!messageFingerprint) {
+    return false;
+  }
+  const cutoff = Date.now() - REPEAT_MESSAGE_WINDOW_MS;
+  return priorEventDocs.some((doc) => {
+    const data = doc.data();
+    const submittedAt = data.submittedAt as admin.firestore.Timestamp | undefined;
+    const submittedMs = submittedAt?.toMillis?.() ?? 0;
+    // Missing/invalid timestamps must not participate in repeat detection
+    if (!submittedMs || submittedMs < cutoff) {
+      return false;
+    }
+    return (data.messageFingerprint as string) === messageFingerprint;
   });
 }
 

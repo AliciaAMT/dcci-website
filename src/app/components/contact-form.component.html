@@ -8,17 +8,52 @@
     </div>
 
     <!-- Success Message -->
-    <div *ngIf="submitSuccess" class="success-message">
+    <div
+      *ngIf="submitSuccess"
+      class="success-message"
+      role="status"
+      aria-live="polite"
+      tabindex="-1"
+      data-contact-status>
       <ion-icon name="checkmark-circle-outline" class="success-icon"></ion-icon>
-      <h4>Message Sent Successfully!</h4>
+      <h4>Your message was sent successfully.</h4>
       <p>Thank you for your message. We'll get back to you as soon as possible.</p>
       <ion-button (click)="resetForm()" fill="outline" color="primary">
         Send Another Message
       </ion-button>
     </div>
 
-    <!-- Error Message -->
-    <div *ngIf="submitError" class="error-message">
+    <!-- Delivery failure (form values kept — do not clear) -->
+    <div
+      *ngIf="deliveryFailed"
+      class="error-message delivery-failure"
+      role="alert"
+      aria-live="assertive"
+      tabindex="-1"
+      data-contact-status>
+      <ion-icon name="alert-circle-outline" class="error-icon"></ion-icon>
+      <h4>Message not delivered</h4>
+      <p>
+        Delivery failed. Your message was <strong>not</strong> delivered.
+        Please try again later.
+      </p>
+      <p>
+        If the problem continues, contact
+        <a [href]="supportMailto">{{ supportEmail }}</a>.
+      </p>
+      <ion-button type="button" fill="outline" color="medium" (click)="dismissDeliveryFailure()">
+        Dismiss and edit message
+      </ion-button>
+    </div>
+
+    <!-- Validation / other errors -->
+    <div
+      *ngIf="submitError && !deliveryFailed"
+      class="error-message"
+      role="alert"
+      aria-live="assertive"
+      tabindex="-1"
+      data-contact-status>
       <ion-icon name="alert-circle-outline" class="error-icon"></ion-icon>
       <p>{{ submitError }}</p>
     </div>

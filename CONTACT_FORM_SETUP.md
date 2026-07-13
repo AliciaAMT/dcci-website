@@ -6,188 +6,100 @@ This guide covers the DCCI Ministries contact form: email delivery, privacy, sec
 
 | Item | Detail |
 |------|--------|
-| **Component** | `src/app/components/contact-form.component.*` |
+| **Component** | `src/app/components/contact-form.component.*` (shared by Home + Welcome) |
 | **Service** | `src/app/services/contact.service.ts` |
-| **Cloud Function** | `submitContactForm` in `functions/src/index.ts` |
+| **Cloud Function** | `submitContactForm` (+ `retryFailedContactEmails`, `cleanupContactRetryPayloads`) |
 | **Recipient** | `hatun@dcciministries.com` (`config/site-contacts.json` → `contactFormRecipientEmail`) |
 | **Sender (Brevo)** | `contact@dcciministries.com` / `DCCI Ministries` via Secret `BREVO_API_KEY` |
 | **Problem reports / recovery / newsletter** | Still Gmail SMTP (`mail.user` / `mail.pass`) — not migrated yet |
+| **Tech support (visitor-facing on delivery failure)** | `admin@accessiblewebmedia.com` |
+
+## Design philosophy
+
+**Firestore is an operational audit log, not a mailbox.**
+
+It answers: Did the submission reach the backend? Was delivery attempted? Delivered? Why failed? Recovered?
+
+It does **not** permanently archive visitor communications.
 
 ## Email flow
 
-1. Visitor submits the form on `/welcome` or `/contact`
-2. Cloud Function validates and sanitizes input
-3. Full contact fields are stored in Firestore (`contacts`) — same as before this Brevo migration (privacy strip is a separate follow-up)
-4. Email is sent via **Brevo** to **Hatun** with `Reply-To` set to the visitor's address
-5. Delivery metadata (`emailProvider`, `providerMessageId`, etc.) is written on **new** contact docs only
-6. Hatun replies using **Reply** in her mail client
+1. Visitor submits on **Home** (`sourcePage: home`) or **Welcome** (`sourcePage: welcome`) — same component/backend
+2. Cloud Function validates, honeypot, optional App Check, cooldown/repeat (via hashes)
+3. Writes **metadata only** to `contactDeliveryEvents` (hashes + delivery fields + `sourcePage`)
+4. Sends via **Brevo** to Hatun with Reply-To = visitor (no CC/BCC to Alicia)
+5. **Success:** mark delivered; no retry payload
+6. **Failure:** log failure metadata; store **encrypted** temporary payload in `contactRetryPayloads`; return HTTP **200** with `delivered: false`
+7. Scheduled retry every 15 minutes; on success mark recovered and delete payload after ~1 hour
+8. Expired pending payloads deleted after **48 hours** (`cleanupContactRetryPayloads`)
 
-**No admin/monitor inbox** — contact-form messages go straight to Hatun (no CC/BCC).
-
-## Design philosophy: privacy, access, and the “bind”
-
-The contact form balances three goals:
-
-1. **Global access** — Visitors in restrictive countries may need VPNs or strict privacy tools; we do not block them for that.
-2. **Direct ministry contact** — Mail goes to Hatun; the site manager does not read her inbox.
-3. **Minimal data retention (target)** — Full message text should eventually leave Firestore (only timestamps for counts). **This Brevo release still stores the message** so recovery and repeat-message checks keep working; a separate privacy redesign removes it.
-
-**Hatun is the front line.** She reports spam, abuse, or form failures to the site manager. See **[Contact Form — Privacy and Reporting](./docs/contact-form-privacy-and-reporting.md)** for her training guide.
-
-### Why we do not use Google reCAPTCHA (default)
-
-reCAPTCHA and Firebase App Check (reCAPTCHA v3) can block or frustrate legitimate users — VPN users, privacy browsers, regions where Google is restricted, and people with accessibility needs. That conflicts with reaching Christians under surveillance. We use **server-side** protections instead (honeypot, timing, rate limits, disposable-email blocking, link rules). App Check remains **optional and off** unless spam justifies the tradeoff.
-
-### Why we do not block VPN IP addresses
-
-Blanket VPN blocking was removed in June 2026. It rejected many legitimate visitors who use VPNs for safety. See deprecated [IP_BLOCKING_SETUP.md](./IP_BLOCKING_SETUP.md).
-
-## Firestore logging (current release)
-
-**This Brevo migration does not change what personal fields are stored.** New contact docs still include name, email, subject, message, IP, etc. (needed for recovery + repeat-message detection until the privacy redesign).
-
-New delivery fields on **new** records only:
+### API response (success path always HTTP 200 if request accepted)
 
 ```json
-{
-  "emailProvider": "brevo",
-  "emailDeliveryAttemptedAt": "<timestamp>",
-  "emailDelivered": true,
-  "emailDeliveredAt": "<timestamp>",
-  "providerMessageId": "<brevo-message-id>"
-}
+{ "success": true, "delivered": true, "contactId": "...", "errorType": null }
 ```
 
-On failure, sanitized fields such as `failureCategory` / `failureStatus` / `emailDeliveryErrorSummary` are set (no API key, no raw Brevo payloads).
-
-**Follow-up (not this release):** strip message bodies and PII after recovery is redesigned.
-
-- **Newsletter opt-ins** from the contact form still save to `subscribers` when checked
-- Rate-limit metadata uses existing cooldown / repeat checks against `contacts`
-
-## Setup
-
-### 1. Install dependencies
-
-```bash
-cd functions && npm install
+```json
+{ "success": true, "delivered": false, "contactId": "...", "errorType": "delivery_failed" }
 ```
 
-### 2. Configure Brevo (contact form only)
+Frontend shows success **only if** `delivered === true`. On delivery failure the form fields stay filled.
 
-1. In Brevo, create an API key with **Transactional email** send permission.
-2. Ensure sender `contact@dcciministries.com` is verified in Brevo.
-3. Set the Firebase secret (do **not** put the key in git or chat):
+Validation / spam / cooldown still return **4xx**.
 
-```bash
-firebase functions:secrets:set BREVO_API_KEY --project dcci-ministries
-```
+## Firestore collections
 
-4. Deploy only the contact form function:
+| Collection | Purpose | Client access |
+|------------|---------|---------------|
+| `contactDeliveryEvents` | Permanent audit metadata | Admin read only |
+| `contactDeliveryFailures` | Failure summaries (no body) | Admin read only |
+| `contactRetryPayloads` | Encrypted temporary recovery | **None** (Admin SDK only) |
+| `contactOperationalAlerts` | Single alert if ≥5 failures / 30 min | Admin read only |
+| `contacts` | **Legacy** only — not written by new submits | Admin read; cleanup later |
+| `subscribers` | Newsletter opt-in (explicit consent) | Public create |
+
+Retry encryption key material: **required** Firebase secret `CONTACT_RETRY_ENCRYPTION_KEY` (64 hex chars). Hash pepper: **required** `CONTACT_HASH_SECRET`. Never derive from `BREVO_API_KEY`. See [docs/contact-form-secrets-and-ops.md](./docs/contact-form-secrets-and-ops.md).
+
+### Cleanup mechanism
+
+`cleanupContactRetryPayloads` runs hourly and deletes documents where `deleteAfter <= now`:
+
+- After successful retry: status `recovered`, `deleteAfter` ≈ now + **1 hour**
+- Pending never recovered: `deleteAfter` ≈ created + **48 hours**
+
+## App Check
+
+`submitContactForm` calls `verifyAppCheckToken`:
+
+- Invalid token → **401**
+- Missing token → allowed unless `firebase functions:config:set security.enforce_app_check="true"`
+
+## Health monitoring
+
+If ≥5 rows land in `contactDeliveryFailures` within 30 minutes and no matching open alert exists in that window, one `contactOperationalAlerts` document is created. No email flood.
+
+## Setup / deploy
 
 ```bash
 cd functions && npm run build
-firebase deploy --only functions:submitContactForm --project dcci-ministries
+FUNCTIONS_DISCOVERY_TIMEOUT=60 npx firebase deploy --only \
+  functions:submitContactForm,functions:retryFailedContactEmails,functions:cleanupContactRetryPayloads,functions:getContactStats \
+  --project dcci-ministries
+firebase deploy --only firestore:rules,firestore:indexes --project dcci-ministries
+# After Angular hosting build (UI changes):
+# firebase deploy --only hosting --project dcci-ministries
 ```
 
-### 3. Gmail SMTP (still required for other functions)
-
-`recoverContactEmails`, `submitWebsiteProblemReport`, and `subscribeToNewsletter` still use Nodemailer + `mail.user` / `mail.pass`. Leave those credentials in place until a separate migration.
-
-```bash
-firebase functions:config:set mail.user="your-sender@gmail.com"
-firebase functions:config:set mail.pass="your-app-password"
-```
-
-### 4. Environment files
-
-Ensure `firebaseFunctionsUrl` is set in `src/environments/environment*.ts`.
-
-Optional App Check (see Security section):
-
-```typescript
-appCheckRecaptchaSiteKey: "your-recaptcha-v3-site-key",
-```
+Keep Gmail `mail.*` for recovery / newsletter / problem reports until those are migrated.
 
 ## Email format Hatun receives
 
-- **To:** `hatun@dcciministries.com`
-- **From:** `DCCI Ministries <contact@dcciministries.com>` (Brevo)
-- **Reply-To:** Visitor's name and email
-- **Subject:** `Contact Form: {visitor subject}`
-- **Body:** Name, email, subject, IP, and message (plain + HTML-escaped)
-- **Footer for Hatun:** Two mailto links to the current `technicalAdminEmail` — report suspicious or solicitation/spam (pre-filled subject `Urgent: Hatun Website Question — …`). Implemented in `functions/src/contact-dev-report.ts`.
+- **To:** Hatun  
+- **From:** `DCCI Ministries <contact@dcciministries.com>`  
+- **Reply-To:** Visitor  
+- **Body:** Name, email, subject, source page, message  
+- **Footer:** mailto links to `technicalAdminEmail` for Hatun to report issues (not automatic copies)
 
 ## Security features
 
-Designed to block abuse while allowing legitimate visitors (including VPN users).
-
-| Layer | Description |
-|-------|-------------|
-| **Honeypot** | Hidden `website` field; bots are silently rejected |
-| **Timing** | Form must be open ≥ 8 seconds before submit |
-| **Sanitization** | HTML stripped; scripts/`javascript:` patterns blocked |
-| **Email escape** | HTML entities escaped in outbound email |
-| **Spam keywords** | Common SEO/crypto/promo phrases rejected |
-| **Disposable emails** | Throwaway domains (Mailinator, Guerrilla Mail, etc.) blocked |
-| **Link limits** | Max 3 links; URL shorteners (bit.ly, tinyurl, …) blocked |
-| **Rate limits** | 5 min per IP + 3 submissions per email per 24 h (after successful send) |
-| **App Check** | Optional invisible reCAPTCHA v3 — **off by default** (see Design philosophy above) |
-
-**Removed (2026-06-21):** Blanket VPN IP range blocking — it blocked legitimate users in privacy-sensitive regions.
-
-### Enable Firebase App Check (optional — not recommended unless spam is severe)
-
-App Check uses Google reCAPTCHA v3 and can block some real visitors. Only enable after ministry agreement that the spam problem outweighs access risk.
-
-1. [Google reCAPTCHA admin](https://www.google.com/recaptcha/admin) — create a **v3** key for your domain
-2. Firebase Console → **App Check** → register web app with reCAPTCHA v3
-3. Add site key to `src/environments/environment.prod.ts`:
-   ```typescript
-   appCheckRecaptchaSiteKey: "your-recaptcha-v3-site-key",
-   ```
-4. Deploy the Angular app; test contact form submissions
-5. Enforce on the server:
-   ```bash
-   firebase functions:config:set security.enforce_app_check="true"
-   firebase deploy --only functions
-   ```
-6. Until step 5, the API accepts requests without App Check (dev-friendly).
-
-## Testing
-
-```bash
-npm start                    # Angular app
-cd functions && npm run serve  # optional local functions
-```
-
-1. Open `/welcome` or `/contact`
-2. Fill the form (wait at least 8 seconds)
-3. Submit — check Hatun's inbox
-4. Test endpoint: `https://[region]-[project].cloudfunctions.net/testContactForm`
-
-## Troubleshooting
-
-| Issue | Check |
-|-------|--------|
-| Failed to send | `firebase functions:log` — verify `mail.user` / `mail.pass`; check Firestore **`contactDeliveryFailures`** (admin dashboard shows count) |
-| Disposable email error | Use a normal Gmail/Outlook/etc. address |
-| Too many links | Max 3; no shorteners — use full URLs |
-| Please wait… | IP cooldown (5 min) or email limit (3/day) |
-| Forbidden / verify request | App Check enforced but key missing — configure or disable enforce |
-| CORS errors | Redeploy functions; verify `firebaseFunctionsUrl` |
-
-## Customization
-
-- **Styling:** `src/app/components/contact-form.component.scss`
-- **Validation rules:** `functions/src/sanitization.ts`, `functions/src/contact-security.ts`
-- **Recipient email:** `config/site-contacts.json` → `contactFormRecipientEmail` (sync `functions/src/config/site-contacts.json`)
-- **Email template:** `submitContactForm` handler in `functions/src/index.ts`
-
-## Related documentation
-
-- **[Technical Contact Handoff](./docs/technical-contact-handoff.md)** — replace website/technical email on developer handoff (UK/EU)
-- **[Contact Form — Privacy and Reporting](./docs/contact-form-privacy-and-reporting.md)** — why no reCAPTCHA/VPN blocking; Hatun reporting guide
-- **[Content Management — Editing the Welcome Page](./docs/content-management.md#editing-the-welcome-page)**
-- **[Owner's Guide — Contact messages](./docs/owners-guide.md)**
-- **[Dev Log — 2026-06-21](./docs/dev-log.md)**
+Honeypot, fill-time checks, blocklist, cooldown, repeat-message fingerprints, Brevo delivery, server-only retry payloads.

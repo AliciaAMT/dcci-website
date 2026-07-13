@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { IonInput, IonButton, IonIcon, IonTextarea, IonCheckbox } from '@ionic/angular/standalone';
@@ -6,6 +6,8 @@ import { ContactService } from 'src/app/services/contact.service';
 import { SiteSettingsService } from '../services/site-settings.service';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription, firstValueFrom } from 'rxjs';
+
+const SUPPORT_EMAIL = 'admin@accessiblewebmedia.com';
 
 @Component({
   selector: 'app-contact-form',
@@ -18,10 +20,18 @@ export class ContactFormComponent implements OnInit, OnDestroy {
   @Input() prefillSubject: string = '';
   @Input() hideDescription: boolean = false;
   @Input() hideNewsletter: boolean = false;
+  /** 'home' | 'welcome' | other — stored on delivery events only */
+  @Input() sourcePage: string = 'unknown';
+
+  @ViewChild('statusAlert') statusAlert?: ElementRef<HTMLElement>;
+
   contactForm: FormGroup;
   isSubmitting = false;
   submitSuccess = false;
   submitError = '';
+  deliveryFailed = false;
+  readonly supportEmail = SUPPORT_EMAIL;
+  readonly supportMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('DCCI contact form delivery problem')}`;
   formLoadTime: number = 0;
   contactFormsDisabled = false;
   private settingsSubscription: Subscription = new Subscription();
@@ -32,7 +42,6 @@ export class ContactFormComponent implements OnInit, OnDestroy {
     private siteSettingsService: SiteSettingsService,
     private route: ActivatedRoute
   ) {
-    // Record when the form was loaded (for bot detection)
     this.formLoadTime = Date.now();
 
     this.contactForm = this.formBuilder.group({
@@ -40,28 +49,24 @@ export class ContactFormComponent implements OnInit, OnDestroy {
       email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
       subject: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(200)]],
       message: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(5000)]],
-      newsletter: [false], // Newsletter subscription (optional)
-      website: [''], // Honeypot field - should always be empty
-      formTimestamp: [this.formLoadTime] // Hidden field for bot detection
+      newsletter: [false],
+      website: [''],
+      formTimestamp: [this.formLoadTime]
     });
   }
 
   ngOnInit() {
-    // Check for pre-filled subject from query params or input
     const subjectParam = this.route.snapshot.queryParams['subject'];
     const subjectToUse = this.prefillSubject || subjectParam || '';
-    
+
     if (subjectToUse) {
       this.contactForm.patchValue({ subject: subjectToUse });
     }
 
-    // Subscribe to settings to check for nuclear lockdown and disabled contact forms
     this.settingsSubscription = this.siteSettingsService.settings$.subscribe(settings => {
-      // Nuclear lockdown blocks everything
       const shouldDisable = settings.nuclearLockdown || settings.disableContactForms;
       this.contactFormsDisabled = shouldDisable;
       if (shouldDisable) {
-        // Disable form when nuclear lockdown is active or contact forms are disabled
         this.contactForm.disable();
       } else {
         this.contactForm.enable();
@@ -76,24 +81,25 @@ export class ContactFormComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit() {
-    // Check nuclear lockdown FIRST - blocks everything
     const settings = await firstValueFrom(this.siteSettingsService.settings$);
     if (settings.nuclearLockdown) {
       this.submitError = 'Site is currently in maintenance mode. Please try again later.';
+      this.deliveryFailed = false;
+      this.focusStatus();
       return;
     }
 
-    // Check if contact forms are disabled
     if (settings.disableContactForms) {
       this.submitError = 'Contact form temporarily unavailable.';
+      this.deliveryFailed = false;
+      this.focusStatus();
       return;
     }
 
-    // Honeypot check - if website field is filled, it's likely a bot
     if (this.contactForm.get('website')?.value) {
-      console.log('Error');
-      // Silently fail - don't let bots know they were caught
       this.submitSuccess = true;
+      this.deliveryFailed = false;
+      this.submitError = '';
       this.contactForm.reset();
       return;
     }
@@ -101,29 +107,48 @@ export class ContactFormComponent implements OnInit, OnDestroy {
     if (this.contactForm.valid) {
       this.isSubmitting = true;
       this.submitError = '';
+      this.deliveryFailed = false;
 
       try {
-        // Prepare form data and add submission timestamp
-        const formData = { ...this.contactForm.value };
-        delete formData.website; // Remove honeypot field
+        const formData: Record<string, unknown> = { ...this.contactForm.value };
+        delete formData['website'];
+        formData['submissionTime'] = Date.now();
+        formData['formLoadTime'] = formData['formTimestamp'];
+        delete formData['formTimestamp'];
+        formData['sourcePage'] = this.sourcePage || 'unknown';
 
-        // Add submission timestamp for bot detection
-        formData.submissionTime = Date.now();
-        formData.formLoadTime = formData.formTimestamp; // The original form load time
-        delete formData.formTimestamp; // Clean up the form field
+        const result = await this.contactService.submitContactForm(formData as any);
 
-        await this.contactService.submitContactForm(formData);
-        this.submitSuccess = true;
-        this.contactForm.reset();
+        if (result.delivered === true) {
+          this.submitSuccess = true;
+          this.deliveryFailed = false;
+          this.submitError = '';
+          this.contactForm.reset();
+        } else {
+          // Keep typed values in memory — do not clear the form
+          this.submitSuccess = false;
+          this.deliveryFailed = true;
+          this.submitError = '';
+        }
+        this.focusStatus();
       } catch (error: any) {
+        this.submitSuccess = false;
+        this.deliveryFailed = false;
         this.submitError = this.formatContactFormError(error);
         console.error('Contact form submission error:', error);
+        this.focusStatus();
       } finally {
         this.isSubmitting = false;
       }
     } else {
       this.markFormGroupTouched();
     }
+  }
+
+  private focusStatus() {
+    setTimeout(() => {
+      this.statusAlert?.nativeElement?.focus();
+    }, 0);
   }
 
   private formatContactFormError(error: any): string {
@@ -188,6 +213,11 @@ export class ContactFormComponent implements OnInit, OnDestroy {
   resetForm() {
     this.submitSuccess = false;
     this.submitError = '';
+    this.deliveryFailed = false;
     this.contactForm.reset();
+  }
+
+  dismissDeliveryFailure() {
+    this.deliveryFailed = false;
   }
 }
