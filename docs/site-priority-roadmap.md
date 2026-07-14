@@ -21,8 +21,9 @@
 | Legacy / emergency package | ☑ In progress ☐ Done | Outline exists ([DCCI-EMERGENCY-LEGACY-README](./DCCI-EMERGENCY-LEGACY-README.md)); brackets + encrypted Package A/B **not finished**. |
 | GitHub SEO rebuild secrets | ☐ Missing ☐ Set ☐ Tested | See [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
 | Daily Astro rebuild on `master` | ☐ Old workflow only ☐ Merged ☐ Running | Hardened workflow merged earlier; confirm secrets + green run. |
+| Phone / mobile typography | ☑ Checked on live site | Welcome / real pages OK on phone. **Exception:** `/home` “Under Construction” — **DCCI Ministries** header (and some fonts) too small. No code fix planned; temporary page until full-site migration. |
 
-**Last updated:** 12 July 2026  
+**Last updated:** 14 July 2026  
 
 **Next session — do only (privacy first):**
 

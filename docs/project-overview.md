@@ -28,6 +28,8 @@ A modern, Ionic Angular-based website with:
 - [x] Under construction landing page
 - [ ] Basic website structure
 
+**Mobile note (July 2026):** Phone check of the live welcome / main site looked OK. The temporary `/home` “Under Construction” page still has typography that feels too small on phones (especially the **DCCI Ministries** header). No polish planned while migrating off that page — see [site-priority-roadmap.md](./site-priority-roadmap.md) and [troubleshooting.md](./troubleshooting.md#responsive-design-problems).
+
 ### Phase 2: Core Website Development 🚧
 - [ ] Legal pages (Privacy Policy, Terms of Service)
 - [ ] Menu component and navigation

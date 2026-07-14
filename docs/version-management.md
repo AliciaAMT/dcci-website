@@ -8,12 +8,46 @@ This document explains how to manage versions and deploy the DCCI website using 
 
 | Script | Command | Purpose | Version Bump | Deploy Target |
 |--------|---------|---------|--------------|---------------|
-| **vs** | `npm run vs` | Staging deployment with patch bump | `1.2.3` → `1.2.4` | Staging |
-| **vd** | `npm run vd` | Production deployment with patch bump | `1.2.3` → `1.2.4` | Production (Live) |
-| **fvd** | `npm run fvd` | Production deployment with feature bump | `1.2.3` → `1.3.0` | Production (Live) |
-| **mvd** | `npm run mvd` | Production deployment with major bump | `1.2.3` → `2.0.0` | Production (Live) |
+| **vs** | `npm run vs` | Staging **full-stack** deploy with patch bump | `1.2.3` → `1.2.4` | Staging |
+| **vd** | `npm run vd` | Production **full-stack** deploy with patch bump | `1.2.3` → `1.2.4` | Production (Live) |
+| **fvd** | `npm run fvd` | Production **full-stack** deploy with feature bump | `1.2.3` → `1.3.0` | Production (Live) |
+| **mvd** | `npm run mvd` | Production **full-stack** deploy with major bump | `1.2.3` → `2.0.0` | Production (Live) |
 
-### What Each Script Does
+### What “full stack” means (`vs` / `vd` / `fvd` / `mvd`)
+
+After the version bump, these scripts call `node scripts/deploy.js … --full-stack`, which deploys:
+
+| Target | Included |
+|--------|----------|
+| **Hosting** | Angular admin/app + merged Astro SEO pages |
+| **Cloud Functions** | All functions in `functions/` |
+| **Firestore** | Rules + indexes |
+| **Storage** | Storage rules |
+
+**Also included (before Firebase deploy):** sync of GitHub Actions secrets used by the nightly rebuild:
+
+| Secret | Source file |
+|--------|-------------|
+| `ENVIRONMENT_PROD_TS` | `src/environments/environment.prod.ts` |
+| `ENVIRONMENT_TS` | `src/environments/environment.ts` |
+| `SITE_CONTACTS_JSON` | `config/site-contacts.json` (if present) |
+
+Requires **GitHub CLI** (`gh`) installed and logged in (`gh auth login`) with permission to set repo secrets. Without this, the next Astro/hosting CI run can rebuild with an old footer version.
+
+Manual sync only: `node scripts/sync-github-ci-secrets.js --strict`
+
+**Not** included: Firebase Secret Manager rotation (`BREVO_API_KEY`, etc.).
+
+### Hosting-only (no version bump)
+
+| Script | Command | Deploys |
+|--------|---------|---------|
+| **td** | `npm run td` | Staging **hosting only** |
+| **ld** | `npm run ld` | Production **hosting only** |
+
+Use `ld` / `td` when you only changed the frontend and do not need Functions/rules.
+
+### What Each Version Script Does
 
 1. **Reads current version** from `package.json`
 2. **Bumps version** according to the script type:
@@ -21,16 +55,17 @@ This document explains how to manage versions and deploy the DCCI website using 
    - **Feature** (`fvd`): `1.2.3` → `1.3.0` (new features, minor changes)
    - **Major** (`mvd`): `1.2.3` → `2.0.0` (breaking changes, major updates)
 3. **Updates all environment files** with the new version
-4. **Builds the project** for the target environment
-5. **Deploys to Firebase** (staging or production)
-6. **Rolls back** version if deployment fails
+4. **Builds** Angular + Astro and merges for Hosting
+5. **Deploys full stack** to Firebase (see table above)
+6. **Rolls back** `package.json` version if deployment fails
 
 ### When to Use Each Script
 
-- **`npm run vs`**: Testing new features on staging before going live
-- **`npm run vd`**: Deploying bug fixes and small updates to production
-- **`npm run fvd`**: Deploying new features to production
-- **`npm run mvd`**: Deploying major updates or breaking changes to production
+- **`npm run vs`**: Full-stack test on staging before going live
+- **`npm run vd`**: Full-stack production release for bug fixes / small updates
+- **`npm run fvd`**: Full-stack production release for new features
+- **`npm run mvd`**: Full-stack production release for major / breaking changes
+- **`npm run ld`**: Frontend-only production Hosting (no version bump, no Functions/rules)
 
 ### Safety Features
 
