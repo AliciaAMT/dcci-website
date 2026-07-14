@@ -7,7 +7,7 @@ This guide will get you up and running with the DCCI Ministries website developm
 ## 📋 Prerequisites
 
 ### **Required Software**
-- **Node.js**: Version 18+ (LTS recommended)
+- **Node.js**: **Version 20 LTS** (see [VERSIONS.md](../VERSIONS.md) and `.nvmrc`)
   - Download from [nodejs.org](https://nodejs.org/)
   - Verify with: `node --version`
 - **Git**: Version control system

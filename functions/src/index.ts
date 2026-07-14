@@ -2,17 +2,18 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as corsLib from "cors";
+import * as crypto from "crypto";
 import * as https from "https";
 import { createMailTransport, getSmtpSettings } from "./mail-transport";
 import { sanitizeContactForm, escapeHtmlForEmail, sanitizeNewsletterForm } from "./sanitization";
 import { logBrevoContactDeliveryFailure } from "./contact-delivery-log";
 import { buildHatunDeveloperReportLinks } from "./contact-dev-report";
 import { recoverContacts, parseRecoveryDate } from "./contact-recovery";
+import { purgeLegacyContactPii as runPurgeLegacyContactPii } from "./contact-legacy-purge";
 import { sendBrevoTransactionalEmail } from "./brevo-mail";
 import { BREVO_SENDER_EMAIL, getContactRecipientEmail } from "./brevo-config";
 import {
   isBlockedSender,
-  isRepeatMessage,
   isRepeatMessageFingerprint,
   buildCooldownRejection,
   buildRepeatMessageRejection,
@@ -373,22 +374,17 @@ export const submitContactForm = functions
     }
 
     try {
-      const [eventEmailMatches, eventIpMatches, legacyEmailMatches, legacyIpMatches] = await Promise.all([
+      // Cooldown / repeat checks use hashed audit events only — never plaintext legacy `contacts`.
+      const [eventEmailMatches, eventIpMatches] = await Promise.all([
         db.collection(CONTACT_DELIVERY_EVENTS).where('emailHash', '==', emailHash).limit(25).get(),
         clientIP !== 'unknown'
           ? db.collection(CONTACT_DELIVERY_EVENTS).where('ipHash', '==', ipHash).limit(25).get()
-          : Promise.resolve(null),
-        db.collection('contacts').where('email', '==', sanitizedEmail).limit(25).get(),
-        clientIP !== 'unknown'
-          ? db.collection('contacts').where('ipAddress', '==', clientIP).limit(25).get()
           : Promise.resolve(null),
       ]);
 
       const cooldownDocs = [
         ...eventEmailMatches.docs,
         ...(eventIpMatches?.docs || []),
-        ...legacyEmailMatches.docs,
-        ...(legacyIpMatches?.docs || []),
       ];
 
       const lastSubmissionTime = getLatestSubmissionMs(cooldownDocs);
@@ -408,10 +404,7 @@ export const submitContactForm = functions
         return;
       }
 
-      if (
-        isRepeatMessageFingerprint(messageFingerprint, eventEmailMatches.docs) ||
-        isRepeatMessage(sanitizedSubject, sanitizedMessage, legacyEmailMatches.docs)
-      ) {
+      if (isRepeatMessageFingerprint(messageFingerprint, eventEmailMatches.docs)) {
         const rejection = buildRepeatMessageRejection();
         console.log('Repeat message blocked');
         res.status(409).json({
@@ -854,6 +847,7 @@ export const submitWebsiteProblemReport = functions.https.onRequest((req, res) =
  * One-time recovery: resend stored Firestore contacts to Hatun.
  * POST JSON: { secret, after?: "YYYY-MM-DD", since?: "YYYY-MM-DD", dryRun?: true, delete?: false }
  * Requires functions.config().recovery.secret (set before use).
+ * Prefer running this (or Confirm Hatun already received mail) before purgeLegacyContactPii.
  */
 export const recoverContactEmails = functions.https.onRequest((req, res) => {
   return cors(req, res, async () => {
@@ -899,6 +893,104 @@ export const recoverContactEmails = functions.https.onRequest((req, res) => {
         error: "Recovery failed",
         message: err instanceof Error ? err.message : String(err),
       });
+    }
+  });
+});
+
+const PURGE_LEGACY_MAX_BODY_BYTES = 8 * 1024; // control JSON only — never contact content
+
+/** Constant-time string compare (length-padded) for recovery secrets. */
+function recoverySecretsEqual(provided: unknown, expected: string): boolean {
+  if (typeof provided !== "string" || !expected) {
+    return false;
+  }
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  const len = Math.max(a.length, b.length, 1);
+  const aPad = Buffer.alloc(len);
+  const bPad = Buffer.alloc(len);
+  a.copy(aPad);
+  b.copy(bPad);
+  const equal = crypto.timingSafeEqual(aPad, bPad);
+  return equal && a.length === b.length;
+}
+
+/**
+ * Redact visitor PII from legacy `contacts` docs (name/email/subject/message/IP).
+ * Keeps submittedAt + newsletter/delivery metadata for dashboard counts.
+ * POST JSON only: { secret, dryRun?: true, limit?: number }
+ * Same recovery.secret as recoverContactEmails.
+ * Response / logs never include names, emails, messages, IPs, or the secret.
+ */
+export const purgeLegacyContactPii = functions
+  .runWith({ timeoutSeconds: 540, memory: "512MB" })
+  .https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== "POST") {
+      res.status(405).json({ error: "Method not allowed" });
+      return;
+    }
+
+    const contentLengthHeader = req.headers["content-length"];
+    const contentLength =
+      typeof contentLengthHeader === "string" ? Number(contentLengthHeader) : NaN;
+    if (Number.isFinite(contentLength) && contentLength > PURGE_LEGACY_MAX_BODY_BYTES) {
+      res.status(413).json({ error: "Request body too large" });
+      return;
+    }
+
+    // Reject oversized bodies even when Content-Length is missing / spoofed.
+    let bodyBytes = 0;
+    try {
+      bodyBytes = Buffer.byteLength(JSON.stringify(req.body ?? {}), "utf8");
+    } catch {
+      res.status(400).json({ error: "Invalid JSON body" });
+      return;
+    }
+    if (bodyBytes > PURGE_LEGACY_MAX_BODY_BYTES) {
+      res.status(413).json({ error: "Request body too large" });
+      return;
+    }
+
+    const expectedSecret =
+      (functions.config().recovery?.secret as string | undefined) || process.env.RECOVERY_SECRET;
+    if (!expectedSecret) {
+      console.error("purgeLegacyContactPii: recovery secret not configured");
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    // Secret accepted from body only (not query string) to avoid URL/log leakage.
+    if (!recoverySecretsEqual(req.body?.secret, expectedSecret)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    try {
+      const dryRun = req.body?.dryRun === true;
+      const rawLimit = req.body?.limit;
+      const limit =
+        rawLimit === undefined || rawLimit === null || rawLimit === ""
+          ? undefined
+          : Number(rawLimit);
+
+      if (limit !== undefined && (!Number.isFinite(limit) || limit < 0)) {
+        res.status(400).json({ error: "limit must be a non-negative number" });
+        return;
+      }
+
+      const result = await runPurgeLegacyContactPii(db, {
+        dryRun,
+        limit: limit && limit > 0 ? limit : undefined,
+      });
+
+      // Counts, paths, field names, and document IDs only — never PII values.
+      res.json({ success: true, ...result });
+    } catch (err) {
+      // Do not log request body, secret, or document contents.
+      console.error("purgeLegacyContactPii failed", {
+        name: err instanceof Error ? err.name : "Error",
+      });
+      res.status(500).json({ error: "Purge failed" });
     }
   });
 });

@@ -9,6 +9,7 @@ This directory contains comprehensive documentation for the DCCI Ministries webs
 - **[DCCI Emergency Legacy README](./DCCI-EMERGENCY-LEGACY-README.md)** — Who owns what, who to call, site down / contact form broken, where secrets live (no keys in the doc)
 
 ### 🚀 **For Developers**
+- **[VERSIONS.md](../VERSIONS.md)** (repo root) — **Node / Angular / Ionic / Quill** versions to use locally
 - **[Project Overview](./project-overview.md)** - Project mission, scope, and development phases
 - **[Technical Architecture](./technical-architecture.md)** - System design, technology stack, and architecture patterns
 - **[Development Setup](./development-setup.md)** - Step-by-step development environment setup
@@ -50,7 +51,7 @@ This directory contains comprehensive documentation for the DCCI Ministries webs
 
 ## 🚨 **Critical Information**
 
-- **Node Version**: Use Node 20.x (see `.nvmrc` file)
+- **Node Version**: Use Node 20.x (see [VERSIONS.md](../VERSIONS.md) and `.nvmrc`)
 - **Icon Loading**: Requires `setAssetPath(document.baseURI)` and SVG asset copying
 - **Firebase**: Use ESM imports, not require() syntax
 - **Cursor AI**: Be specific about what you want and what not to do

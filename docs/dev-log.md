@@ -2,6 +2,15 @@
 
 ## 2026-07-14
 
+### Legacy contacts PII redaction
+- New contact submits were already metadata-only (`contactDeliveryEvents`).
+- Added `purgeLegacyContactPii` + `scripts/purge-legacy-contact-pii.js` to strip name/email/subject/message/IP from legacy `contacts` while keeping count metadata.
+- Removed plaintext legacy `contacts` queries from cooldown/repeat checks in `submitContactForm`.
+
+### Contact form → Brevo — live test confirmed
+- Superadmin (Hatun) confirmed she received a live contact-form submission via Brevo.
+- Roadmap status updated: contact delivery **Working**; Brevo migration item **Done**.
+
 ### Mobile typography check (docs only — no code change)
 - Phone review of the **live welcome / main site:** fonts looked OK.
 - **Exception:** `/home` “Under Construction” — **DCCI Ministries** header (and some fonts) too small on phones.

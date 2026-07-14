@@ -58,6 +58,36 @@ Bound today on `submitContactForm` and `retryFailedContactEmails`: `BREVO_API_KE
 
 Requires **Firebase Blaze** (pay-as-you-go) for Cloud Scheduler / Pub/Sub scheduled functions.
 
+## Legacy `contacts` purge
+
+New submits never write to `contacts`. Historical docs may still hold plaintext until redacted.
+
+**Dry-run only (Cloud Function — preferred review step):**
+
+```bash
+node scripts/run-purge-legacy-contact-pii-dry-run.js
+```
+
+**Local Admin SDK dry-run (default; needs ADC):**
+
+```bash
+node scripts/purge-legacy-contact-pii.js
+# or explicitly:
+node scripts/purge-legacy-contact-pii.js --dry-run
+```
+
+**Live redaction** — only after you separately authorize:
+
+```bash
+# Local (requires gcloud ADC):
+node scripts/purge-legacy-contact-pii.js --confirm-live
+
+# Or Cloud Function POST with dryRun omitted/false and recovery.secret in JSON body
+# (never put the secret in query strings or commit it).
+```
+
+Scope: top-level `contacts` documents only; redacts PII fields; does not delete docs or touch other collections.
+
 ## tsconfig.spec.json exclusions (technical debt)
 
 | Excluded file | Why |
