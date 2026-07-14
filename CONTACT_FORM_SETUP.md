@@ -55,7 +55,7 @@ Validation / spam / cooldown still return **4xx**.
 | `contactDeliveryFailures` | Failure summaries (no body) | Admin read only |
 | `contactRetryPayloads` | Encrypted temporary recovery | **None** (Admin SDK only) |
 | `contactOperationalAlerts` | Single alert if ≥5 failures / 30 min | Admin read only |
-| `contacts` | **Legacy** only — not written by new submits | Admin read; cleanup later |
+| `contacts` | **Legacy** — redacted metadata only after purge (`scripts/purge-legacy-contact-pii.js` / `purgeLegacyContactPii`) | Admin read; create denied |
 | `subscribers` | Newsletter opt-in (explicit consent) | Public create |
 
 Retry encryption key material: **required** Firebase secret `CONTACT_RETRY_ENCRYPTION_KEY` (64 hex chars). Hash pepper: **required** `CONTACT_HASH_SECRET`. Never derive from `BREVO_API_KEY`. See [docs/contact-form-secrets-and-ops.md](./docs/contact-form-secrets-and-ops.md).

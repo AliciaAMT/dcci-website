@@ -4,7 +4,7 @@
 
 **This file contains no passwords or API keys.** Secrets live in **Package B** (encrypted backup) or the services listed below.
 
-**Last updated:** July 2026 — YouTube dual-channel sync + historical backfills complete. Next: Brevo + stop storing contact PII + finish legacy package. Fill in `[brackets]` as you complete handoff steps.
+**Last updated:** July 2026 — YouTube dual-channel sync + historical backfills complete. Contact form → Brevo live (Hatun confirmed receipt). Next: stop storing legacy contact PII + finish legacy package. Fill in `[brackets]` as you complete handoff steps.
 
 ---
 
@@ -17,7 +17,7 @@
 | **GitHub repository** | DCCI Ministries org | [github.com/DCCI-Ministries/dcci-website](https://github.com/DCCI-Ministries/dcci-website) |
 | **Domain / DNS** | `[registrar name]` | `dcciministries.com` |
 | **Cloudflare** (if used) | `[account holder]` | `[dash.cloudflare.com login]` |
-| **Contact form sending** | **Target:** Brevo (ministry-owned) · **Current:** Gmail SMTP via Firebase until migrated | See [meeting-agenda-hatun-email-setup.md](./meeting-agenda-hatun-email-setup.md) |
+| **Contact form sending** | **Live:** Brevo (ministry-owned); Hatun confirmed receipt | See [meeting-agenda-hatun-email-setup.md](./meeting-agenda-hatun-email-setup.md) · [CONTACT_FORM_SETUP.md](../CONTACT_FORM_SETUP.md) |
 | **YouTube sync** | Firebase Functions config | `youtube.api_key`, `youtube.uploads_playlist_ids` (DCCI + Hatun). Docs: [YOUTUBE_SETUP.md](../functions/YOUTUBE_SETUP.md) |
 
 **Rule:** Ministry owns ministry inboxes and public-facing email. The **technical maintainer** owns `technicalAdminEmail` (website bugs, accessibility, deploy). See [config/site-contacts.json](../config/site-contacts.json).
@@ -133,7 +133,7 @@ Full checklist: [technical-contact-handoff.md](./technical-contact-handoff.md) �
 
 Work in order — do not add features until these are safe:
 
-1. Contact form → **Brevo**, ministry-owned, no developer Workspace in the path  
+1. ~~Contact form → **Brevo**~~ — **Done** (Hatun confirmed live receipt); keep other Workspace mail paths reviewed separately  
 2. Contact messages **not** stored in Firestore (email/message only to Hatun)  
 3. This legacy package + encrypted backups current  
 4. Welcome page editor tested after each publish  

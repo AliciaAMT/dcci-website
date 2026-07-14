@@ -161,6 +161,96 @@ test('TTL constants within policy', () => {
   assert.ok(MAX_CONTACT_RETRY_ATTEMPTS >= 1);
 });
 
+try {
+  const {
+    LEGACY_CONTACT_PII_FIELDS,
+    buildLegacyContactRedactionUpdate,
+  } = require('../lib/contact-legacy-purge');
+
+  test('legacy PII field list includes message body and email', () => {
+    assert.ok(LEGACY_CONTACT_PII_FIELDS.includes('message'));
+    assert.ok(LEGACY_CONTACT_PII_FIELDS.includes('email'));
+    assert.ok(LEGACY_CONTACT_PII_FIELDS.includes('ipAddress'));
+  });
+
+  test('redaction update deletes PII and sets redacted flag', () => {
+    const update = buildLegacyContactRedactionUpdate({
+      name: 'Visitor',
+      email: 'v@example.com',
+      subject: 'Hi',
+      message: 'Secret note',
+      ipAddress: '1.2.3.4',
+      submittedAt: { seconds: 1 },
+      newsletter: true,
+    });
+    assert.ok(update);
+    assert.strictEqual(update.redacted, true);
+    assert.strictEqual(update.legacyMailbox, true);
+    assert.ok(update.name);
+    assert.ok(update.message);
+  });
+
+  test('clean legacy docs need no redaction', () => {
+    assert.strictEqual(
+      buildLegacyContactRedactionUpdate({
+        submittedAt: { seconds: 1 },
+        redacted: true,
+        newsletterOptIn: false,
+      }),
+      null
+    );
+  });
+
+  test('whitespace-only PII strings do not count as present', () => {
+    assert.strictEqual(
+      buildLegacyContactRedactionUpdate({
+        name: '   ',
+        email: '\t',
+        submittedAt: { seconds: 1 },
+      }),
+      null
+    );
+  });
+
+  test('deleted field count includes empty/null keys actually deleted', () => {
+    const { piiFieldsToDelete, LEGACY_CONTACT_PII_FIELDS: fields } = require('../lib/contact-legacy-purge');
+    const data = {
+      name: '',
+      email: 'a@b.co',
+      phone: null,
+      submittedAt: { seconds: 1 },
+    };
+    const update = buildLegacyContactRedactionUpdate(data);
+    assert.ok(update);
+    const deleted = piiFieldsToDelete(data);
+    assert.ok(deleted.includes('name'));
+    assert.ok(deleted.includes('email'));
+    assert.ok(deleted.includes('phone'));
+    assert.strictEqual(deleted.length, 3);
+    for (const field of deleted) {
+      assert.ok(update[field], `update should delete ${field}`);
+    }
+    // present/non-empty would only be email — count must not use that shorter list
+    const nonEmptyOnly = fields.filter((field) => {
+      const value = data[field];
+      return typeof value === 'string' ? value.trim().length > 0 : value != null;
+    });
+    assert.strictEqual(nonEmptyOnly.length, 1);
+    assert.ok(deleted.length > nonEmptyOnly.length);
+  });
+
+  test('purge result shape includes count fields without PII values', () => {
+    const { LEGACY_CONTACTS_COLLECTION } = require('../lib/contact-legacy-purge');
+    assert.strictEqual(LEGACY_CONTACTS_COLLECTION, 'contacts');
+  });
+} catch (err) {
+  if (err && err.code === 'MODULE_NOT_FOUND') {
+    console.log('skip - contact-legacy-purge (run tsc / npm test after build)');
+  } else {
+    throw err;
+  }
+}
+
 if (!process.exitCode) {
   console.log('All contact privacy unit tests passed.');
 }

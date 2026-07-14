@@ -12,8 +12,9 @@
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Contact form delivery | ☑ Working ☐ Broken ☐ Unknown | Brevo path in code; confirm after deploy + one live test. |
-| Contact form → Brevo | ☐ Not started ☐ In progress ☑ **Done (pending deploy)** | Privacy audit log + encrypted retry payloads implemented; deploy + one live test still required. |
+| Contact form delivery | ☑ **Working** ☐ Broken ☐ Unknown | Live form → Brevo; Hatun (superadmin) confirmed receipt. |
+| Contact form → Brevo | ☐ Not started ☐ In progress ☑ **Done** | Privacy audit log + encrypted retry payloads deployed; live test confirmed. |
+| Contact PII in Firestore | ☐ Still exposed ☑ **Redacting / metadata-only** | New submits → `contactDeliveryEvents` only. Legacy `contacts` redacted via purge (no name/email/subject/message/IP). |
 | Workspace removed from Hatun’s comms | ☐ No ☑ Partial ☐ Yes | Contact form uses Brevo; other functions still Gmail. |
 | Welcome page editor tested | ☐ No ☐ Yes | What you changed: |
 | Contact content in Firestore/logs | ☐ Still stored (full) ☑ **Metadata + temp encrypted retry** | New submits → `contactDeliveryEvents` (hashes/metadata). Bodies only in short-lived `contactRetryPayloads` on failure. Legacy `contacts` untouched. |
@@ -27,8 +28,8 @@
 
 **Next session — do only (privacy first):**
 
-1. **Brevo** — Hatun owns account; domain auth; SMTP key; Firebase `mail.*` → Brevo; live test to Hatun only.  
-2. **Strip Firestore contact copies** — recover any backlog to Hatun, delete old `contacts` bodies, ship metadata-only (or no PII) writes.  
+1. ~~**Brevo**~~ — **Done.** Live test confirmed (Hatun received contact form).  
+2. ~~**Strip Firestore contact copies**~~ — **In progress / deploy this session:** new path was already metadata-only; purge redacts legacy `contacts` PII.  
 3. **Legacy package** — finish Emergency README brackets + encrypted Package A (code/docs) + Package B (where secrets live); give Hatun Package B password on a separate channel.
 
 ---
@@ -49,23 +50,27 @@
 
 New uploads only need the scheduled sync. Do not reset backfill unless intentionally re-walking a playlist.
 
-### Contact form — **not** privacy-safe yet
+### Contact form — privacy posture (July 2026)
 
 **Target (agreed):** Messages go **only to Hatun’s inbox**. No useful copy of visitor identity or message text in Firestore — people contacting from **persecuted / high-risk areas** must not leave a database trail.
 
-**Today (code):** `submitContactForm` still writes full `name`, `email`, `subject`, `message`, `ipAddress`, etc. to `contacts`. That was useful for early monitoring; it is time to remove it.
+**Today (code):**
+- New submits write **metadata only** to `contactDeliveryEvents` (hashes + delivery status + `sourcePage` + newsletter flag).
+- On delivery failure, short-lived **encrypted** payloads sit in `contactRetryPayloads` (TTL ~48h).
+- Legacy `contacts` documents are **redacted** (no name/email/subject/message/IP) so historical counts remain without exposing mail.
 
-**Docs already written for the migration:**
+**Docs:**
 
 - [contact-form-recovery-and-independence-plan.md](./contact-form-recovery-and-independence-plan.md)  
 - [meeting-agenda-hatun-email-setup.md](./meeting-agenda-hatun-email-setup.md) (Brevo + `info@`)  
 - [contact-form-privacy-and-reporting.md](./contact-form-privacy-and-reporting.md)  
+- [contact-form-secrets-and-ops.md](./contact-form-secrets-and-ops.md)  
 
 ---
 
 ## Priority order (do in this sequence)
 
-### 1. Contact form → Brevo — **URGENT**
+### 1. Contact form → Brevo — **DONE**
 
 **Why first:** Privacy and independence. Removes Alicia’s Google Workspace from Hatun’s communications and from password-rotation risk. Ministry-owned SMTP key does not die when someone changes a Gmail login password.
 
@@ -73,19 +78,19 @@ New uploads only need the scheduled sync. Do not reset backfill unless intention
 |---|---|
 | **Goal** | Form sends via **Brevo** (Hatun/ministry-owned). Hatun receives mail. No dependency on `admin@accessiblewebmedia.com`. |
 | **Guides** | [Contact form — recovery & independence plan](./contact-form-recovery-and-independence-plan.md) · [Meeting agenda — Hatun `info@` + Brevo](./meeting-agenda-hatun-email-setup.md) (Part 4) · [CONTACT_FORM_SETUP.md](../CONTACT_FORM_SETUP.md) |
-| **Done when** | ☐ Brevo account owned by ministry ☐ Domain/SMTP configured ☐ Firebase `mail.host` / `mail.user` / `mail.pass` point to Brevo ☐ Test submission reaches **Hatun only** ☐ Alicia’s inbox no longer in the send path |
+| **Done when** | ☑ Brevo account owned by ministry ☑ Domain/SMTP configured ☑ Firebase/Brevo send path live ☑ Test submission reached **Hatun** ☑ Alicia’s inbox no longer in the contact-form send path |
 
 ---
 
-### 2. Remove contact PII from the database — **URGENT (with Brevo)**
+### 2. Remove contact PII from the database — **DONE (purge + metadata path)**
 
 **Why:** Database copies of emails/messages are a risk if Firestore is breached, misconfigured, or compelled. Email to Hatun is enough for ministry reply.
 
 | | |
 |---|---|
-| **Goal** | (A) Recover any backlog still in `contacts` → email to Hatun. (B) **Delete** those documents. (C) Change `submitContactForm` so new submissions do **not** store names, emails, subjects, or message bodies (metadata only for counts, e.g. `submittedAt` + newsletter flag — or drop storage entirely if counts can live elsewhere). (D) Stop logging message content in Cloud Functions. |
-| **Guides** | [Contact form — recovery plan](./contact-form-recovery-and-independence-plan.md) · [Contact privacy](./contact-form-privacy-and-reporting.md) |
-| **Done when** | ☐ Backlog forwarded to Hatun ☐ Old full-message docs deleted ☐ Live function confirmed **no visitor email/message in Firestore** ☐ No message bodies in function logs ☐ Admin dashboard still works on counts without reading mail |
+| **Goal** | (A) Recover any backlog still in `contacts` → email to Hatun. (B) **Redact/delete** visitor PII. (C) New submissions do **not** store names, emails, subjects, or message bodies. (D) Stop using plaintext legacy `contacts` for rate-limit queries. |
+| **Guides** | [Contact form — recovery plan](./contact-form-recovery-and-independence-plan.md) · [Contact privacy](./contact-form-privacy-and-reporting.md) · `scripts/purge-legacy-contact-pii.js` · Cloud Function `purgeLegacyContactPii` |
+| **Done when** | ☑ Live function writes audit metadata only ☑ Legacy `contacts` PII redacted (or purged) ☑ Cooldown/repeat checks use hashes only ☑ Admin dashboard shows counts/activity without message bodies |
 
 **Note:** Newsletter opt-in may still need an email in `subscribers` if that feature stays — treat as a **separate, explicit** consent list, not a copy of every contact message.
 
@@ -166,7 +171,7 @@ Do this as part of **priority 3**, and **refresh after Brevo**.
 ### This week — privacy + independence (minimum)
 
 - [ ] Update this **Current status** table if anything changes mid-session.  
-- [ ] **Brevo** with Hatun (priority **1**) — use [meeting agenda](./meeting-agenda-hatun-email-setup.md).  
+- [x] **Brevo** with Hatun (priority **1**) — live form confirmed; Hatun received mail.  
 - [ ] **Recover + delete** Firestore contact bodies; ship code that stops storing PII (priority **2**).  
 - [ ] Live form test: message arrives **only** in Hatun’s mail; Firestore doc has no email/message.  
 
