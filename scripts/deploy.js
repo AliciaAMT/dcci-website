@@ -4,6 +4,8 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+const ROOT = path.join(__dirname, '..');
+
 // Configuration
 const config = {
   staging: {
@@ -19,6 +21,10 @@ const config = {
     description: 'Live Production Environment'
   }
 };
+
+/** Hosting + Functions + Firestore rules/indexes + Storage rules */
+const FULL_STACK_TARGETS =
+  'hosting,functions,firestore:rules,firestore:indexes,storage';
 
 function log(message, type = 'info') {
   const colors = {
@@ -38,6 +44,12 @@ function runCommand(command, description, options = {}) {
     const execOptions = {
       stdio: 'inherit',
       encoding: 'utf8',
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        // Large functions packages need extra discovery time on Windows
+        FUNCTIONS_DISCOVERY_TIMEOUT: process.env.FUNCTIONS_DISCOVERY_TIMEOUT || '60',
+      },
       ...options
     };
     const result = execSync(command, execOptions);
@@ -46,6 +58,28 @@ function runCommand(command, description, options = {}) {
   } catch (error) {
     log(`❌ ${description} failed: ${error.message}`, 'error');
     process.exit(1);
+  }
+}
+
+/**
+ * Prefer local firebase-tools; fall back to global `firebase`.
+ * Avoids hard failure when only the project-local CLI is installed.
+ */
+function resolveFirebaseCli() {
+  const candidates = [
+    path.join(ROOT, 'node_modules', '.bin', 'firebase.cmd'),
+    path.join(ROOT, 'node_modules', '.bin', 'firebase'),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return `"${candidate}"`;
+    }
+  }
+  try {
+    execSync('firebase --version', { stdio: 'ignore' });
+    return 'firebase';
+  } catch {
+    return null;
   }
 }
 
@@ -67,13 +101,13 @@ function copyAstroFiles(src, dest) {
     if (!fs.existsSync(destDir)) {
       fs.mkdirSync(destDir, { recursive: true });
     }
-    
+
     const entries = fs.readdirSync(srcDir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const srcPath = path.join(srcDir, entry.name);
       const destPath = path.join(destDir, entry.name);
-      
+
       if (entry.isDirectory()) {
         if (skipDirs.has(entry.name)) {
           continue;
@@ -90,7 +124,7 @@ function copyAstroFiles(src, dest) {
   }
 
   const entries = fs.readdirSync(src, { withFileTypes: true });
-  
+
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
@@ -100,7 +134,7 @@ function copyAstroFiles(src, dest) {
       removeDirIfExists(destPath);
       continue;
     }
-    
+
     if (entry.isDirectory()) {
       copyDir(srcPath, destPath);
     } else {
@@ -115,18 +149,12 @@ function copyAstroFiles(src, dest) {
   removeDirIfExists(path.join(dest, 'welcome'));
 }
 
-function checkFirebaseCLI() {
+function getCurrentFirebaseProject(firebaseCli) {
   try {
-    execSync('firebase --version', { stdio: 'ignore' });
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-function getCurrentFirebaseProject() {
-  try {
-    const result = execSync('firebase use', { encoding: 'utf8' });
+    const result = execSync(`${firebaseCli} use`, {
+      encoding: 'utf8',
+      cwd: ROOT,
+    });
     const match = result.match(/Currently active: (.+)/);
     return match ? match[1].trim() : null;
   } catch (error) {
@@ -134,7 +162,7 @@ function getCurrentFirebaseProject() {
   }
 }
 
-function deploy(environment) {
+function deploy(environment, { fullStack = false } = {}) {
   const env = config[environment];
   if (!env) {
     log(`❌ Unknown environment: ${environment}`, 'error');
@@ -142,36 +170,42 @@ function deploy(environment) {
     process.exit(1);
   }
 
-  log(`🚀 Starting deployment to ${env.description}`, 'info');
-  log(`📍 Target: ${env.projectId}`, 'info');
-  log(`🔧 Build Configuration: ${env.buildConfig}`, 'info');
-
-  // Check if Firebase CLI is installed
-  if (!checkFirebaseCLI()) {
-    log('❌ Firebase CLI not found. Please install it first:', 'error');
-    log('npm install -g firebase-tools', 'info');
+  const firebaseCli = resolveFirebaseCli();
+  if (!firebaseCli) {
+    log('❌ Firebase CLI not found.', 'error');
+    log('Install locally: npm install (firebase-tools should be in the project)', 'info');
+    log('Or globally: npm install -g firebase-tools', 'info');
     process.exit(1);
   }
 
-  // Check current Firebase project
-  const currentProject = getCurrentFirebaseProject();
+  const deployScope = fullStack
+    ? `full stack (${FULL_STACK_TARGETS})`
+    : 'hosting only';
+
+  log(`🚀 Starting deployment to ${env.description}`, 'info');
+  log(`📍 Target: ${env.projectId}`, 'info');
+  log(`🔧 Build Configuration: ${env.buildConfig}`, 'info');
+  log(`📦 Deploy scope: ${deployScope}`, 'info');
+  log(`🛠️  Firebase CLI: ${firebaseCli}`, 'info');
+
+  const currentProject = getCurrentFirebaseProject(firebaseCli);
   log(`📍 Current Firebase project: ${currentProject || 'None'}`, 'info');
 
   // Build the application (Angular + Astro)
   log(`🏗️  Building for ${env.buildConfig} configuration...`, 'info');
   log(`📦 Building Angular app...`, 'info');
   runCommand(`ng build --configuration ${env.buildConfig}`, `Build Angular for ${env.buildConfig}`);
-  
+
   // Build Astro public site
   log(`📦 Building Astro public site...`, 'info');
-  const publicSitePath = path.join(__dirname, '..', 'public-site');
+  const publicSitePath = path.join(ROOT, 'public-site');
   runCommand(`npm run build`, `Build Astro site`, { cwd: publicSitePath });
-  
+
   // Copy Astro output to dist/app (using build-all.js logic)
   log(`📦 Merging Astro output with Angular build...`, 'info');
-  const distAppPath = path.join(__dirname, '..', 'dist', 'app');
-  const distPublicSitePath = path.join(__dirname, '..', 'dist', 'public-site');
-  
+  const distAppPath = path.join(ROOT, 'dist', 'app');
+  const distPublicSitePath = path.join(ROOT, 'dist', 'public-site');
+
   if (!fs.existsSync(distPublicSitePath)) {
     log(`⚠️  Astro output not found, skipping merge`, 'warning');
   } else if (!fs.existsSync(distAppPath)) {
@@ -184,27 +218,38 @@ function deploy(environment) {
 
   // Switch to target Firebase project
   log(`🔄 Switching to Firebase project: ${env.projectId}`, 'info');
-  runCommand(`firebase use ${env.projectId}`, `Switch to ${env.projectId}`);
+  runCommand(`${firebaseCli} use ${env.projectId}`, `Switch to ${env.projectId}`);
 
   // Deploy to Firebase
-  log(`🚀 Deploying to Firebase...`, 'info');
-  runCommand('firebase deploy --only hosting', 'Firebase deployment');
+  const onlyTargets = fullStack ? FULL_STACK_TARGETS : 'hosting';
+  log(`🚀 Deploying to Firebase (${onlyTargets})...`, 'info');
+  runCommand(
+    `${firebaseCli} deploy --only ${onlyTargets} --project ${env.projectId}`,
+    fullStack ? 'Firebase full-stack deployment' : 'Firebase hosting deployment'
+  );
 
   log(`🎉 Deployment to ${env.description} completed successfully!`, 'success');
   log(`🌐 Your app is now live at: https://${env.projectId}.web.app`, 'success');
+  if (fullStack) {
+    log(`✅ Deployed: hosting, functions, firestore rules + indexes, storage rules`, 'success');
+  }
 }
 
 // Parse command line arguments
-const args = process.argv.slice(2);
-const command = args[0];
+const args = process.argv.slice(2).filter((a) => a !== '--');
+const fullStack =
+  args.includes('--full-stack') ||
+  args.includes('--full') ||
+  args.includes('full-stack');
+const command = args.find((a) => !a.startsWith('--') && a !== 'full-stack');
 
 if (!command) {
   log('❌ No command specified', 'error');
   log('Usage:', 'info');
-  log('  npm run td    - Deploy to staging', 'info');
-  log('  npm run ld    - Deploy to production', 'info');
-  log('  node scripts/deploy.js staging  - Deploy to staging', 'info');
-  log('  node scripts/deploy.js production - Deploy to production', 'info');
+  log('  npm run td    - Deploy hosting to staging', 'info');
+  log('  npm run ld    - Deploy hosting to production', 'info');
+  log('  node scripts/deploy.js production --full-stack', 'info');
+  log('  node scripts/deploy.js staging --full-stack', 'info');
   process.exit(1);
 }
 
@@ -219,9 +264,10 @@ const commandMap = {
 const environment = commandMap[command];
 if (!environment) {
   log(`❌ Unknown command: ${command}`, 'error');
-  log('Available commands: td (test deploy), ld (live deploy)', 'info');
+  log('Available commands: td (test deploy), ld (live deploy), staging, production', 'info');
+  log('Optional: --full-stack (hosting + functions + firestore + storage)', 'info');
   process.exit(1);
 }
 
 // Start deployment
-deploy(environment);
+deploy(environment, { fullStack });

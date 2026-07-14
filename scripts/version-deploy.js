@@ -14,7 +14,7 @@ if (!validEnvs.includes(targetEnv)) {
   process.exit(1);
 }
 
-console.log(`🚀 Version Bump + Deploy to ${targetEnv.toUpperCase()}`);
+console.log(`🚀 Version Bump + Full-Stack Deploy to ${targetEnv.toUpperCase()}`);
 
 // Read current package.json
 const packageJsonPath = path.join(__dirname, '..', 'package.json');
@@ -38,7 +38,12 @@ console.log(`📦 New version: ${newVersion}`);
 console.log(`\n⚠️  This will:`);
 console.log(`   1. Bump version from ${currentVersion} to ${newVersion}`);
 console.log(`   2. Update all environment files`);
-console.log(`   3. Deploy to ${targetEnv.toUpperCase()}`);
+console.log(`   3. Sync GitHub Actions secrets (ENVIRONMENT_PROD_TS, ENVIRONMENT_TS, …)`);
+console.log(`   4. Deploy FULL STACK to ${targetEnv.toUpperCase()}:`);
+console.log(`      - Hosting (Angular + Astro)`);
+console.log(`      - Cloud Functions`);
+console.log(`      - Firestore rules + indexes`);
+console.log(`      - Storage rules`);
 console.log(`\nPress Enter to continue or Ctrl+C to cancel...`);
 
 // Wait for user input
@@ -51,35 +56,41 @@ process.stdin.on('data', () => {
 
 function proceedWithUpdate() {
   try {
-    console.log(`\n🔄 Starting version bump and deployment...`);
-    
+    console.log(`\n🔄 Starting version bump and full-stack deployment...`);
+
     // 1. Update package.json
     packageJson.version = newVersion;
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
     console.log(`✅ Updated package.json to version ${newVersion}`);
-    
+
     // 2. Update all environment files
     console.log(`🔄 Updating environment files...`);
     execSync('node scripts/update-version.js', { stdio: 'inherit' });
-    
-    // 3. Deploy to target environment
-    console.log(`🚀 Deploying to ${targetEnv}...`);
-    
-    if (targetEnv === 'staging') {
-      execSync('npm run td', { stdio: 'inherit' });
-    } else {
-      execSync('npm run ld', { stdio: 'inherit' });
-    }
-    
+
+    // 3. Sync gitignored env files into GitHub Actions secrets (nightly rebuild)
+    console.log(`🔐 Syncing GitHub Actions CI secrets...`);
+    execSync('node scripts/sync-github-ci-secrets.js --strict', { stdio: 'inherit' });
+
+    // 4. Full-stack deploy (hosting + functions + firestore + storage)
+    console.log(`🚀 Full-stack deploying to ${targetEnv}...`);
+    execSync(`node scripts/deploy.js ${targetEnv} --full-stack`, {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        FUNCTIONS_DISCOVERY_TIMEOUT: process.env.FUNCTIONS_DISCOVERY_TIMEOUT || '60',
+      },
+    });
+
     console.log(`\n🎉 SUCCESS!`);
     console.log(`✅ Version bumped to ${newVersion}`);
-    console.log(`✅ Deployed to ${targetEnv.toUpperCase()}`);
+    console.log(`✅ GitHub CI env secrets synced`);
+    console.log(`✅ Full stack deployed to ${targetEnv.toUpperCase()}`);
     console.log(`📱 Users will now see Version: ${newVersion} in the footer`);
-    
+
   } catch (error) {
     console.error(`\n❌ ERROR during deployment:`);
     console.error(error.message);
-    
+
     // Revert package.json if deployment failed
     try {
       packageJson.version = currentVersion;
@@ -88,7 +99,7 @@ function proceedWithUpdate() {
     } catch (revertError) {
       console.error(`❌ Failed to revert package.json:`, revertError.message);
     }
-    
+
     process.exit(1);
   }
-} 
+}

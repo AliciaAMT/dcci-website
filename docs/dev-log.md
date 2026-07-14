@@ -1,5 +1,12 @@
 # Dev Log
 
+## 2026-07-14
+
+### Mobile typography check (docs only — no code change)
+- Phone review of the **live welcome / main site:** fonts looked OK.
+- **Exception:** `/home` “Under Construction” — **DCCI Ministries** header (and some fonts) too small on phones.
+- Documented in [site-priority-roadmap.md](./site-priority-roadmap.md), [project-overview.md](./project-overview.md), [troubleshooting.md](./troubleshooting.md). Leave as-is until full-site migration away from the temporary home page.
+
 ## 2026-06-21
 
 ### Welcome Page — Admin-Editable Content (SEO-Safe)

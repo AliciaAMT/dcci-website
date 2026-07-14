@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-console.log(`🚀 Major Version Bump + Deploy to PRODUCTION`);
+console.log(`🚀 Major Version Bump + Full-Stack Deploy to PRODUCTION`);
 
 // Read current package.json
 const packageJsonPath = path.join(__dirname, '..', 'package.json');
@@ -30,7 +30,12 @@ console.log(`📦 New version: ${newVersion} (Major bump)`);
 console.log(`\n⚠️  This will:`);
 console.log(`   1. Bump MAJOR version from ${currentVersion} to ${newVersion}`);
 console.log(`   2. Update all environment files`);
-console.log(`   3. Deploy to PRODUCTION (LIVE)`);
+console.log(`   3. Sync GitHub Actions secrets (ENVIRONMENT_PROD_TS, ENVIRONMENT_TS, …)`);
+console.log(`   4. Deploy FULL STACK to PRODUCTION (LIVE):`);
+console.log(`      - Hosting (Angular + Astro)`);
+console.log(`      - Cloud Functions`);
+console.log(`      - Firestore rules + indexes`);
+console.log(`      - Storage rules`);
 console.log(`\nPress Enter to continue or Ctrl+C to cancel...`);
 
 // Wait for user input
@@ -43,7 +48,7 @@ process.stdin.on('data', () => {
 
 function proceedWithUpdate() {
   try {
-    console.log(`\n🔄 Starting major version bump and deployment...`);
+    console.log(`\n🔄 Starting major version bump and full-stack deployment...`);
 
     // 1. Update package.json
     packageJson.version = newVersion;
@@ -54,13 +59,24 @@ function proceedWithUpdate() {
     console.log(`🔄 Updating environment files...`);
     execSync('node scripts/update-version.js', { stdio: 'inherit' });
 
-    // 3. Deploy to production
-    console.log(`🚀 Deploying to PRODUCTION...`);
-    execSync('npm run ld', { stdio: 'inherit' });
+    // 3. Sync gitignored env files into GitHub Actions secrets (nightly rebuild)
+    console.log(`🔐 Syncing GitHub Actions CI secrets...`);
+    execSync('node scripts/sync-github-ci-secrets.js --strict', { stdio: 'inherit' });
+
+    // 4. Full-stack deploy
+    console.log(`🚀 Full-stack deploying to PRODUCTION...`);
+    execSync('node scripts/deploy.js production --full-stack', {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        FUNCTIONS_DISCOVERY_TIMEOUT: process.env.FUNCTIONS_DISCOVERY_TIMEOUT || '60',
+      },
+    });
 
     console.log(`\n🎉 SUCCESS!`);
     console.log(`✅ Major version bumped to ${newVersion}`);
-    console.log(`✅ Deployed to PRODUCTION (LIVE)`);
+    console.log(`✅ GitHub CI env secrets synced`);
+    console.log(`✅ Full stack deployed to PRODUCTION (LIVE)`);
     console.log(`📱 Users will now see Version: ${newVersion} in the footer`);
 
   } catch (error) {

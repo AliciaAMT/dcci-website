@@ -147,6 +147,10 @@ This guide helps you quickly identify and resolve common issues with the DCCI Mi
    - Horizontal scrolling
    - Touch targets too close
 
+**Known (do not treat as a new regression):**
+- **Phone check (July 2026):** Live welcome / main site typography looked OK on phone.
+- **Exception:** Angular `/home` “Under Construction” page — the **DCCI Ministries** header (and some fonts) appear too small on phones. Temporary landing page; prefer fixing only if that route stays after full-site migration. See [site-priority-roadmap.md](./site-priority-roadmap.md).
+
 **Fixes**:
 - Adjust CSS media queries
 - Optimize touch targets (44px minimum)
