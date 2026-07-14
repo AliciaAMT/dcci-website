@@ -153,18 +153,33 @@ export async function logBrevoContactDeliveryFailure(
 
   await db.collection(COLLECTION).add(record);
 
-  // emailDeliveryAttemptedAt is already set by the caller before send;
-  // do not reuse FieldValue.serverTimestamp() sentinels across writes.
-  await db.collection('contacts').doc(params.contactId).update({
-    emailDelivered: false,
-    emailProvider: 'brevo',
-    emailDeliveryFailedAt: admin.firestore.FieldValue.serverTimestamp(),
-    emailDeliveryErrorCode: summarized.errorCode,
-    emailDeliveryErrorSummary: summarized.errorSummary,
-    emailDeliveryFailureReason: summarized.failureReason,
-    failureCategory: summarized.failureCategory,
-    failureStatus: summarized.failureStatus
-  });
+  // Operational metadata only — prefer contactDeliveryEvents; legacy contacts docs ignored if missing.
+  const eventRef = db.collection('contactDeliveryEvents').doc(params.contactId);
+  const eventSnap = await eventRef.get();
+  if (eventSnap.exists) {
+    await eventRef.update({
+      emailDelivered: false,
+      emailProvider: 'brevo',
+      failureCategory: summarized.failureCategory,
+      failureStatus: summarized.failureStatus,
+      failureSummary: summarized.errorSummary,
+    });
+  } else {
+    const legacyRef = db.collection('contacts').doc(params.contactId);
+    const legacySnap = await legacyRef.get();
+    if (legacySnap.exists) {
+      await legacyRef.update({
+        emailDelivered: false,
+        emailProvider: 'brevo',
+        emailDeliveryFailedAt: admin.firestore.FieldValue.serverTimestamp(),
+        emailDeliveryErrorCode: summarized.errorCode,
+        emailDeliveryErrorSummary: summarized.errorSummary,
+        emailDeliveryFailureReason: summarized.failureReason,
+        failureCategory: summarized.failureCategory,
+        failureStatus: summarized.failureStatus,
+      });
+    }
+  }
 
   return summarized;
 }

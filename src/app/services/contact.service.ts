@@ -10,7 +10,19 @@ export interface ContactFormData {
   email: string;
   subject: string;
   message: string;
-  website?: string; // Honeypot field
+  newsletter?: boolean;
+  website?: string;
+  formLoadTime?: number;
+  submissionTime?: number;
+  sourcePage?: string;
+}
+
+export interface ContactSubmitResult {
+  success: boolean;
+  delivered: boolean;
+  contactId?: string;
+  errorType?: string | null;
+  message?: string;
 }
 
 export interface NewsletterSubscriptionData {
@@ -50,23 +62,30 @@ export class ContactService {
     return headers;
   }
 
-  async submitContactForm(formData: ContactFormData): Promise<void> {
+  /**
+   * Submit contact form. Success UI must only run when result.delivered === true.
+   * HTTP 200 with delivered:false means the backend accepted the request but email failed.
+   */
+  async submitContactForm(formData: ContactFormData): Promise<ContactSubmitResult> {
     try {
       const headers = await this.buildRequestHeaders();
-      const response = await firstValueFrom(this.http.post(this.apiUrl, formData, { headers }));
+      const response = await firstValueFrom(
+        this.http.post<ContactSubmitResult>(this.apiUrl, formData, { headers })
+      );
 
       if (!response) {
         throw new Error('No response from server');
       }
 
-      console.log('Contact form submitted successfully:', response);
+      return {
+        success: response.success === true,
+        delivered: response.delivered === true,
+        contactId: response.contactId,
+        errorType: response.errorType ?? null,
+        message: response.message,
+      };
     } catch (error: any) {
       console.error('Error submitting contact form:', error);
-
-      if (error.error) {
-        throw error;
-      }
-
       throw error;
     }
   }
@@ -113,7 +132,7 @@ export class ContactService {
     }
   }
 
-  async submitContactFormDirect(formData: ContactFormData): Promise<void> {
+  async submitContactFormDirect(formData: ContactFormData): Promise<ContactSubmitResult> {
     return this.submitContactForm(formData);
   }
 

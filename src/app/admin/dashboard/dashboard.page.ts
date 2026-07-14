@@ -255,7 +255,35 @@ export class DashboardPage implements OnInit, OnDestroy {
           }
         }
 
-      // 2. Get recent contact form submissions (metadata only — no names or message content)
+      // 2. Get recent contact form submissions (audit events + legacy contacts; metadata only)
+      try {
+        const eventsSnapshot = await runInInjectionContext(this.injector, async () => {
+          const eventsRef = collection(this.firestore, 'contactDeliveryEvents');
+          const eventsQuery = query(
+            eventsRef,
+            orderBy('submittedAt', 'desc'),
+            limit(5)
+          );
+          return await getDocs(eventsQuery);
+        });
+
+        eventsSnapshot.forEach((doc) => {
+          const data = doc.data() as any;
+          const timestamp = data.submittedAt;
+          if (timestamp) {
+            const page = data.sourcePage ? ` (${data.sourcePage})` : '';
+            activities.push({
+              icon: 'mail-outline',
+              text: `Contact form submission received${page}`,
+              time: this.formatTimeAgo(timestamp),
+              timestamp: timestamp
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error loading contact delivery events:', error);
+      }
+
       try {
         const contactsSnapshot = await runInInjectionContext(this.injector, async () => {
           const contactsRef = collection(this.firestore, 'contacts');
@@ -273,7 +301,7 @@ export class DashboardPage implements OnInit, OnDestroy {
           if (timestamp) {
             activities.push({
               icon: 'mail-outline',
-              text: 'Contact form submission received',
+              text: 'Contact form submission received (legacy)',
               time: this.formatTimeAgo(timestamp),
               timestamp: timestamp
             });

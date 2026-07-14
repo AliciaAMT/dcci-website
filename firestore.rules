@@ -1,13 +1,30 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Contacts collection - metadata only (timestamp + newsletter opt-in flag; no message content)
+    // Contacts collection - LEGACY mailbox docs (historical). New submits use contactDeliveryEvents.
     match /contacts/{document} {
       allow create: if false;
 
       allow read: if isAdminUser();
 
       allow update, delete: if false;
+    }
+
+    // Operational audit log (hashes + delivery metadata only — no message bodies)
+    match /contactDeliveryEvents/{document} {
+      allow read: if isAdminUser();
+      allow create, update, delete: if false;
+    }
+
+    // Encrypted temporary retry payloads — Admin SDK only (never client-readable)
+    match /contactRetryPayloads/{document} {
+      allow read, write: if false;
+    }
+
+    // Lightweight ops alerts (e.g. repeated delivery failures) — no visitor PII
+    match /contactOperationalAlerts/{document} {
+      allow read: if isAdminUser();
+      allow create, update, delete: if false;
     }
 
     // IP-only rate limits for contact form cooldown (written by Cloud Functions only)

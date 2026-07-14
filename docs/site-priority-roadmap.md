@@ -12,11 +12,11 @@
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Contact form delivery | ☑ Working ☐ Broken ☐ Unknown | Still via Gmail SMTP (`mail.*`); delivers to Hatun from site-contacts. **Not** Brevo yet. |
-| Contact form → Brevo | ☐ Not started ☑ **In progress** ☐ Done | Code ready (`submitContactForm` + `BREVO_API_KEY`). Set secret + deploy, then live test. Gmail left for recovery/newsletter/problem reports. |
-| Workspace removed from Hatun’s comms | ☑ No ☐ Partial ☐ Yes | Still depends on developer/ministry Gmail App Password path until Brevo. |
+| Contact form delivery | ☑ Working ☐ Broken ☐ Unknown | Brevo path in code; confirm after deploy + one live test. |
+| Contact form → Brevo | ☐ Not started ☐ In progress ☑ **Done (pending deploy)** | Privacy audit log + encrypted retry payloads implemented; deploy + one live test still required. |
+| Workspace removed from Hatun’s comms | ☐ No ☑ Partial ☐ Yes | Contact form uses Brevo; other functions still Gmail. |
 | Welcome page editor tested | ☐ No ☐ Yes | What you changed: |
-| Contact content in Firestore/logs | ☑ **Still stored (full)** ☐ Metadata only | Live `submitContactForm` still saves name, email, subject, message, IP to `contacts`. **Must change** for persecuted visitors. |
+| Contact content in Firestore/logs | ☐ Still stored (full) ☑ **Metadata + temp encrypted retry** | New submits → `contactDeliveryEvents` (hashes/metadata). Bodies only in short-lived `contactRetryPayloads` on failure. Legacy `contacts` untouched. |
 | YouTube auto-articles (DCCI + Hatun) | ☑ **Done** | Multi-playlist hourly sync live. Historical backfills **completed** (Hatun ~197, DCCI ~2277; Shorts as drafts). |
 | Legacy / emergency package | ☑ In progress ☐ Done | Outline exists ([DCCI-EMERGENCY-LEGACY-README](./DCCI-EMERGENCY-LEGACY-README.md)); brackets + encrypted Package A/B **not finished**. |
 | GitHub SEO rebuild secrets | ☐ Missing ☐ Set ☐ Tested | See [auto-rebuild-setup.md](./auto-rebuild-setup.md) |
